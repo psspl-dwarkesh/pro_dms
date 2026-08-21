@@ -1,30 +1,21 @@
-﻿import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 export function Mark({ compact = false }: { compact?: boolean }) {
-  const size = compact ? 28 : 34;
+  const size = compact ? 31 : 38;
   return (
-    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <rect width="36" height="36" rx="9" fill="#1463ff" />
-      <path d="M8 18L18 8L28 18L18 28L8 18Z" fill="#ffffff" fillOpacity="0.95" />
-      <circle cx="18" cy="18" r="4.5" fill="#000714" />
-      <circle cx="18" cy="9" r="2.2" fill="#6deab7" />
-      <circle cx="27" cy="18" r="2.2" fill="#6deab7" />
-      <circle cx="18" cy="27" r="2.2" fill="#6deab7" />
-      <circle cx="9" cy="18" r="2.2" fill="#6deab7" />
+    <svg width={size} height={size} viewBox="0 0 44 44" aria-hidden="true">
+      <path d="M6 10h7.5c7.5 0 8.1 24 16.3 24H38" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
+      <path d="M6 34h7.5c7.5 0 8.1-24 16.3-24H38" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
+      <circle cx="22" cy="22" r="4.2" fill="var(--brand-signal, #ff6b35)" stroke="var(--brand-mark-ink, #071c2a)" strokeWidth="2" />
     </svg>
   );
 }
 
-export function Brand({ inverse = false, compact = false, style }: { inverse?: boolean; compact?: boolean; style?: CSSProperties }) {
+export function Brand({ inverse = false, compact = false }: { inverse?: boolean; compact?: boolean }) {
   return (
-    <div className={`brand-lockup ${inverse ? "brand-lockup--inverse" : ""}`} style={style}>
+    <div className={`brand-lockup ${inverse ? "brand-lockup--inverse" : ""}`}>
       <span className="brand-mark"><Mark compact={compact} /></span>
-      {!compact && (
-        <div className="brand-copy">
-          <strong className="brand-word">AutoAxis</strong>
-          <span className="brand-product">Connected DMS</span>
-        </div>
-      )}
+      {!compact && <span className="brand-copy"><span className="brand-word">AutoAxis</span><span className="brand-product">DEALER OPERATING SYSTEM</span></span>}
     </div>
   );
 }
