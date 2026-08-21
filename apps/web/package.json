@@ -1,0 +1,28 @@
+{
+  "name": "@autoaxis/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && vite build"
+  },
+  "dependencies": {
+    "lucide-react": "^0.487.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.15.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.12",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "tailwindcss": "^4.1.12",
+    "tw-animate-css": "^1.3.8",
+    "typescript": "^7.0.2",
+    "vite": "^6.3.5"
+  }
+}

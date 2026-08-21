@@ -1,0 +1,21 @@
+{
+  "name": "autoaxis-dms",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev": "npm run dev --workspace=@autoaxis/web",
+    "dev:web": "npm run dev --workspace=@autoaxis/web",
+    "dev:api": "npm run dev --workspace=@autoaxis/api",
+    "db:create": "npm run db:create --workspace=@autoaxis/api",
+    "db:check": "npm run db:check --workspace=@autoaxis/api",
+    "db:migrate": "npm run db:migrate --workspace=@autoaxis/api",
+    "build": "npm run build --workspaces --if-present",
+    "check": "npm run check --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "engines": {
+    "node": "24.x"
+  }
+}
