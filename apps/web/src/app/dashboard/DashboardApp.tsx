@@ -157,61 +157,7 @@ export default function DashboardApp({ initialView, onExit }: DashboardAppProps)
         </header>
         <main className="operations-content">{renderView()}</main>
       </div>
-      {commandOpen && (
-        <div className="command-scrim" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && setCommandOpen(false)}>
-          <section className="command-palette" role="dialog" aria-modal="true" aria-label="Global record search">
-            <header>
-              <Search size={18} />
-              <input
-                autoFocus
-                value={commandQuery}
-                onChange={(event) => setCommandQuery(event.target.value)}
-                placeholder="Search customer, mobile, VIN, registration or repair order..."
-              />
-              {commandQuery && (
-                <button
-                  type="button"
-                  className="search-clear-btn"
-                  onClick={() => setCommandQuery("")}
-                  aria-label="Clear search"
-                >
-                  <X size={14} />
-                </button>
-              )}
-              <kbd>ESC</kbd>
-            </header>
-            <span>{commandQuery ? `${commandResults.length} matching records` : "Quick demonstration records"}</span>
-            {commandResults.map((record) => {
-              const Icon = record.icon;
-              return (
-                <button
-                  type="button"
-                  key={record.title}
-                  onClick={() => {
-                    navigate(record.view);
-                    setCommandOpen(false);
-                    setCommandQuery("");
-                  }}
-                >
-                  <Icon size={18} />
-                  <div>
-                    <strong>{record.title}</strong>
-                    <small>{record.detail}</small>
-                  </div>
-                  <ArrowRight size={16} />
-                </button>
-              );
-            })}
-            {!commandResults.length && (
-              <div className="command-empty">
-                <Search size={24} />
-                <strong>No matching records</strong>
-                <span>Try searching by customer name, mobile, VIN, registration, RO or deal number.</span>
-              </div>
-            )}
-          </section>
-        </div>
-      )}
+      {commandOpen && <div className="command-scrim" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && setCommandOpen(false)}><section className="command-palette" role="dialog" aria-modal="true" aria-label="Global record search"><header><Search /><input autoFocus value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} placeholder="Search customer, mobile, VIN, registration or repair order" /><kbd>ESC</kbd></header><span>{commandQuery ? `${commandResults.length} matching records` : "Quick demonstration records"}</span>{commandResults.map((record) => { const Icon = record.icon; return <button type="button" key={record.title} onClick={() => { navigate(record.view); setCommandOpen(false); setCommandQuery(""); }}><Icon /><div><strong>{record.title}</strong><small>{record.detail}</small></div><ArrowRight /></button>; })}{!commandResults.length && <div className="command-empty"><Search /><strong>No matching records</strong><span>Try a customer name, mobile, VIN, registration, RO or deal number.</span></div>}</section></div>}
       {profileEdit && <WorkflowModal title="Edit workspace profile" eyebrow="Prakash Infotech account" completeLabel="Save profile" onClose={() => setProfileEdit(false)} onComplete={() => { setProfileEdit(false); setToast("Profile and workspace preferences updated."); window.setTimeout(() => setToast(""), 2600); }}><div className="profile-edit-form"><label><span>Display name</span><input value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} /></label><label><span>Role</span><input value={profile.role} onChange={(event) => setProfile({ ...profile, role: event.target.value })} /></label><label><span>Email</span><input type="email" value={profile.email} onChange={(event) => setProfile({ ...profile, email: event.target.value })} /></label><label><span>Default branch</span><select value={profile.branch} onChange={(event) => setProfile({ ...profile, branch: event.target.value })}><option>All branches</option><option>Sydney Central</option><option>North Shore</option><option>Parramatta</option></select></label><label className="profile-check"><input type="checkbox" defaultChecked /><span>Email the daily briefing at 08:00</span></label><label className="profile-check"><input type="checkbox" defaultChecked /><span>Notify me about critical customer promises</span></label></div></WorkflowModal>}
       {toast && <Toast message={toast} />}
     </div>
