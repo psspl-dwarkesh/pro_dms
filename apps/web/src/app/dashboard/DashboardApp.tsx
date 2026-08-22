@@ -34,7 +34,7 @@ import type { DashView } from "../types";
 import { DomainView, OverviewView } from "./DashboardViews";
 import { CustomerView, Toast, VehicleView, WorkflowModal } from "./RecordViews";
 
-type DashboardAppProps = { initialView: DashView; onExit: () => void };
+type DashboardAppProps = { initialView: DashView; onNavigate: (view: DashView) => void; onExit: () => void };
 
 const viewIcons: Record<DashView, typeof LayoutDashboard> = {
   overview: LayoutDashboard,
@@ -64,7 +64,7 @@ const GLOBAL_RECORDS: Array<{ title: string; detail: string; view: DashView; ico
   { title: "Deal S-10982", detail: "Sales · delivery pack ready", view: "sales", icon: BriefcaseBusiness, keywords: "deal s-10982 sales delivery" },
 ];
 
-export default function DashboardApp({ initialView, onExit }: DashboardAppProps) {
+export default function DashboardApp({ initialView, onNavigate, onExit }: DashboardAppProps) {
   const [view, setView] = useState<DashView>(initialView);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -72,6 +72,7 @@ export default function DashboardApp({ initialView, onExit }: DashboardAppProps)
   const [commandOpen, setCommandOpen] = useState(false);
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileEdit, setProfileEdit] = useState(false);
   const [profile, setProfile] = useState({ name: "Olivia Lawson", role: "Group operations", email: "olivia.lawson@prakashinfotech.com", branch: "All branches" });
@@ -91,7 +92,7 @@ export default function DashboardApp({ initialView, onExit }: DashboardAppProps)
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); setCommandOpen(true); }
-      if (event.key === "Escape") { setCommandOpen(false); setMobileOpen(false); setNoticeOpen(false); setProfileOpen(false); }
+      if (event.key === "Escape") { setCommandOpen(false); setMobileOpen(false); setNoticeOpen(false); setProfileOpen(false); setWorkspaceMenuOpen(false); }
     }
     window.addEventListener("keydown", handleKey); return () => window.removeEventListener("keydown", handleKey);
   }, []);
@@ -104,7 +105,9 @@ export default function DashboardApp({ initialView, onExit }: DashboardAppProps)
 
   function navigate(next: DashView) {
     setView(next);
+    onNavigate(next);
     setMobileOpen(false);
+    setWorkspaceMenuOpen(false);
   }
 
   function renderView() {
@@ -113,6 +116,8 @@ export default function DashboardApp({ initialView, onExit }: DashboardAppProps)
     if (view === "vehicles") return <VehicleView onNavigate={navigate} />;
     return <DomainView view={view} />;
   }
+
+  const CurrentViewIcon = viewIcons[view];
 
   return (
     <div className="operations-shell">
@@ -141,10 +146,10 @@ export default function DashboardApp({ initialView, onExit }: DashboardAppProps)
         <header className="operations-topbar">
           <div className="topbar-left">
             <button type="button" className="mobile-nav-trigger" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu /></button>
-            <span className="mobile-topbar-brand"><Brand inverse compact /></span>
-            <button type="button" className="back-to-site" onClick={onExit}><ArrowLeft size={15} /> Product site</button>
+            <span className="mobile-topbar-brand"><Brand compact /></span>
+            <button type="button" className="back-to-site" onClick={onExit} aria-label="Return to product site"><ArrowLeft size={15} /><span>Product site</span></button>
             <span className="topbar-divider" />
-            <strong>{currentLabel}</strong>
+            <button type="button" className="workspace-switcher" aria-expanded={workspaceMenuOpen} onClick={() => setWorkspaceMenuOpen((value) => !value)}><span className="workspace-switcher-icon"><CurrentViewIcon /></span><span><small>Workspace</small><strong>{currentLabel}</strong></span><ChevronDown /></button>
           </div>
           <div className="topbar-actions">
             <button type="button" className="global-search" onClick={() => setCommandOpen(true)}><Search size={16} /><span>Search customer, VIN, RO…</span><kbd>Ctrl K</kbd></button>
@@ -155,6 +160,7 @@ export default function DashboardApp({ initialView, onExit }: DashboardAppProps)
           {noticeOpen && <div className="notification-popover"><span>Operations notifications</span><button type="button" onClick={() => navigate("service")}><b>4 workshop promises at risk</b><small>Review before 11:00</small></button><button type="button" onClick={() => navigate("inventory")}><b>7 OEM delivery updates</b><small>Customers need contact</small></button></div>}
           {profileOpen && <div className="profile-popover"><div><span>{profile.name.split(" ").map((part) => part[0]).slice(0,2).join("")}</span><p><strong>{profile.name}</strong><small>{profile.email}</small></p></div><button type="button" onClick={() => { setProfileEdit(true); setProfileOpen(false); }}><Edit3 />Edit profile</button><button type="button" onClick={() => { navigate("branch"); setProfileOpen(false); }}><UserRound />My branch workspace</button><a href="mailto:support@prakashinfotech.com"><Mail />Prakash support</a><footer>Workspace by <strong>Prakash Infotech</strong></footer></div>}
         </header>
+        {workspaceMenuOpen && <section className="workspace-menu" aria-label="Choose a workspace"><header><div><span>Workspace navigator</span><strong>Move to the work—not another app.</strong></div><button type="button" onClick={() => setWorkspaceMenuOpen(false)} aria-label="Close workspace navigator"><X /></button></header><div className="workspace-menu-groups">{NAV_SECTIONS.map((section) => <div key={section.label}><span>{section.label}</span>{section.items.map((item) => { const Icon = viewIcons[item.id]; return <button type="button" key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><i><Icon /></i><span><strong>{item.label}</strong><small>{item.id === "customers" ? "Relationship, consent and value" : item.id === "vehicles" ? "VIN lifecycle and condition" : item.id === "overview" ? "Decisions and exceptions" : "Open connected operations"}</small></span><ArrowRight /></button>; })}</div>)}</div></section>}
         <main className="operations-content">{renderView()}</main>
       </div>
       {commandOpen && <div className="command-scrim" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && setCommandOpen(false)}><section className="command-palette" role="dialog" aria-modal="true" aria-label="Global record search"><header><Search /><input autoFocus value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} placeholder="Search customer, mobile, VIN, registration or repair order" /><kbd>ESC</kbd></header><span>{commandQuery ? `${commandResults.length} matching records` : "Quick demonstration records"}</span>{commandResults.map((record) => { const Icon = record.icon; return <button type="button" key={record.title} onClick={() => { navigate(record.view); setCommandOpen(false); setCommandQuery(""); }}><Icon /><div><strong>{record.title}</strong><small>{record.detail}</small></div><ArrowRight /></button>; })}{!commandResults.length && <div className="command-empty"><Search /><strong>No matching records</strong><span>Try a customer name, mobile, VIN, registration, RO or deal number.</span></div>}</section></div>}

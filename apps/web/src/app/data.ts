@@ -46,10 +46,10 @@ export const PUBLIC_DOMAINS: Array<{ id: DashView; index: string; name: string; 
 ];
 
 export const NAV_SECTIONS: Array<{ label: string; items: Array<{ id: DashView; label: string }> }> = [
-  { label: "Command", items: [{ id: "overview", label: "Executive pulse" }] },
+  { label: "Command", items: [{ id: "overview", label: "Executive pulse" }, { id: "customers", label: "Customer 360" }, { id: "vehicles", label: "Vehicle 360" }] },
   { label: "Revenue", items: [{ id: "sales", label: "Sales & CRM" }, { id: "finance", label: "Finance & insurance" }, { id: "marketing", label: "Marketing" }] },
   { label: "Operations", items: [{ id: "service", label: "Service workshop" }, { id: "parts", label: "Parts" }, { id: "usedcars", label: "Used vehicles" }, { id: "inventory", label: "Inventory" }] },
-  { label: "Intelligence", items: [{ id: "customers", label: "Customer 360" }, { id: "vehicles", label: "Vehicle 360" }, { id: "workforce", label: "Workforce" }, { id: "branch", label: "Branch performance" }, { id: "group", label: "Group analytics" }] },
+  { label: "Intelligence", items: [{ id: "workforce", label: "Workforce" }, { id: "branch", label: "Branch performance" }, { id: "group", label: "Group analytics" }] },
 ];
 
 export const REVENUE_TREND = [

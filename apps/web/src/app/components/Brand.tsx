@@ -1,12 +1,16 @@
 import type { ReactNode } from "react";
 
 export function Mark({ compact = false }: { compact?: boolean }) {
-  const size = compact ? 31 : 38;
+  const size = compact ? 30 : 36;
   return (
-    <svg width={size} height={size} viewBox="0 0 44 44" aria-hidden="true">
-      <path d="M6 10h7.5c7.5 0 8.1 24 16.3 24H38" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
-      <path d="M6 34h7.5c7.5 0 8.1-24 16.3-24H38" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
-      <circle cx="22" cy="22" r="4.2" fill="var(--brand-signal, #ff6b35)" stroke="var(--brand-mark-ink, #071c2a)" strokeWidth="2" />
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" aria-hidden="true">
+      <rect width="36" height="36" rx="8" fill="currentColor" />
+      <path d="M8.5 18 18 8.5l9.5 9.5-9.5 9.5L8.5 18Z" fill="white" />
+      <circle cx="18" cy="18" r="4.2" fill="#000714" />
+      <circle cx="18" cy="9.2" r="1.8" fill="#79e4bd" />
+      <circle cx="26.8" cy="18" r="1.8" fill="#79e4bd" />
+      <circle cx="18" cy="26.8" r="1.8" fill="#79e4bd" />
+      <circle cx="9.2" cy="18" r="1.8" fill="#79e4bd" />
     </svg>
   );
 }
@@ -15,7 +19,7 @@ export function Brand({ inverse = false, compact = false }: { inverse?: boolean;
   return (
     <div className={`brand-lockup ${inverse ? "brand-lockup--inverse" : ""}`}>
       <span className="brand-mark"><Mark compact={compact} /></span>
-      {!compact && <span className="brand-copy"><span className="brand-word">AutoAxis</span><span className="brand-product">DEALER OPERATING SYSTEM</span></span>}
+      {!compact && <span className="brand-copy"><span className="brand-word">AutoAxis</span><span className="brand-product">CONNECTED DMS</span></span>}
     </div>
   );
 }

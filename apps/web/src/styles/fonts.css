@@ -1,6 +1,8 @@
+@import "@fontsource-variable/inter";
+
 :root {
-  --font-family: "Segoe UI Variable", "Inter", "Aptos", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-display: var(--font-family);
-  --font-body: var(--font-family);
+  --font-family: "Inter Variable", Inter, Arial, sans-serif;
+  --font-display: "Inter Variable", Inter, Arial, sans-serif;
+  --font-body: "Inter Variable", Inter, Arial, sans-serif;
   --font-mono: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
 }
