@@ -1,5 +1,4 @@
 import {
-  ArrowLeft,
   ArrowRight,
   BarChart3,
   Bell,
@@ -36,7 +35,7 @@ import { CompanyAdmin } from "./CompanyAdmin";
 import { DomainView, OverviewView } from "./DashboardViews";
 import { CustomerView, VehicleView } from "./RecordViews";
 
-type DashboardAppProps = { initialView: DashView; onNavigate: (view: DashView) => void; onExit: () => void; onLogout: () => void };
+type DashboardAppProps = { initialView: DashView; onNavigate: (view: DashView) => void; onLogout: () => void };
 
 const viewIcons: Record<DashView, typeof LayoutDashboard> = {
   overview: LayoutDashboard,
@@ -67,7 +66,7 @@ const COMING_SOON_COPY: Partial<Record<DashView, { description: string; planned:
 type Health = { service?: string; status?: string; database?: string | { status?: string } };
 type SearchHit = { title: string; detail: string; view: DashView };
 
-export default function DashboardApp({ initialView, onNavigate, onExit, onLogout }: DashboardAppProps) {
+export default function DashboardApp({ initialView, onNavigate, onLogout }: DashboardAppProps) {
   const { user, organization } = useAuth();
   const [view, setView] = useState<DashView>(initialView);
   const [collapsed, setCollapsed] = useState(false);
@@ -177,10 +176,12 @@ export default function DashboardApp({ initialView, onNavigate, onExit, onLogout
             </div>
           ))}
         </nav>
-        <div className="sidebar-footer">
-          {!collapsed && <div className={`health-indicator health-${health}`}><i /><div><strong>{health === "connected" ? "Neon connected" : health === "not-configured" ? "Database not configured" : health === "checking" ? "Checking systems" : "API unavailable"}</strong><span>{health === "connected" ? "PostgreSQL operational" : health === "not-configured" ? "Set DATABASE_URL to connect" : health === "checking" ? "Verifying data path" : "Retry from health check"}</span></div></div>}
-          <button type="button" className="collapse-button" aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? <ChevronRight /> : <><ChevronLeft /><span>Collapse navigation</span></>}</button>
-        </div>
+        {!collapsed && (
+          <div className="sidebar-footer">
+            <span className={`db-status db-status-${health}`} title={health === "connected" ? "Database connected" : health === "not-configured" ? "Database not configured" : health === "checking" ? "Checking connection" : "Database unavailable"} aria-label="Database connection status" />
+          </div>
+        )}
+        <button type="button" className="collapse-button" aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} title={collapsed ? "Expand navigation" : "Collapse navigation"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}</button>
       </aside>
 
       <div className="operations-main">
@@ -188,7 +189,6 @@ export default function DashboardApp({ initialView, onNavigate, onExit, onLogout
           <div className="topbar-left">
             <button type="button" className="mobile-nav-trigger" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu /></button>
             <span className="mobile-topbar-brand"><Brand compact /></span>
-            <button type="button" className="back-to-site" onClick={onExit} aria-label="Return to product site"><ArrowLeft size={15} /><span>Product site</span></button>
             <span className="topbar-divider" />
             <button type="button" className="workspace-switcher" aria-expanded={workspaceMenuOpen} onClick={() => setWorkspaceMenuOpen((value) => !value)}><span className="workspace-switcher-icon"><CurrentViewIcon /></span><span><small>Workspace</small><strong>{currentLabel}</strong></span><ChevronDown /></button>
           </div>
@@ -215,7 +215,7 @@ export default function DashboardApp({ initialView, onNavigate, onExit, onLogout
               <div className="profile-meta"><span className="role-badge">{user ? roleLabel(user.role) : ""}</span><span>{organization?.name}</span></div>
               <button type="button" onClick={onLogout}><LogOut size={15} />Sign out</button>
               <a href="mailto:support@prakashinfotech.com"><UserRound size={15} />Prakash support</a>
-              <footer>Workspace by <strong>Prakash Infotech</strong></footer>
+              <footer>Workspace by <strong>Prakash Software Solutions</strong></footer>
             </div>
           )}
         </header>

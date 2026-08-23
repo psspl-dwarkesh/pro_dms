@@ -33,7 +33,7 @@ export function OverviewView({ onNavigate }: { onNavigate: (view: DashView) => v
   }, []);
 
   return (
-    <WorkspacePage eyebrow="Executive pulse" title="Executive pulse" description="A live count of open work across your connected operations.">
+    <WorkspacePage>
       {error && <p className="inline-error"><AlertTriangle size={14} />{error.message}</p>}
       {!overview && !error && <p className="record-search-state">Loading operating signals...</p>}
       {overview && (
@@ -127,7 +127,7 @@ function SalesView() {
   }
 
   return (
-    <WorkspacePage eyebrow="Revenue operations" title="Sales and CRM" description="Every lead connected to a customer record, from first enquiry to a won or lost decision." action={<button type="button" className="workspace-button workspace-button--dark" onClick={() => setModal("create")}><Plus size={15} /> Create lead</button>}>
+    <WorkspacePage action={<button type="button" className="workspace-button workspace-button--dark" onClick={() => setModal("create")}><Plus size={15} /> Create lead</button>}>
       {error && <p className="inline-error"><AlertTriangle size={14} />{error.message}</p>}
       <div className="executive-metrics">
         <MetricCard label="Open leads" value={String(openLeads.length)} meta={`${leads.length} total leads`} tone="neutral" />
@@ -225,7 +225,7 @@ function ServiceView() {
   }
 
   return (
-    <WorkspacePage eyebrow="Fixed operations" title="Service workshop" description="Every repair order connected to a customer and vehicle, from booking to closed invoice." action={<button type="button" className="workspace-button workspace-button--dark" onClick={() => setModal(true)}><Plus size={15} /> New booking</button>}>
+    <WorkspacePage action={<button type="button" className="workspace-button workspace-button--dark" onClick={() => setModal(true)}><Plus size={15} /> New booking</button>}>
       {error && <p className="inline-error"><AlertTriangle size={14} />{error.message}</p>}
       <div className="executive-metrics">
         <MetricCard label="Active jobs" value={String(active.length)} meta={`${jobs.length} total repair orders`} tone="neutral" />
@@ -318,7 +318,7 @@ function PartsView() {
   }
 
   return (
-    <WorkspacePage eyebrow="Warehouse and supply" title="Parts control" description="Live stock levels connected to reorder points and unit economics." action={<button type="button" className="workspace-button workspace-button--dark" onClick={() => setModal(true)}><Plus size={15} /> Add part</button>}>
+    <WorkspacePage action={<button type="button" className="workspace-button workspace-button--dark" onClick={() => setModal(true)}><Plus size={15} /> Add part</button>}>
       {error && <p className="inline-error"><AlertTriangle size={14} />{error.message}</p>}
       <div className="executive-metrics">
         <MetricCard label="Parts on file" value={String(parts.length)} meta="Total SKUs" tone="neutral" />
@@ -417,7 +417,7 @@ function FinanceView() {
   }
 
   return (
-    <WorkspacePage eyebrow="Deal profitability" title="Finance and insurance" description="Finance contracts and insurance policies connected to each sales order and customer." action={<button type="button" className="workspace-button workspace-button--dark" onClick={() => setModal(tab === "contracts" ? "contract" : "policy")}><Plus size={15} /> {tab === "contracts" ? "New contract" : "New policy"}</button>}>
+    <WorkspacePage action={<button type="button" className="workspace-button workspace-button--dark" onClick={() => setModal(tab === "contracts" ? "contract" : "policy")}><Plus size={15} /> {tab === "contracts" ? "New contract" : "New policy"}</button>}>
       {error && <p className="inline-error"><AlertTriangle size={14} />{error.message}</p>}
       <div className="executive-metrics">
         <MetricCard label="Finance contracts" value={String(contracts.length)} meta="Total contracts on file" tone="neutral" />

@@ -97,7 +97,7 @@ function AppShell() {
   if (appView === "dashboard") {
     return (
       <Suspense fallback={<WorkspaceLoader />}>
-        <DashboardApp initialView={dashView} onNavigate={changeWorkspace} onExit={openProductSite} onLogout={handleLogout} />
+        <DashboardApp initialView={dashView} onNavigate={changeWorkspace} onLogout={handleLogout} />
       </Suspense>
     );
   }

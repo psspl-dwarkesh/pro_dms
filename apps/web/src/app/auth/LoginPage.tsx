@@ -5,6 +5,12 @@ import { useAuth } from "./AuthContext";
 
 type LoginPageProps = { onSuccess: () => void; onBackToSite: () => void; onGoToSignup: () => void };
 
+// Dev-only convenience list of seeded accounts, for one-click sign-in while testing locally.
+// import.meta.env.DEV means Vite strips this out of production builds entirely.
+const QUICK_SIGN_IN_ACCOUNTS = [
+  { email: "admin@prakashinfotech.com", password: "Demo@12345", label: "Admin", detail: "Pacific Motor Group" },
+];
+
 export default function LoginPage({ onSuccess, onBackToSite, onGoToSignup }: LoginPageProps) {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
@@ -12,18 +18,28 @@ export default function LoginPage({ onSuccess, onBackToSite, onGoToSignup }: Log
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
+  async function performLogin(loginEmail: string, loginPassword: string) {
     setError("");
     setLoading(true);
     try {
-      await login(email.trim(), password);
+      await login(loginEmail.trim(), loginPassword);
       onSuccess();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Sign in failed.");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    await performLogin(email, password);
+  }
+
+  function handleQuickSignIn(account: (typeof QUICK_SIGN_IN_ACCOUNTS)[number]) {
+    setEmail(account.email);
+    setPassword(account.password);
+    void performLogin(account.email, account.password);
   }
 
   return (
@@ -42,6 +58,16 @@ export default function LoginPage({ onSuccess, onBackToSite, onGoToSignup }: Log
           </button>
         </form>
         <p className="auth-switch">New dealership company? <button type="button" onClick={onGoToSignup}>Create a workspace</button></p>
+        {import.meta.env.DEV && (
+          <div className="auth-quick-signin">
+            <span>Quick sign-in (dev only, removed from production builds)</span>
+            {QUICK_SIGN_IN_ACCOUNTS.map((account) => (
+              <button type="button" key={account.email} disabled={loading} onClick={() => handleQuickSignIn(account)}>
+                <strong>{account.label}</strong><small>{account.email} · {account.detail}</small>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
