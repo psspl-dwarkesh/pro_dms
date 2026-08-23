@@ -235,10 +235,34 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
     <SidebarActionsProvider value={{ setActions: setPageActions }}>
       <div className="operations-shell">
         <button type="button" className={`mobile-scrim ${mobileOpen ? "visible" : ""}`} aria-label="Close navigation" onClick={() => setMobileOpen(false)} />
+        <aside className="icon-rail" aria-label="Workspaces">
+          <div className="rail-brand"><Brand inverse compact /></div>
+          <nav className="rail-nav">
+            {navSections.map((section) => (
+              <div key={section.label} className="rail-group">
+                {section.items.map((item) => {
+                  const Icon = viewIcons[item.id];
+                  return <button type="button" key={item.id} title={item.label} aria-current={view === item.id ? "page" : undefined} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon size={18} /></button>;
+                })}
+              </div>
+            ))}
+          </nav>
+          <button type="button" className="rail-all-workspaces" title="All workspaces (with descriptions)" onClick={() => setWorkspaceMenuOpen((value) => !value)}><LayoutGrid size={18} /></button>
+        </aside>
         <aside className={`operations-sidebar ${collapsed ? "collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`}>
           <div className="sidebar-brand"><Brand inverse compact={collapsed} />{!collapsed && <button type="button" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X /></button>}</div>
           {!collapsed && <div className="group-switcher"><span>{orgInitials}</span><div><strong>{organization?.name ?? "Your company"}</strong><small>{overview ? `${overview.activeServiceJobs} active jobs - ${overview.openLeads} open leads` : "Loading operations"}</small></div></div>}
-          <button type="button" className="all-workspaces-link" title="All workspaces" onClick={() => setWorkspaceMenuOpen((value) => !value)}><LayoutGrid size={15} />{!collapsed && <span>All workspaces</span>}</button>
+          <nav className="operations-nav mobile-workspace-list" aria-label="Workspaces">
+            {navSections.map((section) => (
+              <div key={section.label}>
+                {!collapsed && <span className="nav-section-label">{section.label}</span>}
+                {section.items.map((item) => {
+                  const Icon = viewIcons[item.id];
+                  return <button type="button" key={item.id} title={item.label} aria-current={view === item.id ? "page" : undefined} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon size={17} />{!collapsed && <span>{item.label}</span>}</button>;
+                })}
+              </div>
+            ))}
+          </nav>
           <nav className="operations-nav" aria-label={`${currentLabel} actions`}>
             {renderContextualSidebar()}
           </nav>
