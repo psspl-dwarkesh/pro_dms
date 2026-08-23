@@ -30,15 +30,15 @@ export const PAGE_WORKFLOW: Partial<Record<DashView, WorkflowStep[]>> = {
     { icon: Link2, label: "Ownership, lifecycle events, and work orders stay linked" },
   ],
   sales: [
-    { icon: Plus, label: "Create a lead from the sidebar" },
+    { icon: Plus, label: "Create a lead; select one to open its full record" },
     { icon: ArrowRightCircle, label: "Move it through stages as it progresses" },
-    { icon: CircleUserRound, label: "Open the linked Customer 360 record for context" },
-    { icon: CheckCircle2, label: "Mark it won to generate a sales order, or lost to close it out" },
+    { icon: CalendarPlus, label: "Log a test drive from Quick actions" },
+    { icon: CheckCircle2, label: "Once won, convert it to a sale - it appears in Finance and insurance" },
   ],
   service: [
-    { icon: CalendarPlus, label: "Book a repair order from the sidebar" },
+    { icon: CalendarPlus, label: "Book a repair order; select one to open its full record" },
     { icon: ListChecks, label: "Move it through statuses as work progresses" },
-    { icon: CircleUserRound, label: "Open the linked customer or vehicle for full history" },
+    { icon: CircleUserRound, label: "The linked customer and vehicle are shown alongside the job" },
   ],
   parts: [
     { icon: Plus, label: "Add a part from the sidebar" },
@@ -46,9 +46,10 @@ export const PAGE_WORKFLOW: Partial<Record<DashView, WorkflowStep[]>> = {
     { icon: SlidersHorizontal, label: "Adjust quantity on hand with +/-" },
   ],
   finance: [
-    { icon: FileText, label: "Create a finance contract from a sales order" },
-    { icon: ShieldCheck, label: "Or create an insurance policy for a customer and vehicle" },
-    { icon: ListChecks, label: "Switch tabs to review contracts vs policies" },
+    { icon: Search, label: "Search or create a deal; select one to open its full record" },
+    { icon: FileText, label: "Attach a finance contract from Quick actions" },
+    { icon: ShieldCheck, label: "Attach one or more insurance policies for that customer and vehicle" },
+    { icon: Link2, label: "Deals arrive here automatically once a lead is won and converted" },
   ],
   company: [
     { icon: Building2, label: "Add a branch" },
