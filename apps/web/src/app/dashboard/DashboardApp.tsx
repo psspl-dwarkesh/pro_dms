@@ -20,14 +20,13 @@ import {
   PackageSearch,
   Search,
   ShieldCheck,
-  Sparkles,
   UserRound,
   Users,
   Warehouse,
   Wrench,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { apiGet } from "../../lib/api";
 import { roleLabel, useAuth } from "../auth/AuthContext";
 import { Brand } from "../components/Brand";
@@ -36,6 +35,7 @@ import { COMING_SOON_VIEWS, NAV_SECTIONS, PAGE_HELP, PAGE_RELATED, ROLE_NAV } fr
 import type { Customer, DashView, Overview, Vehicle } from "../types";
 import { CompanyAdmin } from "./CompanyAdmin";
 import { DomainView, OverviewView } from "./DashboardViews";
+import { PAGE_WORKFLOW, WorkflowDiagram } from "./PageWorkflows";
 import { CustomerView, VehicleView } from "./RecordViews";
 import { SidebarActionsProvider } from "./SidebarActions";
 import type { SidebarAction } from "./SidebarActions";
@@ -87,6 +87,8 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
   const [profileOpen, setProfileOpen] = useState(false);
   const [pageActions, setPageActions] = useState<SidebarAction[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
+  const topbarRef = useRef<HTMLElement>(null);
+  const workspaceMenuRef = useRef<HTMLElement>(null);
 
   const allowedViews = useMemo(() => new Set(user ? ROLE_NAV[user.role] : []), [user]);
   const navSections = useMemo(
@@ -121,6 +123,16 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
     window.addEventListener("keydown", handleKey); return () => window.removeEventListener("keydown", handleKey);
   }, []);
   useEffect(() => {
+    if (!helpOpen && !noticeOpen && !profileOpen && !workspaceMenuOpen) return;
+    function handleOutsideClick(event: MouseEvent) {
+      const target = event.target as Node;
+      if (topbarRef.current?.contains(target) || workspaceMenuRef.current?.contains(target)) return;
+      setHelpOpen(false); setNoticeOpen(false); setProfileOpen(false); setWorkspaceMenuOpen(false);
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [helpOpen, noticeOpen, profileOpen, workspaceMenuOpen]);
+  useEffect(() => {
     const query = commandQuery.trim();
     if (query.length < 2) { setCommandResults([]); setCommandLoading(false); return; }
     const controller = new AbortController();
@@ -151,45 +163,49 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
     setHelpOpen(false);
   }
 
+  function renderActionSection(label: string, actions: SidebarAction[]) {
+    if (!actions.length) return null;
+    return (
+      <div key={label}>
+        {!collapsed && <span className="nav-section-label">{label}</span>}
+        {actions.map((action) => {
+          const Icon = action.icon;
+          const content = <><Icon size={17} />{!collapsed && <span>{action.label}</span>}</>;
+          return action.href ? (
+            <a key={action.id} title={action.label} href={action.href} target={action.href.startsWith("http") ? "_blank" : undefined} rel={action.href.startsWith("http") ? "noreferrer" : undefined} className={action.tone === "danger" ? "danger-action" : ""}>{content}</a>
+          ) : (
+            <button key={action.id} type="button" title={action.label} className={action.tone === "danger" ? "danger-action" : ""} onClick={action.onClick}>{content}</button>
+          );
+        })}
+      </div>
+    );
+  }
+
   function renderContextualSidebar() {
-    if (COMING_SOON_VIEWS.has(view)) {
-      const planned = COMING_SOON_COPY[view]?.planned ?? [];
-      if (!planned.length) return null;
-      return (
-        <div>
-          {!collapsed && <span className="nav-section-label">Planned features</span>}
-          <div className="planned-list">
-            {planned.map((item) => <div key={item} className="planned-item" title={item}><Sparkles size={13} />{!collapsed && <span>{item}</span>}</div>)}
-          </div>
-        </div>
-      );
-    }
     const related = (PAGE_RELATED[view] ?? []).filter((id) => allowedViews.has(id));
+    const relatedSection = related.length > 0 && (
+      <div key="related">
+        {!collapsed && <span className="nav-section-label">Related</span>}
+        {related.map((id) => {
+          const Icon = viewIcons[id];
+          return <button title={viewLabels[id]} type="button" key={id} onClick={() => navigate(id)}><Icon size={17} />{!collapsed && <span>{viewLabels[id]}</span>}</button>;
+        })}
+      </div>
+    );
+
+    if (COMING_SOON_VIEWS.has(view)) {
+      // The page body already lists planned features in full, so the sidebar only offers a way
+      // onward (related workspaces) instead of repeating that same list a second time.
+      return relatedSection || null;
+    }
+
+    const quickActions = pageActions.filter((action) => (action.group ?? "Quick actions") === "Quick actions");
+    const recordActions = pageActions.filter((action) => action.group === "This record");
     return (
       <>
-        {pageActions.length > 0 && (
-          <div>
-            {!collapsed && <span className="nav-section-label">Quick actions</span>}
-            {pageActions.map((action) => {
-              const Icon = action.icon;
-              const content = <><Icon size={17} />{!collapsed && <span>{action.label}</span>}</>;
-              return action.href ? (
-                <a key={action.id} title={action.label} href={action.href} target={action.href.startsWith("http") ? "_blank" : undefined} rel={action.href.startsWith("http") ? "noreferrer" : undefined} className={action.tone === "danger" ? "danger-action" : ""}>{content}</a>
-              ) : (
-                <button key={action.id} type="button" title={action.label} className={action.tone === "danger" ? "danger-action" : ""} onClick={action.onClick}>{content}</button>
-              );
-            })}
-          </div>
-        )}
-        {related.length > 0 && (
-          <div>
-            {!collapsed && <span className="nav-section-label">Related</span>}
-            {related.map((id) => {
-              const Icon = viewIcons[id];
-              return <button title={viewLabels[id]} type="button" key={id} onClick={() => navigate(id)}><Icon size={17} />{!collapsed && <span>{viewLabels[id]}</span>}</button>;
-            })}
-          </div>
-        )}
+        {renderActionSection("Quick actions", quickActions)}
+        {renderActionSection("This record", recordActions)}
+        {relatedSection}
       </>
     );
   }
@@ -212,30 +228,51 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
   const userInitials = (user?.name ?? "?").split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase();
   const pageHelp = PAGE_HELP[view] ?? {
     summary: COMING_SOON_COPY[view]?.description ?? "This workspace is planned next.",
-    canDo: ["This workspace isn't built yet - see Planned features in the sidebar for what's coming."],
+    canDo: (COMING_SOON_COPY[view]?.planned ?? []).map((item) => `Planned: ${item}`),
   };
+  const workflowSteps = PAGE_WORKFLOW[view];
+  const healthLabel = health === "connected" ? "Database connected" : health === "not-configured" ? "Database not configured" : health === "checking" ? "Checking connection..." : "Database unavailable";
 
   return (
     <SidebarActionsProvider value={{ setActions: setPageActions }}>
       <div className="operations-shell">
         <button type="button" className={`mobile-scrim ${mobileOpen ? "visible" : ""}`} aria-label="Close navigation" onClick={() => setMobileOpen(false)} />
+        <aside className="icon-rail" aria-label="Workspaces">
+          <div className="rail-brand"><Brand inverse compact /></div>
+          <nav className="rail-nav">
+            {navSections.map((section) => (
+              <div key={section.label} className="rail-group">
+                {section.items.map((item) => {
+                  const Icon = viewIcons[item.id];
+                  return <button type="button" key={item.id} title={item.label} aria-current={view === item.id ? "page" : undefined} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon size={18} /></button>;
+                })}
+              </div>
+            ))}
+          </nav>
+          <button type="button" className="rail-all-workspaces" title="All workspaces (with descriptions)" onClick={() => setWorkspaceMenuOpen((value) => !value)}><LayoutGrid size={18} /></button>
+        </aside>
         <aside className={`operations-sidebar ${collapsed ? "collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`}>
           <div className="sidebar-brand"><Brand inverse compact={collapsed} />{!collapsed && <button type="button" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X /></button>}</div>
           {!collapsed && <div className="group-switcher"><span>{orgInitials}</span><div><strong>{organization?.name ?? "Your company"}</strong><small>{overview ? `${overview.activeServiceJobs} active jobs - ${overview.openLeads} open leads` : "Loading operations"}</small></div></div>}
-          <button type="button" className="all-workspaces-link" title="All workspaces" onClick={() => setWorkspaceMenuOpen((value) => !value)}><LayoutGrid size={15} />{!collapsed && <span>All workspaces</span>}</button>
+          <nav className="operations-nav mobile-workspace-list" aria-label="Workspaces">
+            {navSections.map((section) => (
+              <div key={section.label}>
+                {!collapsed && <span className="nav-section-label">{section.label}</span>}
+                {section.items.map((item) => {
+                  const Icon = viewIcons[item.id];
+                  return <button type="button" key={item.id} title={item.label} aria-current={view === item.id ? "page" : undefined} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon size={17} />{!collapsed && <span>{item.label}</span>}</button>;
+                })}
+              </div>
+            ))}
+          </nav>
           <nav className="operations-nav" aria-label={`${currentLabel} actions`}>
             {renderContextualSidebar()}
           </nav>
-          {!collapsed && (
-            <div className="sidebar-footer">
-              <span className={`db-status db-status-${health}`} title={health === "connected" ? "Database connected" : health === "not-configured" ? "Database not configured" : health === "checking" ? "Checking connection" : "Database unavailable"} aria-label="Database connection status" />
-            </div>
-          )}
           <button type="button" className="collapse-button" aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} title={collapsed ? "Expand navigation" : "Collapse navigation"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}</button>
         </aside>
   
         <div className="operations-main">
-          <header className="operations-topbar">
+          <header className="operations-topbar" ref={topbarRef}>
             <div className="topbar-left">
               <button type="button" className="mobile-nav-trigger" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu /></button>
               <span className="mobile-topbar-brand"><Brand compact /></span>
@@ -253,6 +290,12 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
                 <span>{currentLabel}</span>
                 <p>{pageHelp.summary}</p>
                 <ul>{pageHelp.canDo.map((item) => <li key={item}>{item}</li>)}</ul>
+                {workflowSteps && (
+                  <details className="workflow-disclosure">
+                    <summary>See how this works</summary>
+                    <WorkflowDiagram steps={workflowSteps} />
+                  </details>
+                )}
               </div>
             )}
             {noticeOpen && (
@@ -271,6 +314,7 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
               <div className="profile-popover">
                 <div><span>{userInitials}</span><p><strong>{user?.name}</strong><small>{user?.email}</small></p></div>
                 <div className="profile-meta"><span className="role-badge">{user ? roleLabel(user.role) : ""}</span><span>{organization?.name}</span></div>
+                <div className="profile-status"><span className={`db-status db-status-${health}`} aria-hidden="true" />{healthLabel}</div>
                 <button type="button" onClick={onLogout}><LogOut size={15} />Sign out</button>
                 <a href="mailto:support@prakashinfotech.com"><UserRound size={15} />Prakash support</a>
                 <footer>Workspace by <strong>Prakash Software Solutions</strong></footer>
@@ -278,7 +322,7 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
             )}
           </header>
           {workspaceMenuOpen && (
-            <section className="workspace-menu" aria-label="Choose a workspace">
+            <section className="workspace-menu" aria-label="Choose a workspace" ref={workspaceMenuRef}>
               <header><div><span>Workspace navigator</span><strong>Move to the work, not another app.</strong></div><button type="button" onClick={() => setWorkspaceMenuOpen(false)} aria-label="Close workspace navigator"><X /></button></header>
               <div className="workspace-menu-groups">
                 {navSections.map((section) => (

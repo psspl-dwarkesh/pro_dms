@@ -225,12 +225,12 @@ export function CustomerView({ onNavigate }: RecordViewProps) {
     ];
     if (customer.mobile) list.push({ id: "whatsapp", label: "WhatsApp customer", detail: "Open a conversation", icon: WhatsAppIcon as LucideIcon, href: `https://wa.me/${customer.mobile.replace(/\D/g, "")}` });
     list.push({ id: "log-communication", label: "Log communication", detail: "Record a call, email or message", icon: Mail, onClick: () => setModal("log-communication") });
-    list.push({ id: "edit-profile", label: "Edit profile", icon: Edit3, onClick: () => setModal("edit-customer") });
-    if (customer.mobile) list.push({ id: "call", label: "Call", icon: Phone, href: `tel:${customer.mobile}` });
-    if (customer.email) list.push({ id: "email", label: "Email", icon: GmailIcon as LucideIcon, href: `mailto:${customer.email}` });
-    list.push({ id: "share", label: "Share", icon: Share2, onClick: () => shareRecord(customer.displayName).then(() => notify("Summary shared.")) });
-    list.push({ id: "export", label: "Export", icon: Download, onClick: () => { exportCsv(customer.displayName); notify("CSV exported."); } });
-    list.push({ id: "delete", label: "Delete", icon: Trash2, tone: "danger", onClick: deleteCustomer });
+    list.push({ id: "edit-profile", label: "Edit profile", icon: Edit3, onClick: () => setModal("edit-customer"), group: "This record" });
+    if (customer.mobile) list.push({ id: "call", label: "Call", icon: Phone, href: `tel:${customer.mobile}`, group: "This record" });
+    if (customer.email) list.push({ id: "email", label: "Email", icon: GmailIcon as LucideIcon, href: `mailto:${customer.email}`, group: "This record" });
+    list.push({ id: "share", label: "Share", icon: Share2, onClick: () => shareRecord(customer.displayName).then(() => notify("Summary shared.")), group: "This record" });
+    list.push({ id: "export", label: "Export", icon: Download, onClick: () => { exportCsv(customer.displayName); notify("CSV exported."); }, group: "This record" });
+    list.push({ id: "delete", label: "Delete", icon: Trash2, tone: "danger", onClick: deleteCustomer, group: "This record" });
     return list;
   }, [customer]);
 
@@ -465,9 +465,9 @@ export function VehicleView({ onNavigate }: RecordViewProps) {
       { id: "update-valuation", label: "Update valuation", detail: "Odometer, colour and market value", icon: Gauge, onClick: () => setModal("edit-vehicle") },
     ];
     if (vehicle.ownerId) list.push({ id: "book-workshop", label: "Book workshop", detail: "Service or inspection", icon: Wrench, onClick: () => setModal("book-service") });
-    list.push({ id: "share", label: "Share", icon: Share2, onClick: () => shareRecord(`${vehicle.make} ${vehicle.model}`).then(() => notify("Summary shared.")) });
-    list.push({ id: "export", label: "Export", icon: Download, onClick: () => { exportCsv(`${vehicle.make} ${vehicle.model}`); notify("CSV exported."); } });
-    list.push({ id: "delete", label: "Delete", icon: Trash2, tone: "danger", onClick: deleteVehicle });
+    list.push({ id: "share", label: "Share", icon: Share2, onClick: () => shareRecord(`${vehicle.make} ${vehicle.model}`).then(() => notify("Summary shared.")), group: "This record" });
+    list.push({ id: "export", label: "Export", icon: Download, onClick: () => { exportCsv(`${vehicle.make} ${vehicle.model}`); notify("CSV exported."); }, group: "This record" });
+    list.push({ id: "delete", label: "Delete", icon: Trash2, tone: "danger", onClick: deleteVehicle, group: "This record" });
     return list;
   }, [vehicle]);
 
