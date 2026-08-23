@@ -1154,7 +1154,7 @@
 .operations-topbar .user-menu small { color: var(--ink-500); }
 .operations-topbar .mobile-nav-trigger { border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--ink-950); }
 .operations-content { background: var(--paper-subtle); }
-.workspace-page { width: min(100% - 56px, 1500px); padding-block: 24px 72px; }
+.workspace-page { width: min(100% - 40px, 1760px); padding-block: 24px 72px; }
 .workspace-page-toolbar { margin-bottom: 18px; }
 .workspace-button { min-height: 42px; border-radius: 5px; padding-inline: 16px; font-size: 12px; }
 .workspace-button--dark { background: var(--blue); color: white; }
@@ -1413,7 +1413,7 @@
   .mobile-scrim.visible { z-index: 70; background: rgba(0,7,20,.46); }
   .mobile-nav-trigger { display: grid; place-items: center; }
   .record-workbench { grid-template-columns: 300px minmax(0,1fr); }
-  .workspace-page { width: min(100% - 36px,1500px); }
+  .workspace-page { width: min(100% - 28px,1760px); }
   .trust-grid,
   .workflow-grid { gap: 70px; }
 }
@@ -1461,7 +1461,7 @@
   .workspace-switcher-icon { display: none; }
   .topbar-actions .icon-button:nth-of-type(2) { display: none; }
   .topbar-actions .user-menu { display: none; }
-  .workspace-page { width: min(100% - 24px,1500px); padding-block: 28px 56px; }
+  .workspace-page { width: min(100% - 20px,1760px); padding-block: 28px 56px; }
   .workspace-page-header { min-height: 0; flex-direction: column; gap: 14px; }
   .workspace-page-header h1 { font-size: 32px; }
   .executive-metrics { grid-template-columns: 1fr 1fr; }
