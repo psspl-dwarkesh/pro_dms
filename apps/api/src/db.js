@@ -37,6 +37,14 @@ export const pool = process.env.DATABASE_URL
     })
   : null;
 
+// pg emits "error" on the pool when an already-connected, idle client fails in the background
+// (dropped connection, Neon compute suspend/resume, network blip). Without this listener, Node
+// treats that as an uncaught exception and kills the entire API process for every in-flight
+// request, not just the affected one. Logging it here lets the pool recover the next query instead.
+pool?.on("error", (error) => {
+  console.error(JSON.stringify({ level: "error", message: "database pool idle client error", error: error.message }));
+});
+
 async function query(text, values = undefined) {
   if (!pool) throw new DatabaseUnavailableError();
   try {

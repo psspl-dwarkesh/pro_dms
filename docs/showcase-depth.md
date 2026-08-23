@@ -1,6 +1,6 @@
 # Showcase depth and completion contract
 
-AutoAxis is a product case study designed and built by Prakash Infotech. Placeholder product, support, employee, and demonstration-contact emails use the `prakashinfotech.com` domain so ownership is clear throughout the experience.
+AutoAxis is a product case study designed and built by Prakash Software Solutions. Placeholder product, support, employee, and demonstration-contact emails use the `prakashinfotech.com` domain so ownership is clear throughout the experience.
 
 ## Product story
 
