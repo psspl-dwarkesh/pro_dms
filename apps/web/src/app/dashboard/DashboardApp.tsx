@@ -35,6 +35,7 @@ import { COMING_SOON_VIEWS, NAV_SECTIONS, PAGE_HELP, PAGE_RELATED, ROLE_NAV } fr
 import type { Customer, DashView, Overview, Vehicle } from "../types";
 import { CompanyAdmin } from "./CompanyAdmin";
 import { DomainView, OverviewView } from "./DashboardViews";
+import { PAGE_WORKFLOW, WorkflowDiagram } from "./PageWorkflows";
 import { CustomerView, VehicleView } from "./RecordViews";
 import { SidebarActionsProvider } from "./SidebarActions";
 import type { SidebarAction } from "./SidebarActions";
@@ -229,6 +230,7 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
     summary: COMING_SOON_COPY[view]?.description ?? "This workspace is planned next.",
     canDo: (COMING_SOON_COPY[view]?.planned ?? []).map((item) => `Planned: ${item}`),
   };
+  const workflowSteps = PAGE_WORKFLOW[view];
   const healthLabel = health === "connected" ? "Database connected" : health === "not-configured" ? "Database not configured" : health === "checking" ? "Checking connection..." : "Database unavailable";
 
   return (
@@ -288,6 +290,12 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
                 <span>{currentLabel}</span>
                 <p>{pageHelp.summary}</p>
                 <ul>{pageHelp.canDo.map((item) => <li key={item}>{item}</li>)}</ul>
+                {workflowSteps && (
+                  <details className="workflow-disclosure">
+                    <summary>See how this works</summary>
+                    <WorkflowDiagram steps={workflowSteps} />
+                  </details>
+                )}
               </div>
             )}
             {noticeOpen && (

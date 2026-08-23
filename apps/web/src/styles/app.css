@@ -1160,6 +1160,18 @@
 .page-help-popover > span { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 750; }
 .page-help-popover > p { margin: 0 0 10px; color: var(--ink-600); font-size: 11px; line-height: 1.5; }
 .page-help-popover > ul { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 6px; color: var(--ink-600); font-size: 10px; line-height: 1.45; }
+.workflow-disclosure { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+.workflow-disclosure summary { list-style: none; cursor: pointer; color: var(--blue); font-size: 10px; font-weight: 700; }
+.workflow-disclosure summary::-webkit-details-marker { display: none; }
+.workflow-disclosure summary::before { content: "\25B8  "; }
+.workflow-disclosure[open] summary::before { content: "\25BE  "; }
+.workflow-diagram { display: flex; flex-direction: column; margin-top: 10px; }
+.workflow-diagram-step { display: flex; align-items: flex-start; gap: 10px; }
+.workflow-diagram-rail { display: flex; flex-direction: column; align-items: center; flex: 0 0 auto; }
+.workflow-diagram-node { width: 26px; height: 26px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; background: var(--blue-soft); color: var(--blue); }
+.workflow-diagram-line { width: 1px; flex: 1; min-height: 12px; background: var(--line-strong); }
+.workflow-diagram-step > span:last-child { padding: 4px 0 12px; color: var(--ink-600); font-size: 10px; line-height: 1.4; }
+.workflow-diagram-step:last-child > span:last-child { padding-bottom: 0; }
 
 .operations-main { position: relative; }
 .operations-topbar { position: relative; z-index: 50; min-height: 72px; height: 72px; border-bottom: 1px solid var(--line); padding-inline: 24px; background: rgba(255,255,255,.94); color: var(--ink-950); backdrop-filter: blur(16px); }
