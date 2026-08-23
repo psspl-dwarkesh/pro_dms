@@ -69,6 +69,18 @@ const COMING_SOON_COPY: Partial<Record<DashView, { description: string; planned:
   workforce: { description: "Team, roster, and incentive tracking is planned once employee records are modeled.", planned: ["Team directory and roster", "Targets and incentives", "Skills and certification tracking"] },
 };
 
+// One-line blurb per workspace in the "All workspaces" flyout. Customer 360/Vehicle 360/Sales/
+// Service/Finance call out that they're connected directory+detail hubs, not flat lists, since
+// that's the thing a new user can't tell from the icon and label alone.
+const WORKSPACE_BLURBS: Partial<Record<DashView, string>> = {
+  overview: "Decisions and exceptions",
+  customers: "Relationship, consent and value",
+  vehicles: "VIN lifecycle and condition",
+  sales: "Lead-to-sale hub, connected to Customer 360 and Finance",
+  service: "Repair-order hub, connected to the customer and vehicle",
+  finance: "Deal-level hub - contract and insurance policies together",
+};
+
 type Health = { service?: string; status?: string; database?: string | { status?: string } };
 type SearchHit = { title: string; detail: string; view: DashView };
 
@@ -334,7 +346,7 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
                     <span>{section.label}</span>
                     {section.items.map((item) => {
                       const Icon = viewIcons[item.id];
-                      return <button type="button" key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><i><Icon /></i><span><strong>{item.label}</strong><small>{item.id === "customers" ? "Relationship, consent and value" : item.id === "vehicles" ? "VIN lifecycle and condition" : item.id === "overview" ? "Decisions and exceptions" : "Open connected operations"}</small></span><ArrowRight /></button>;
+                      return <button type="button" key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><i><Icon /></i><span><strong>{item.label}</strong><small>{WORKSPACE_BLURBS[item.id] ?? "Open connected operations"}</small></span><ArrowRight /></button>;
                     })}
                   </div>
                 ))}
