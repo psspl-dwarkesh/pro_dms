@@ -19,7 +19,8 @@ One branch should represent one reviewable outcome. Do not combine unrelated cle
 5. Review `git status`, `git diff`, and `git diff --check` to confirm only the intended changes are included.
 6. Push the feature branch and open a review (pull request) targeting `main`.
 7. Merge only after checks and review pass. Prefer squash merge for a noisy branch and preserve meaningful multi-commit history when it improves traceability.
-8. Tag production releases with semantic versions when release management starts.
+8. After a merge to `main` reaches production (Vercel auto-deploys `main`), verify the live deployment actually works: hit `/api/health`, and if the change touches auth, a required env var, or a migration, exercise that specific path live (e.g. sign in) rather than trusting a green build alone. A successful build and a working deploy are not the same thing — an env var missing only in Vercel's Production environment, for example, will build fine and 500 at runtime.
+9. Tag production releases with semantic versions when release management starts.
 
 ## Guardrails
 
