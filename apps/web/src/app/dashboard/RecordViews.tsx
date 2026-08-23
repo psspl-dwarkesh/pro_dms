@@ -1,79 +1,38 @@
 import {
-  ArrowRight, BadgeCheck, CalendarDays, CarFront, CircleUserRound, Copy, Download, FileText, Gauge,
-  Mail, MapPin, MessageCircle, Phone, Plus, Search, Share2, ShieldCheck, WalletCards,
-  StickyNote, UserPlus, Wrench, X, ClipboardCheck, CreditCard, Edit3, ListChecks,
+  AlertTriangle, ArrowRight, BadgeCheck, CalendarDays, CarFront, CircleUserRound, Copy, Download, Edit3,
+  Gauge, Mail, MapPin, MessageCircle, Phone, Plus, Search, Share2, ShieldCheck,
+  Trash2, UserPlus, WalletCards, Wrench, X,
 } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
-import { apiGet, ApiError } from "../../lib/api";
-import { Brand } from "../components/Brand";
-import { CLIENT_DEMO_CUSTOMER, CLIENT_DEMO_VEHICLE } from "../data";
-import type { Customer360, DashView, Vehicle360 } from "../types";
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from "../../lib/api";
+import type {
+  Communication, Customer, Customer360, DashView, SalesOrder, ServiceJob, Vehicle, Vehicle360,
+} from "../types";
 
 type RecordViewProps = { onNavigate: (view: DashView) => void };
-type ModalState = null | "opportunity" | "portal" | "customer" | "note" | "vehicle" | "appraisal" | "auction" | "rental" | "documents" | "edit-customer" | "task" | "booking" | "payment";
 
-const CUSTOMER_DIRECTORY: Array<{ name: string; mobile: string; email: string; segment: string; vehicle: string; value: number; next: string }> = [
-  { name: "James Hartley", mobile: "+61 412 345 678", email: "james.hartley@prakashinfotech.com", segment: "VIP", vehicle: "BMW X5 · DMS-360", value: 127450, next: "Ownership review" },
-  { name: "Ava Nguyen", mobile: "+61 417 220 184", email: "ava.nguyen@prakashinfotech.com", segment: "Prospect", vehicle: "Audi Q7 enquiry", value: 148900, next: "Finance documents" },
-  { name: "Rohan Mehta", mobile: "+61 409 518 230", email: "rohan.mehta@prakashinfotech.com", segment: "Service due", vehicle: "Ford Ranger · PMG-814", value: 78450, next: "Trade value expires" },
-  { name: "Emily Chen", mobile: "+61 421 620 775", email: "emily.chen@prakashinfotech.com", segment: "VIP", vehicle: "Volvo XC60 · ECX-620", value: 96800, next: "Service approval" },
-  { name: "Noah Williams", mobile: "+61 431 882 417", email: "noah.williams@prakashinfotech.com", segment: "Prospect", vehicle: "Toyota LandCruiser enquiry", value: 119990, next: "Test drive tomorrow" },
-  { name: "Mia Thompson", mobile: "+61 402 771 906", email: "mia.thompson@prakashinfotech.com", segment: "Service due", vehicle: "Mazda CX-5 · MIA-425", value: 53400, next: "60,000 km service" },
-  { name: "Liam Wilson", mobile: "+61 418 450 992", email: "liam.wilson@prakashinfotech.com", segment: "VIP", vehicle: "Mercedes GLC · LMW-882", value: 184250, next: "Insurance renewal" },
-];
-
-const VEHICLE_DIRECTORY = [
-  { registration: "DMS-360", vin: "WBA11EU09R9Y40122", make: "BMW", model: "X5", year: 2022, owner: "James Hartley", status: "Customer owned", location: "Sydney Central", value: 84500, next: "Appraisal ready" },
-  { registration: "PMG-814", vin: "MPBUMFF50PX498814", make: "Ford", model: "Ranger", year: 2023, owner: "Rohan Mehta", status: "Customer owned", location: "North Shore", value: 67200, next: "Recall check" },
-  { registration: "STK-204", vin: "WAUZZZ4M5PD002204", make: "Audi", model: "Q7", year: 2025, owner: "Unallocated", status: "In stock", location: "Yard A · Bay 14", value: 148900, next: "Price review" },
-  { registration: "DEMO-12", vin: "YV1UZBFV7R1120012", make: "Volvo", model: "XC60", year: 2024, owner: "Pacific Motor Group", status: "Demo", location: "Sydney Central", value: 88900, next: "Booking at 14:30" },
-  { registration: "RSV-772", vin: "W1NKM4HB8RF987772", make: "Mercedes", model: "GLC", year: 2024, owner: "Liam Wilson", status: "Reserved", location: "PDI workshop", value: 121400, next: "Delivery checklist" },
-  { registration: "USE-441", vin: "JTMCB3FV10D124441", make: "Toyota", model: "RAV4", year: 2021, owner: "Used stock", status: "In stock", location: "Used yard · Bay 7", value: 42900, next: "Photography due" },
-];
-
-const CUSTOMER_DEALS = [
-  ["OP-2048", "BMW X5 ownership renewal", "$132,400", "Qualified", "Sarah Cole · Follow-up today"],
-  ["S-10982", "2022 BMW X5 xDrive40i", "$127,450", "Delivered", "18 Jun 2022"],
-];
-const CUSTOMER_SERVICE = [
-  ["RO-18506", "Scheduled maintenance + brake inspection", "18 Aug 2026", "$1,284", "Completed"],
-  ["RO-17241", "Tyres, alignment and battery", "07 Feb 2026", "$2,116", "Completed"],
-  ["BK-4208", "Ownership review + annual service", "12 Nov 2026", "—", "Booked"],
-];
-const CUSTOMER_DOCUMENTS = [
-  ["Driver licence", "Identity", "Verified", "14 Aug 2026"], ["Purchase contract", "Sales", "Signed", "18 Jun 2022"],
-  ["Finance payout authority", "Finance", "Awaiting signature", "20 Aug 2026"], ["Insurance policy", "Insurance", "Active", "14 Nov 2025"],
-];
-const VEHICLE_WORK = [
-  ["RO-18506", "Annual service + brake inspection", "Closed", "18 Aug 2026", "$1,284"],
-  ["INSP-1042", "200-point used vehicle inspection", "Ready", "Today", "$0"],
-  ["RC-882", "Open recall campaign check", "Clear", "18 Aug 2026", "$0"],
-  ["PDI-401", "Pre-delivery inspection", "Completed", "17 Jun 2022", "$420"],
-];
-
-function DataSourceBadge({ source }: { source: string }) {
-  const connected = source === "postgresql";
-  return <span className={`source-badge ${connected ? "source-badge--connected" : ""}`}><i />{connected ? "Neon live data" : "Demonstration data"}</span>;
-}
+const money = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 });
+const dateFormatter = new Intl.DateTimeFormat("en-AU", { day: "2-digit", month: "short", year: "numeric" });
 
 function SearchState({ loading, error }: { loading: boolean; error: ApiError | null }) {
-  if (loading) return <span className="record-search-state"><i className="loading-dot" />Searching connected records…</span>;
-  if (error) return <span className="record-search-state record-search-state--error">{error.message}{error.requestId ? ` · ${error.requestId}` : ""}</span>;
-  return <span className="record-search-state">Connected search · name, mobile, email, VIN, registration, make or model.</span>;
+  if (loading) return <span className="record-search-state"><i className="loading-dot" />Searching connected records...</span>;
+  if (error) return <span className="record-search-state record-search-state--error">{error.message}{error.requestId ? ` - ${error.requestId}` : ""}</span>;
+  return <span className="record-search-state">Connected search - name, mobile, email, VIN, registration, make or model.</span>;
 }
 
-function Timeline({ items, filter }: { items: Array<{ occurredAt: string; type: string; summary: string }>; filter: string }) {
-  const visible = filter === "All" ? items : items.filter((item) => item.type.toLowerCase().includes(filter.toLowerCase()));
-  return <div className="record-timeline">{visible.length ? visible.map((item, index) => <div key={`${item.occurredAt}-${index}`} className="timeline-event"><i /><div><span>{new Intl.DateTimeFormat("en-AU", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(item.occurredAt))} · {item.type}</span><strong>{item.summary}</strong></div></div>) : <div className="timeline-empty">No activity in this category.</div>}</div>;
+function Timeline({ items }: { items: Array<{ occurredAt: string; type: string; summary: string }> }) {
+  if (!items.length) return <div className="timeline-empty">No activity recorded yet.</div>;
+  return <div className="record-timeline">{items.map((item, index) => <div key={`${item.occurredAt}-${index}`} className="timeline-event"><i /><div><span>{dateFormatter.format(new Date(item.occurredAt))} - {item.type}</span><strong>{item.summary}</strong></div></div>)}</div>;
 }
 
-function ActionBar({ children }: { children: React.ReactNode }) {
+function ActionBar({ children }: { children: ReactNode }) {
   return <div className="record-action-bar">{children}</div>;
 }
 
-function OperationalTable({ columns, rows, onOpen }: { columns: string[]; rows: string[][]; onOpen?: (row: string[]) => void }) {
+function OperationalTable({ columns, rows }: { columns: string[]; rows: Array<Array<string | number>> }) {
   const grid = { gridTemplateColumns: `repeat(${columns.length}, minmax(105px, 1fr))` };
-  return <div className="operational-table"><div className="operational-table-head" style={grid}>{columns.map((column) => <span key={column}>{column}</span>)}</div>{rows.map((row) => <button type="button" style={grid} key={row[0]} onClick={() => onOpen?.(row)}>{row.map((value, index) => <span key={`${row[0]}-${columns[index]}`} className={index === 0 ? "primary" : index === columns.length - 1 ? "status" : ""}>{value}</span>)}<ArrowRight /></button>)}</div>;
+  if (!rows.length) return <div className="timeline-empty">No records yet.</div>;
+  return <div className="operational-table"><div className="operational-table-head" style={grid}>{columns.map((column) => <span key={column}>{column}</span>)}</div>{rows.map((row, index) => <div style={grid} key={index} className="operational-table-row">{row.map((value, valueIndex) => <span key={valueIndex} className={valueIndex === 0 ? "primary" : valueIndex === columns.length - 1 ? "status" : ""}>{value}</span>)}</div>)}</div>;
 }
 
 function SectionToolbar({ title, detail, action, onAction }: { title: string; detail: string; action?: string; onAction?: () => void }) {
@@ -84,174 +43,510 @@ export function Toast({ message }: { message: string }) {
   return <div className="workspace-toast" role="status"><BadgeCheck />{message}</div>;
 }
 
-export function WorkflowModal({ title, eyebrow, onClose, onComplete, children, completeLabel = "Save demonstration" }: { title: string; eyebrow: string; onClose: () => void; onComplete: () => void; children: React.ReactNode; completeLabel?: string }) {
-  return <div className="modal-scrim" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && onClose()}><section className="workflow-modal" role="dialog" aria-modal="true" aria-labelledby="workflow-title"><header><div><span>{eyebrow}</span><h2 id="workflow-title">{title}</h2></div><button type="button" onClick={onClose} aria-label="Close dialog"><X /></button></header><div className="workflow-modal-body">{children}</div><footer><span><i /> Demonstration workflow · resets on refresh</span><div><button type="button" onClick={onClose}>Cancel</button><button type="button" className="workspace-button workspace-button--dark" onClick={onComplete}>{completeLabel} <ArrowRight size={14} /></button></div></footer></section></div>;
+export function WorkflowModal({ title, eyebrow, onClose, onComplete, children, completeLabel = "Save", busy = false }: { title: string; eyebrow: string; onClose: () => void; onComplete: () => void; children: ReactNode; completeLabel?: string; busy?: boolean }) {
+  return <div className="modal-scrim" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && onClose()}><section className="workflow-modal" role="dialog" aria-modal="true" aria-labelledby="workflow-title"><header><div><span>{eyebrow}</span><h2 id="workflow-title">{title}</h2></div><button type="button" onClick={onClose} aria-label="Close dialog"><X /></button></header><div className="workflow-modal-body">{children}</div><footer><span><i /> Saved to your connected database</span><div><button type="button" onClick={onClose}>Cancel</button><button type="button" className="workspace-button workspace-button--dark" onClick={onComplete} disabled={busy}>{busy ? "Saving..." : completeLabel} <ArrowRight size={14} /></button></div></footer></section></div>;
 }
 
-function DemoFields({ kind }: { kind: "opportunity" | "vehicle" | "appraisal" | "auction" | "rental" }) {
-  const definitions = {
-    opportunity: [["Customer", "James Hartley"], ["Vehicle interest", "BMW X5 upgrade"], ["Next step", "Ownership review"], ["Owner", "Sarah Cole"]],
-    vehicle: [["Acquisition type", "New stock"], ["VIN", "WBA11EU09R9Y40122"], ["Branch", "Sydney Central"], ["Status", "Ordered / incoming"]],
-    appraisal: [["Vehicle", "2022 BMW X5 xDrive40i"], ["Odometer", "48,620 km"], ["Condition", "Very good"], ["Trade estimate", "$78,200"]],
-    auction: [["Vehicle", "2022 BMW X5 xDrive40i"], ["Channel", "Dealer wholesale"], ["Reserve", "$76,500"], ["Close", "26 Aug 2026 · 17:00"]],
-    rental: [["Vehicle", "BMW X5 · DMS-360"], ["Customer", "James Hartley"], ["Dates", "24–27 Aug 2026"], ["Rate", "$189 / day"]],
-  }[kind];
-  return <><div className="workflow-progress"><b className="active">1. Details</b><i /><b>2. Review</b><i /><b>3. Confirm</b></div><div className="workflow-form-grid">{definitions.map(([label, value]) => <label key={label}><span>{label}</span><input defaultValue={value} /></label>)}</div><div className="workflow-callout"><ShieldCheck /><div><strong>Connected context retained</strong><p>Customer, vehicle, branch and source are linked to the new workflow—no duplicate entry.</p></div></div></>;
-}
-
-function useRecordActions(recordName: string) {
+function useToast() {
   const [toast, setToast] = useState("");
   function notify(message: string) { setToast(message); window.setTimeout(() => setToast(""), 2600); }
-  async function share() {
-    const text = `AutoAxis demonstration summary · ${recordName}`;
-    if (navigator.share) await navigator.share({ title: recordName, text }).catch(() => undefined);
-    else await navigator.clipboard?.writeText(text);
-    notify("Secure summary prepared and share activity recorded.");
-  }
-  function exportRecord() {
-    const blob = new Blob([`record,type,source\n"${recordName}","360 summary","AutoAxis demonstration"\n`], { type: "text/csv" });
-    const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `${recordName.toLowerCase().replaceAll(" ", "-")}-summary.csv`; anchor.click(); URL.revokeObjectURL(url);
-    notify("CSV summary exported.");
-  }
-  return { toast, notify, share, exportRecord };
+  return { toast, notify };
 }
+
+async function shareRecord(recordName: string) {
+  const text = `AutoAxis record summary - ${recordName}`;
+  if (navigator.share) await navigator.share({ title: recordName, text }).catch(() => undefined);
+  else await navigator.clipboard?.writeText(text);
+}
+
+function exportCsv(recordName: string) {
+  const blob = new Blob([`record,source\n"${recordName}","AutoAxis"\n`], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${recordName.toLowerCase().replaceAll(" ", "-")}-summary.csv`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+// ---------------------------------------------------------------------------
+// Customer 360
+// ---------------------------------------------------------------------------
+
+type CustomerModal = null | "create-customer" | "edit-customer" | "create-lead" | "book-service" | "log-communication";
 
 export function CustomerView({ onNavigate }: RecordViewProps) {
-  const [customer, setCustomer] = useState<Customer360>(CLIENT_DEMO_CUSTOMER);
-  const [source, setSource] = useState("demonstration");
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [listLoading, setListLoading] = useState(true);
+  const [listError, setListError] = useState<ApiError | null>(null);
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<ApiError | null>(null);
-  const [empty, setEmpty] = useState(false);
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [customer, setCustomer] = useState<Customer360 | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
   const [tab, setTab] = useState("Overview");
-  const [filter, setFilter] = useState("All");
-  const [modal, setModal] = useState<ModalState>(null);
-  const [segment, setSegment] = useState("All");
-  const actions = useRecordActions(customer.displayName);
-  const visibleCustomers = CUSTOMER_DIRECTORY.filter((entry) => {
-    const matchesSegment = segment === "All" || entry.segment === segment;
-    const search = query.trim().toLowerCase();
-    return matchesSegment && (!search || `${entry.name} ${entry.mobile} ${entry.email} ${entry.vehicle}`.toLowerCase().includes(search));
-  });
+  const [sales, setSales] = useState<SalesOrder[]>([]);
+  const [jobs, setJobs] = useState<ServiceJob[]>([]);
+  const [comms, setComms] = useState<Communication[]>([]);
 
-  function selectCustomer(entry: typeof CUSTOMER_DIRECTORY[number]) {
-    setCustomer({ ...CLIENT_DEMO_CUSTOMER, displayName: entry.name, mobile: entry.mobile, email: entry.email, lifetimeValue: entry.value, preferredChannel: entry.segment === "Service due" ? "SMS" : "Email" });
-    setSource(entry.name === "James Hartley" ? "demonstration" : "directory");
-    setEmpty(false);
+  const [modal, setModal] = useState<CustomerModal>(null);
+  const [saving, setSaving] = useState(false);
+  const { toast, notify } = useToast();
+
+  function loadList(searchTerm: string) {
+    setListLoading(true);
+    setListError(null);
+    apiGet<{ customers: Customer[] }>(`/api/v1/customers${searchTerm ? `?q=${encodeURIComponent(searchTerm)}` : ""}`)
+      .then((result) => {
+        setCustomers(result.customers);
+        if (!selectedId && result.customers.length) setSelectedId(result.customers[0].id);
+      })
+      .catch((cause) => setListError(cause instanceof ApiError ? cause : new ApiError("Customer search failed.", { status: 500 })))
+      .finally(() => setListLoading(false));
   }
 
-  async function searchCustomer(event: FormEvent) {
+  useEffect(() => { loadList(""); }, []);
+
+  useEffect(() => {
+    if (!selectedId) { setCustomer(null); return; }
+    setDetailLoading(true);
+    apiGet<{ customer: Customer360 }>(`/api/v1/customers/${selectedId}/360`)
+      .then((result) => setCustomer(result.customer))
+      .catch(() => setCustomer(null))
+      .finally(() => setDetailLoading(false));
+  }, [selectedId]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    if (tab === "Sales & finance") apiGet<{ salesOrders: SalesOrder[] }>(`/api/v1/sales-orders?customerId=${selectedId}`).then((result) => setSales(result.salesOrders)).catch(() => setSales([]));
+    if (tab === "Service & care") apiGet<{ serviceJobs: ServiceJob[] }>(`/api/v1/service-jobs?customerId=${selectedId}`).then((result) => setJobs(result.serviceJobs)).catch(() => setJobs([]));
+    if (tab === "Communications") apiGet<{ communications: Communication[] }>(`/api/v1/communications?customerId=${selectedId}`).then((result) => setComms(result.communications)).catch(() => setComms([]));
+  }, [tab, selectedId]);
+
+  function searchCustomers(event: FormEvent) {
     event.preventDefault();
-    if (query.trim().length < 2) { setError(new ApiError("Enter at least two characters.", { status: 400, code: "INVALID_SEARCH" })); return; }
-    setLoading(true); setError(null); setEmpty(false);
-    try {
-      const search = await apiGet<{ dataSource: string; customers: Array<{ id: string }> }>(`/api/v1/customers/search?q=${encodeURIComponent(query.trim())}`);
-      if (!search.customers.length) { setEmpty(true); return; }
-      const detail = await apiGet<{ dataSource: string; customer: Customer360 }>(`/api/v1/customers/${search.customers[0].id}/360`);
-      setCustomer(detail.customer); setSource(detail.dataSource);
-    } catch (cause) { setError(cause instanceof ApiError ? cause : new ApiError("Customer search failed.", { status: 500 })); }
-    finally { setLoading(false); }
+    loadList(query.trim());
   }
 
-  return <WorkspacePage title="Customer 360" eyebrow="Relationship intelligence" description="Search a mobile number. See the household, vehicles, value, consent and every connected interaction." action={<DataSourceBadge source={source} />}>
+  async function submitCreateCustomer(form: { customerType: string; displayName: string; mobile: string; email: string; preferredChannel: string; address: string }) {
+    setSaving(true);
+    try {
+      const result = await apiPost<{ customer: Customer }>("/api/v1/customers", form);
+      setModal(null);
+      loadList(query.trim());
+      setSelectedId(result.customer.id);
+      notify("Customer created.");
+    } catch (cause) {
+      notify(cause instanceof ApiError ? cause.message : "Could not create the customer.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function submitEditCustomer(form: { displayName: string; mobile: string; email: string; preferredChannel: string; address: string }) {
+    if (!customer) return;
+    setSaving(true);
+    try {
+      await apiPatch(`/api/v1/customers/${customer.id}`, form);
+      setModal(null);
+      loadList(query.trim());
+      apiGet<{ customer: Customer360 }>(`/api/v1/customers/${customer.id}/360`).then((result) => setCustomer(result.customer));
+      notify("Customer profile updated.");
+    } catch (cause) {
+      notify(cause instanceof ApiError ? cause.message : "Could not update the customer.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteCustomer() {
+    if (!customer) return;
+    if (!window.confirm(`Delete ${customer.displayName}? This cannot be undone.`)) return;
+    try {
+      await apiDelete(`/api/v1/customers/${customer.id}`);
+      setSelectedId(null);
+      loadList(query.trim());
+      notify("Customer deleted.");
+    } catch (cause) {
+      notify(cause instanceof ApiError ? cause.message : "Could not delete the customer.");
+    }
+  }
+
+  async function submitCreateLead(form: { source: string; interestedVehicle: string; expectedValue: string }) {
+    if (!customer) return;
+    setSaving(true);
+    try {
+      await apiPost("/api/v1/leads", { customerId: customer.id, source: form.source, interestedVehicle: form.interestedVehicle, expectedValue: form.expectedValue ? Number(form.expectedValue) : undefined });
+      setModal(null);
+      notify("Opportunity created and added to the sales pipeline.");
+      onNavigate("sales");
+    } catch (cause) {
+      notify(cause instanceof ApiError ? cause.message : "Could not create the opportunity.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function submitBookService(form: { vehicleId: string; repairOrderNumber: string; advisor: string; complaint: string }) {
+    if (!customer) return;
+    setSaving(true);
+    try {
+      await apiPost("/api/v1/service-jobs", { customerId: customer.id, vehicleId: form.vehicleId, repairOrderNumber: form.repairOrderNumber, advisor: form.advisor, complaint: form.complaint });
+      setModal(null);
+      notify("Service booking confirmed.");
+    } catch (cause) {
+      notify(cause instanceof ApiError ? cause.message : "Could not create the booking.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function submitLogCommunication(form: { channel: string; direction: string; subject: string; summary: string }) {
+    if (!customer) return;
+    setSaving(true);
+    try {
+      await apiPost("/api/v1/communications", { customerId: customer.id, ...form });
+      setModal(null);
+      apiGet<{ communications: Communication[] }>(`/api/v1/communications?customerId=${customer.id}`).then((result) => setComms(result.communications));
+      notify("Communication logged to the shared timeline.");
+    } catch (cause) {
+      notify(cause instanceof ApiError ? cause.message : "Could not log the communication.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return <WorkspacePage title="Customer 360" eyebrow="Relationship intelligence" description="Search a name, mobile or email. See vehicles, value, and every connected interaction from your database.">
     <div className="record-workbench">
       <aside className="record-directory-panel">
-        <header className="directory-panel-heading"><div><span>Customer directory</span><strong>{visibleCustomers.length} connected records</strong></div><button type="button" onClick={() => setModal("customer")} aria-label="Create customer"><Plus /></button></header>
-        <form className="record-search" onSubmit={searchCustomer}><Search size={18} /><input aria-label="Search customers" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Name, mobile, or email" />{query && <button className="search-clear" type="button" aria-label="Clear customer search" onClick={() => { setQuery(""); setError(null); setEmpty(false); }}><X /></button>}<button className="search-submit" type="submit" disabled={loading}>Search</button></form>
-        <SearchState loading={loading} error={error} />
-        <div className="directory-filter-scroll"><div className="filter-chips">{["All","VIP","Service due","Prospect"].map((item) => <button type="button" className={segment === item ? "active" : ""} onClick={() => setSegment(item)} key={item}>{item}</button>)}</div></div>
-        <section className="customer-directory"><div className="customer-list-head"><span>Customer</span><span>Vehicle / interest</span><span>Lifetime value</span><span>Next action</span></div>{visibleCustomers.map((entry) => <button type="button" className={customer.displayName === entry.name ? "selected" : ""} key={entry.name} onClick={() => selectCustomer(entry)}><span className="customer-list-avatar">{entry.name.split(" ").map((part) => part[0]).join("")}</span><div><strong>{entry.name}</strong><small>{entry.mobile} · {entry.segment}</small></div><span>{entry.vehicle}</span><b>{new Intl.NumberFormat("en-AU",{style:"currency",currency:"AUD",maximumFractionDigits:0}).format(entry.value)}</b><em>{entry.next}</em><ArrowRight /></button>)}{!visibleCustomers.length && <div className="customer-list-empty"><Search />No matching directory records.</div>}</section>
+        <header className="directory-panel-heading"><div><span>Customer directory</span><strong>{customers.length} connected records</strong></div><button type="button" onClick={() => setModal("create-customer")} aria-label="Create customer"><Plus /></button></header>
+        <form className="record-search" onSubmit={searchCustomers}><Search size={18} /><input aria-label="Search customers" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Name, mobile, or email" />{query && <button className="search-clear" type="button" aria-label="Clear customer search" onClick={() => { setQuery(""); loadList(""); }}><X /></button>}<button className="search-submit" type="submit" disabled={listLoading}>Search</button></form>
+        <SearchState loading={listLoading} error={listError} />
+        <section className="customer-directory"><div className="customer-list-head"><span>Customer</span><span>Contact</span><span>Lifetime value</span></div>
+          {customers.map((entry) => <button type="button" className={selectedId === entry.id ? "selected" : ""} key={entry.id} onClick={() => setSelectedId(entry.id)}><span className="customer-list-avatar">{entry.displayName.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span><div><strong>{entry.displayName}</strong><small>{entry.mobile ?? entry.email ?? "No contact on file"}</small></div><span>{entry.preferredChannel ?? "-"}</span><b>{money.format(entry.lifetimeValue)}</b><ArrowRight /></button>)}
+          {!listLoading && !customers.length && <div className="customer-list-empty"><Search />No matching customers. Create one to get started.</div>}
+        </section>
       </aside>
       <section className="record-detail-panel">
-        {!empty && <><div className="record-primary-actions"><button type="button" onClick={() => setModal("opportunity")}><span><UserPlus /></span><div><strong>Create opportunity</strong><small>Start a connected sales path</small></div><ArrowRight /></button><button type="button" onClick={() => setModal("booking")}><span><CalendarDays /></span><div><strong>Book service</strong><small>Vehicle, advisor and mobility</small></div><ArrowRight /></button><a href={`https://wa.me/${customer.mobile.replace(/\D/g, "")}`} target="_blank" rel="noreferrer"><span><MessageCircle /></span><div><strong>WhatsApp customer</strong><small>Record the conversation</small></div><ArrowRight /></a><button type="button" onClick={() => setModal("portal")}><span><CircleUserRound /></span><div><strong>Portal preview</strong><small>Customer self-service view</small></div><ArrowRight /></button></div><ActionBar><button type="button" onClick={() => setModal("customer")}><UserPlus />New customer</button><button type="button" onClick={() => setModal("edit-customer")}><Edit3 />Edit profile</button><a href={`tel:${customer.mobile}`}><Phone />Call</a><a href={`mailto:${customer.email}?subject=Your AutoAxis ownership review`}><Mail />Email</a><button type="button" onClick={() => setModal("task")}><ListChecks />Task</button><button type="button" onClick={() => setModal("note")}><StickyNote />Note</button><button type="button" onClick={actions.share}><Share2 />Share</button><button type="button" onClick={actions.exportRecord}><Download />Export</button></ActionBar></>}
-        {empty ? <div className="empty-state"><Search /><strong>No customers found</strong><p>Try a different name, mobile number, or email.</p></div> : <div className="record-layout">
-      <section className="record-main-card">
-        <div className="record-identity"><div className="record-avatar">{customer.displayName.split(" ").map((p) => p[0]).slice(0,2).join("")}</div><div><span>Individual · verified · customer since {new Date(customer.customerSince).getFullYear()}</span><h3>{customer.displayName}</h3><p><Phone size={14} />{customer.mobile}<Mail size={14} />{customer.email}</p></div><button type="button" onClick={() => navigator.clipboard?.writeText(customer.id)} aria-label="Copy customer ID"><Copy /></button></div>
-        <div className="record-tabs" role="tablist">{["Overview","Activity","Vehicles","Sales & finance","Service & care","Documents"].map((item) => <button role="tab" aria-selected={tab === item} className={tab === item ? "active" : ""} type="button" key={item} onClick={() => setTab(item)}>{item}</button>)}</div>
-        {tab === "Overview" && <><div className="record-facts"><div><WalletCards /><span>Lifetime value</span><strong>{new Intl.NumberFormat("en-AU",{style:"currency",currency:"AUD",maximumFractionDigits:0}).format(customer.lifetimeValue)}</strong></div><div><CarFront /><span>Vehicles</span><strong>{customer.vehicles.length}</strong></div><div><Wrench /><span>Service visits</span><strong>{customer.serviceVisitCount}</strong></div><div><ShieldCheck /><span>Consent</span><strong>{customer.preferredChannel} · active</strong></div></div><InfoGrid items={[["Relationship","Hartley household · 2 members"],["Open enquiry","BMW X5 renewal · qualified"],["Insurance","Comprehensive · renews 14 Nov"],["Warranty","Factory coverage active"],["Complaints","None unresolved"],["Communication","Email preferred · SMS allowed"]]} /></>}
-        {tab === "Activity" && <><div className="record-section-heading"><div><span>Relationship timeline</span><strong>Every department, one chronology</strong></div><div className="filter-chips">{["All","service","sale","communication"].map((item) => <button type="button" className={filter === item ? "active" : ""} onClick={() => setFilter(item)} key={item}>{item}</button>)}</div></div><Timeline items={customer.timeline} filter={filter} /></>}
-        {tab === "Vehicles" && <div className="linked-records">{customer.vehicles.map((vehicle) => <button type="button" key={vehicle.vin} onClick={() => onNavigate("vehicles")}><CarFront /><div><strong>{vehicle.make} {vehicle.model}</strong><span>{vehicle.variant} · {vehicle.registration ?? vehicle.vin}</span></div><ArrowRight /></button>)}</div>}
-        {tab === "Sales & finance" && <><SectionToolbar title="Deals and opportunities" detail="Complete commercial relationship" action="New opportunity" onAction={() => setModal("opportunity")} /><OperationalTable columns={["Reference","Vehicle / opportunity","Value","Stage","Owner / date"]} rows={CUSTOMER_DEALS} onOpen={() => setModal("opportunity")} /><div className="detail-summary-strip"><div><CreditCard /><span>Finance</span><strong>$46,820 payout</strong><small>36 months remaining · 7.1%</small></div><div><ShieldCheck /><span>Insurance</span><strong>Comprehensive</strong><small>Renewal 14 Nov · no claims</small></div><div><WalletCards /><span>Accessories</span><strong>$4,860</strong><small>Protection, tow pack, mats</small></div></div></>}
-        {tab === "Service & care" && <><SectionToolbar title="Service relationship" detail="9 visits · $14,680 customer-pay value" action="Book service" onAction={() => setModal("booking")} /><OperationalTable columns={["Reference","Work performed","Date","Value","Status"]} rows={CUSTOMER_SERVICE} onOpen={() => setModal("booking")} /><InfoGrid items={[["Next service","12 Nov 2026 · annual service"],["Preferred advisor","Daniel Brooks"],["Retention risk","Low · all servicing retained"],["Last NPS","9 / 10 · promoter"],["Open complaint","None"],["Mobility preference","Loan vehicle required"]]} /></>}
-        {tab === "Documents" && <><SectionToolbar title="Customer document wallet" detail="Identity, contracts and consent in one place" action="Request document" onAction={() => setModal("documents")} /><OperationalTable columns={["Document","Category","Status","Updated"]} rows={CUSTOMER_DOCUMENTS} onOpen={() => setModal("documents")} /></>}
-      </section>
-      <aside className="record-side-column"><div className="side-panel"><span>Next best action</span><strong>Service-to-trade review</strong><p>Positive equity, service history and ownership age indicate a qualified upgrade conversation.</p><button type="button" onClick={() => setModal("opportunity")}>Create opportunity <ArrowRight /></button></div><div className="side-panel side-panel--light"><span>Contact context</span><p className="contact-row"><MapPin />{customer.address}</p><p className="contact-row"><CalendarDays />Follow-up due 24 Aug</p><div className="status-check"><i />Email consent active</div><div className="status-check"><i />Identity verified</div></div></aside>
-        </div>}
+        {detailLoading && <div className="empty-state"><Search /><strong>Loading customer</strong></div>}
+        {!detailLoading && !customer && <div className="empty-state"><Search /><strong>No customer selected</strong><p>Search or create a customer to see their connected record.</p></div>}
+        {!detailLoading && customer && <>
+          <div className="record-primary-actions">
+            <button type="button" onClick={() => setModal("create-lead")}><span><UserPlus /></span><div><strong>Create opportunity</strong><small>Start a connected sales path</small></div><ArrowRight /></button>
+            <button type="button" onClick={() => setModal("book-service")}><span><CalendarDays /></span><div><strong>Book service</strong><small>Vehicle and workshop context</small></div><ArrowRight /></button>
+            {customer.mobile && <a href={`https://wa.me/${customer.mobile.replace(/\D/g, "")}`} target="_blank" rel="noreferrer"><span><MessageCircle /></span><div><strong>WhatsApp customer</strong><small>Open a conversation</small></div><ArrowRight /></a>}
+            <button type="button" onClick={() => setModal("log-communication")}><span><Mail /></span><div><strong>Log communication</strong><small>Record a call, email or message</small></div><ArrowRight /></button>
+          </div>
+          <ActionBar>
+            <button type="button" onClick={() => setModal("edit-customer")}><Edit3 />Edit profile</button>
+            {customer.mobile && <a href={`tel:${customer.mobile}`}><Phone />Call</a>}
+            {customer.email && <a href={`mailto:${customer.email}`}><Mail />Email</a>}
+            <button type="button" onClick={() => shareRecord(customer.displayName).then(() => notify("Summary shared."))}><Share2 />Share</button>
+            <button type="button" onClick={() => { exportCsv(customer.displayName); notify("CSV exported."); }}><Download />Export</button>
+            <button type="button" onClick={deleteCustomer} className="danger-action"><Trash2 />Delete</button>
+          </ActionBar>
+          <div className="record-layout">
+            <section className="record-main-card">
+              <div className="record-identity"><div className="record-avatar">{customer.displayName.split(" ").map((p) => p[0]).slice(0, 2).join("")}</div><div><span>{customer.customerType} - customer since {new Date(customer.customerSince).getFullYear()}</span><h3>{customer.displayName}</h3><p>{customer.mobile && <><Phone size={14} />{customer.mobile}</>}{customer.email && <><Mail size={14} />{customer.email}</>}</p></div><button type="button" onClick={() => navigator.clipboard?.writeText(customer.id)} aria-label="Copy customer ID"><Copy /></button></div>
+              <div className="record-tabs" role="tablist">{["Overview", "Activity", "Vehicles", "Sales & finance", "Service & care", "Communications"].map((item) => <button role="tab" aria-selected={tab === item} className={tab === item ? "active" : ""} type="button" key={item} onClick={() => setTab(item)}>{item}</button>)}</div>
+              {tab === "Overview" && <div className="record-facts"><div><WalletCards /><span>Lifetime value</span><strong>{money.format(customer.lifetimeValue)}</strong></div><div><CarFront /><span>Vehicles</span><strong>{customer.vehicles.length}</strong></div><div><Wrench /><span>Service visits</span><strong>{customer.serviceVisitCount}</strong></div><div><ShieldCheck /><span>Preferred channel</span><strong>{customer.preferredChannel ?? "Not set"}</strong></div></div>}
+              {tab === "Activity" && <Timeline items={customer.timeline} />}
+              {tab === "Vehicles" && <div className="linked-records">{customer.vehicles.map((vehicle) => <button type="button" key={vehicle.vin} onClick={() => onNavigate("vehicles")}><CarFront /><div><strong>{vehicle.make} {vehicle.model}</strong><span>{vehicle.variant ?? ""} {vehicle.registration ?? vehicle.vin}</span></div><ArrowRight /></button>)}{!customer.vehicles.length && <div className="timeline-empty">No vehicles linked to this customer yet.</div>}</div>}
+              {tab === "Sales & finance" && <><SectionToolbar title="Deals and opportunities" detail="Sales orders linked to this customer" action="New opportunity" onAction={() => setModal("create-lead")} /><OperationalTable columns={["Vehicle", "Value", "Status", "Ordered"]} rows={sales.map((order) => [`${order.make} ${order.model}`, money.format(order.totalAmount), order.status, dateFormatter.format(new Date(order.orderedAt))])} /></>}
+              {tab === "Service & care" && <><SectionToolbar title="Service relationship" detail={`${jobs.length} repair orders on file`} action="Book service" onAction={() => setModal("book-service")} /><OperationalTable columns={["Repair order", "Vehicle", "Status", "Opened"]} rows={jobs.map((job) => [job.repairOrderNumber, `${job.make} ${job.model}`, job.status, dateFormatter.format(new Date(job.openedAt))])} /></>}
+              {tab === "Communications" && <><SectionToolbar title="Communication log" detail={`${comms.length} recorded interactions`} action="Log communication" onAction={() => setModal("log-communication")} /><OperationalTable columns={["Channel", "Direction", "Summary", "Date"]} rows={comms.map((comm) => [comm.channel, comm.direction, comm.summary, dateFormatter.format(new Date(comm.occurredAt))])} /></>}
+            </section>
+            <aside className="record-side-column">
+              <div className="side-panel side-panel--light">
+                <span>Contact context</span>
+                {customer.address && <p className="contact-row"><MapPin />{customer.address}</p>}
+                <div className="status-check"><i />{customer.email ? "Email on file" : "No email on file"}</div>
+                <div className="status-check"><i />{customer.mobile ? "Mobile on file" : "No mobile on file"}</div>
+              </div>
+            </aside>
+          </div>
+        </>}
       </section>
     </div>
-    {modal === "opportunity" && <WorkflowModal title="Create connected opportunity" eyebrow="Sales workflow" onClose={() => setModal(null)} onComplete={() => { setModal(null); actions.notify("Opportunity AX-2048 created and pinned in Sales."); onNavigate("sales"); }}><DemoFields kind="opportunity" /></WorkflowModal>}
-    {modal === "portal" && <WorkflowModal title="Customer portal preview" eyebrow="Customer self-service" completeLabel="Send secure link" onClose={() => setModal(null)} onComplete={() => { setModal(null); actions.notify("Secure portal link queued by email."); }}><div className="portal-preview"><Brand /><span>Welcome back, James</span><strong>Your BMW X5 is ready for an ownership review.</strong><div><b>Next service</b><em>Nov 2026</em></div><div><b>Warranty</b><em>Active</em></div><button type="button">Book service</button></div></WorkflowModal>}
-    {modal === "customer" && <WorkflowModal title="Create customer record" eyebrow="Customer master" completeLabel="Create customer" onClose={() => setModal(null)} onComplete={() => { setModal(null); actions.notify("Customer record created and duplicate check completed."); }}><div className="workflow-form-grid"><label><span>Customer type</span><input defaultValue="Individual" /></label><label><span>Full name</span><input defaultValue="New customer" /></label><label><span>Mobile</span><input defaultValue="+61 " /></label><label><span>Email</span><input defaultValue="customer@prakashinfotech.com" /></label><label><span>Preferred channel</span><input defaultValue="WhatsApp" /></label><label><span>Home branch</span><input defaultValue="Sydney Central" /></label></div><div className="workflow-callout"><ShieldCheck /><div><strong>No possible duplicate found</strong><p>Mobile and email are checked before a customer master record is created.</p></div></div></WorkflowModal>}
-    {modal === "note" && <WorkflowModal title={`Add note for ${customer.displayName}`} eyebrow="Relationship timeline" completeLabel="Save note" onClose={() => setModal(null)} onComplete={() => { setModal(null); actions.notify("Customer note saved to the shared timeline."); }}><label className="note-field"><span>Note visible to Sales, Service and Customer Care</span><textarea defaultValue="Customer requested an ownership review after the next service visit." /></label><div className="workflow-form-grid"><label><span>Follow-up date</span><input defaultValue="24 Aug 2026" /></label><label><span>Owner</span><input defaultValue="Olivia Lawson" /></label></div></WorkflowModal>}
-    {modal === "edit-customer" && <WorkflowModal title={`Edit ${customer.displayName}`} eyebrow="Customer master" completeLabel="Save changes" onClose={() => setModal(null)} onComplete={() => { setModal(null); actions.notify("Customer profile, preferences and consent updated."); }}><div className="workflow-form-grid"><label><span>Full name</span><input defaultValue={customer.displayName} /></label><label><span>Mobile</span><input defaultValue={customer.mobile} /></label><label><span>Email</span><input type="email" defaultValue={customer.email} /></label><label><span>Preferred channel</span><select defaultValue={customer.preferredChannel}><option>Email</option><option>SMS</option><option>WhatsApp</option><option>Phone</option></select></label><label><span>Customer segment</span><select defaultValue="VIP"><option>VIP</option><option>Retail</option><option>Fleet</option><option>Prospect</option></select></label><label><span>Home branch</span><select defaultValue="Sydney Central"><option>Sydney Central</option><option>North Shore</option><option>Parramatta</option></select></label></div><div className="consent-grid"><label><input type="checkbox" defaultChecked /> Email marketing</label><label><input type="checkbox" defaultChecked /> SMS service updates</label><label><input type="checkbox" defaultChecked /> WhatsApp conversations</label><label><input type="checkbox" defaultChecked /> Data-sharing consent</label></div></WorkflowModal>}
-    {modal === "task" && <WorkflowModal title="Create customer task" eyebrow="Team follow-up" completeLabel="Assign task" onClose={() => setModal(null)} onComplete={() => { setModal(null); actions.notify("Follow-up task assigned to Sarah Cole for today."); }}><div className="workflow-form-grid"><label><span>Task</span><input defaultValue="Complete ownership review" /></label><label><span>Department</span><select defaultValue="Sales"><option>Sales</option><option>Service</option><option>Finance</option><option>Customer care</option></select></label><label><span>Owner</span><input defaultValue="Sarah Cole" /></label><label><span>Due</span><input type="datetime-local" defaultValue="2026-08-24T10:30" /></label><label><span>Priority</span><select defaultValue="High"><option>High</option><option>Normal</option><option>Low</option></select></label><label><span>Related record</span><input defaultValue="BMW X5 · DMS-360" /></label></div></WorkflowModal>}
-    {modal === "booking" && <WorkflowModal title="Book service visit" eyebrow="Service booking" completeLabel="Confirm booking" onClose={() => setModal(null)} onComplete={() => { setModal(null); actions.notify("Service booking BK-4214 confirmed with loan vehicle."); }}><div className="workflow-form-grid"><label><span>Vehicle</span><input defaultValue="BMW X5 · DMS-360" /></label><label><span>Service package</span><select defaultValue="Annual service"><option>Annual service</option><option>Express service</option><option>Diagnostic</option><option>Recall</option></select></label><label><span>Date</span><input type="date" defaultValue="2026-11-12" /></label><label><span>Arrival</span><input type="time" defaultValue="08:00" /></label><label><span>Advisor</span><input defaultValue="Daniel Brooks" /></label><label><span>Mobility</span><select defaultValue="Loan vehicle"><option>Loan vehicle</option><option>Customer waiting</option><option>Pickup and delivery</option></select></label></div></WorkflowModal>}
-    {modal === "documents" && <WorkflowModal title="Customer document request" eyebrow="Document wallet" completeLabel="Send secure request" onClose={() => setModal(null)} onComplete={() => { setModal(null); actions.notify("Secure finance document request sent by email and WhatsApp."); }}><div className="document-list">{["Driver licence","Proof of address","Finance payout letter","Signed privacy consent"].map((item) => <label key={item}><input type="checkbox" defaultChecked /><FileText /><span>{item}</span><em>Request</em></label>)}</div></WorkflowModal>}
-    {actions.toast && <Toast message={actions.toast} />}
+
+    {modal === "create-customer" && <CreateCustomerModal saving={saving} onClose={() => setModal(null)} onSubmit={submitCreateCustomer} />}
+    {modal === "edit-customer" && customer && <EditCustomerModal customer={customer} saving={saving} onClose={() => setModal(null)} onSubmit={submitEditCustomer} />}
+    {modal === "create-lead" && customer && <CreateLeadModal customerName={customer.displayName} saving={saving} onClose={() => setModal(null)} onSubmit={submitCreateLead} />}
+    {modal === "book-service" && customer && <BookServiceModal vehicles={customer.vehicles} saving={saving} onClose={() => setModal(null)} onSubmit={submitBookService} />}
+    {modal === "log-communication" && customer && <LogCommunicationModal saving={saving} onClose={() => setModal(null)} onSubmit={submitLogCommunication} />}
+    {toast && <Toast message={toast} />}
   </WorkspacePage>;
 }
+
+function CreateCustomerModal({ onClose, onSubmit, saving }: { onClose: () => void; saving: boolean; onSubmit: (form: { customerType: string; displayName: string; mobile: string; email: string; preferredChannel: string; address: string }) => void }) {
+  const [form, setForm] = useState({ customerType: "individual", displayName: "", mobile: "", email: "", preferredChannel: "Email", address: "" });
+  return <WorkflowModal title="Create customer record" eyebrow="Customer master" completeLabel="Create customer" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
+    <div className="workflow-form-grid">
+      <label><span>Customer type</span><select value={form.customerType} onChange={(event) => setForm({ ...form, customerType: event.target.value })}><option value="individual">Individual</option><option value="company">Company</option></select></label>
+      <label><span>Full name</span><input required value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} /></label>
+      <label><span>Mobile</span><input value={form.mobile} onChange={(event) => setForm({ ...form, mobile: event.target.value })} placeholder="+61 4xx xxx xxx" /></label>
+      <label><span>Email</span><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
+      <label><span>Preferred channel</span><input value={form.preferredChannel} onChange={(event) => setForm({ ...form, preferredChannel: event.target.value })} /></label>
+      <label><span>Address</span><input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} /></label>
+    </div>
+  </WorkflowModal>;
+}
+
+function EditCustomerModal({ customer, onClose, onSubmit, saving }: { customer: Customer360; saving: boolean; onClose: () => void; onSubmit: (form: { displayName: string; mobile: string; email: string; preferredChannel: string; address: string }) => void }) {
+  const [form, setForm] = useState({ displayName: customer.displayName, mobile: customer.mobile ?? "", email: customer.email ?? "", preferredChannel: customer.preferredChannel ?? "", address: customer.address ?? "" });
+  return <WorkflowModal title={`Edit ${customer.displayName}`} eyebrow="Customer master" completeLabel="Save changes" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
+    <div className="workflow-form-grid">
+      <label><span>Full name</span><input value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} /></label>
+      <label><span>Mobile</span><input value={form.mobile} onChange={(event) => setForm({ ...form, mobile: event.target.value })} /></label>
+      <label><span>Email</span><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
+      <label><span>Preferred channel</span><select value={form.preferredChannel} onChange={(event) => setForm({ ...form, preferredChannel: event.target.value })}><option>Email</option><option>SMS</option><option>WhatsApp</option><option>Phone</option></select></label>
+      <label><span>Address</span><input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} /></label>
+    </div>
+  </WorkflowModal>;
+}
+
+function CreateLeadModal({ customerName, onClose, onSubmit, saving }: { customerName: string; saving: boolean; onClose: () => void; onSubmit: (form: { source: string; interestedVehicle: string; expectedValue: string }) => void }) {
+  const [form, setForm] = useState({ source: "walk-in", interestedVehicle: "", expectedValue: "" });
+  return <WorkflowModal title="Create connected opportunity" eyebrow={`Sales workflow - ${customerName}`} busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
+    <div className="workflow-form-grid">
+      <label><span>Source</span><select value={form.source} onChange={(event) => setForm({ ...form, source: event.target.value })}><option value="walk-in">Walk-in</option><option value="phone">Phone</option><option value="web">Web enquiry</option><option value="referral">Referral</option></select></label>
+      <label><span>Vehicle interest</span><input value={form.interestedVehicle} onChange={(event) => setForm({ ...form, interestedVehicle: event.target.value })} placeholder="e.g. BMW X5 upgrade" /></label>
+      <label><span>Expected value (AUD)</span><input type="number" min="0" value={form.expectedValue} onChange={(event) => setForm({ ...form, expectedValue: event.target.value })} /></label>
+    </div>
+  </WorkflowModal>;
+}
+
+function BookServiceModal({ vehicles, onClose, onSubmit, saving }: { vehicles: Customer360["vehicles"]; saving: boolean; onClose: () => void; onSubmit: (form: { vehicleId: string; repairOrderNumber: string; advisor: string; complaint: string }) => void }) {
+  const [form, setForm] = useState({ vehicleId: vehicles[0]?.id ?? "", repairOrderNumber: `RO-${Math.floor(Math.random() * 90000 + 10000)}`, advisor: "", complaint: "" });
+  return <WorkflowModal title="Book service visit" eyebrow="Service booking" completeLabel="Confirm booking" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
+    {!vehicles.length ? <p className="inline-error"><AlertTriangle size={14} />This customer has no linked vehicle yet. Add a vehicle first.</p> : <div className="workflow-form-grid">
+      <label><span>Vehicle</span><select value={form.vehicleId} onChange={(event) => setForm({ ...form, vehicleId: event.target.value })}>{vehicles.map((vehicle) => <option key={vehicle.id ?? vehicle.vin} value={vehicle.id}>{vehicle.make} {vehicle.model} - {vehicle.registration ?? vehicle.vin}</option>)}</select></label>
+      <label><span>Repair order number</span><input value={form.repairOrderNumber} onChange={(event) => setForm({ ...form, repairOrderNumber: event.target.value })} /></label>
+      <label><span>Advisor</span><input value={form.advisor} onChange={(event) => setForm({ ...form, advisor: event.target.value })} /></label>
+      <label className="workflow-form-full"><span>Complaint or work requested</span><input value={form.complaint} onChange={(event) => setForm({ ...form, complaint: event.target.value })} /></label>
+    </div>}
+  </WorkflowModal>;
+}
+
+function LogCommunicationModal({ onClose, onSubmit, saving }: { saving: boolean; onClose: () => void; onSubmit: (form: { channel: string; direction: string; subject: string; summary: string }) => void }) {
+  const [form, setForm] = useState({ channel: "call", direction: "outbound", subject: "", summary: "" });
+  return <WorkflowModal title="Log communication" eyebrow="Relationship timeline" completeLabel="Save" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
+    <div className="workflow-form-grid">
+      <label><span>Channel</span><select value={form.channel} onChange={(event) => setForm({ ...form, channel: event.target.value })}><option value="call">Call</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="sms">SMS</option></select></label>
+      <label><span>Direction</span><select value={form.direction} onChange={(event) => setForm({ ...form, direction: event.target.value })}><option value="outbound">Outbound</option><option value="inbound">Inbound</option></select></label>
+      <label><span>Subject</span><input value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })} /></label>
+      <label className="workflow-form-full"><span>Summary</span><textarea required value={form.summary} onChange={(event) => setForm({ ...form, summary: event.target.value })} /></label>
+    </div>
+  </WorkflowModal>;
+}
+
+// ---------------------------------------------------------------------------
+// Vehicle 360
+// ---------------------------------------------------------------------------
+
+type VehicleModal = null | "create-vehicle" | "edit-vehicle" | "book-service";
 
 export function VehicleView({ onNavigate }: RecordViewProps) {
-  const [vehicle, setVehicle] = useState<Vehicle360>(CLIENT_DEMO_VEHICLE);
-  const [source, setSource] = useState("demonstration");
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [listLoading, setListLoading] = useState(true);
+  const [listError, setListError] = useState<ApiError | null>(null);
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<ApiError | null>(null);
-  const [empty, setEmpty] = useState(false);
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [vehicle, setVehicle] = useState<Vehicle360 | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
   const [tab, setTab] = useState("Overview");
-  const [filter, setFilter] = useState("All");
-  const [modal, setModal] = useState<ModalState>(null);
-  const [stockFilter, setStockFilter] = useState("All");
-  const actions = useRecordActions(`${vehicle.make} ${vehicle.model}`);
-  const value = useMemo(() => new Intl.NumberFormat("en-AU",{style:"currency",currency:"AUD",maximumFractionDigits:0}),[]);
-  const visibleVehicles = VEHICLE_DIRECTORY.filter((entry) => {
-    const search = query.trim().toLowerCase();
-    return (stockFilter === "All" || entry.status === stockFilter) && (!search || `${entry.registration} ${entry.vin} ${entry.make} ${entry.model} ${entry.owner}`.toLowerCase().includes(search));
-  });
+  const [jobs, setJobs] = useState<ServiceJob[]>([]);
 
-  function selectVehicle(entry: typeof VEHICLE_DIRECTORY[number]) {
-    setVehicle({ ...CLIENT_DEMO_VEHICLE, vin: entry.vin, registration: entry.registration, make: entry.make, model: entry.model, modelYear: entry.year, ownerName: entry.owner, marketValue: entry.value, status: entry.status.toLowerCase().replaceAll(" ", "-") });
-    setSource(entry.registration === "DMS-360" ? "demonstration" : "directory"); setEmpty(false);
+  const [modal, setModal] = useState<VehicleModal>(null);
+  const [saving, setSaving] = useState(false);
+  const { toast, notify } = useToast();
+
+  function loadList(searchTerm: string) {
+    setListLoading(true);
+    setListError(null);
+    apiGet<{ vehicles: Vehicle[] }>(`/api/v1/vehicles${searchTerm ? `?q=${encodeURIComponent(searchTerm)}` : ""}`)
+      .then((result) => {
+        setVehicles(result.vehicles);
+        if (!selectedId && result.vehicles.length) setSelectedId(result.vehicles[0].id);
+      })
+      .catch((cause) => setListError(cause instanceof ApiError ? cause : new ApiError("Vehicle search failed.", { status: 500 })))
+      .finally(() => setListLoading(false));
   }
 
-  async function searchVehicle(event: FormEvent) {
-    event.preventDefault(); if (query.trim().length < 2) { setError(new ApiError("Enter at least two characters.", { status: 400 })); return; }
-    setLoading(true); setError(null); setEmpty(false);
-    try { const search = await apiGet<{dataSource:string;vehicles:Array<{id:string}>}>(`/api/v1/vehicles/search?q=${encodeURIComponent(query.trim())}`); if(!search.vehicles.length){setEmpty(true);return;} const detail=await apiGet<{dataSource:string;vehicle:Vehicle360}>(`/api/v1/vehicles/${search.vehicles[0].id}/360`); setVehicle(detail.vehicle); setSource(detail.dataSource); }
-    catch(cause){setError(cause instanceof ApiError?cause:new ApiError("Vehicle search failed.",{status:500}));} finally{setLoading(false);}
+  useEffect(() => { loadList(""); }, []);
+
+  useEffect(() => {
+    if (!selectedId) { setVehicle(null); return; }
+    setDetailLoading(true);
+    apiGet<{ vehicle: Vehicle360 }>(`/api/v1/vehicles/${selectedId}/360`)
+      .then((result) => setVehicle(result.vehicle))
+      .catch(() => setVehicle(null))
+      .finally(() => setDetailLoading(false));
+  }, [selectedId]);
+
+  useEffect(() => {
+    if (!selectedId || tab !== "Work orders") return;
+    apiGet<{ serviceJobs: ServiceJob[] }>(`/api/v1/service-jobs?vehicleId=${selectedId}`).then((result) => setJobs(result.serviceJobs)).catch(() => setJobs([]));
+  }, [tab, selectedId]);
+
+  function searchVehicles(event: FormEvent) {
+    event.preventDefault();
+    loadList(query.trim());
   }
-  const complete = (message: string) => { setModal(null); actions.notify(message); };
-  return <WorkspacePage title="Vehicle 360" eyebrow="VIN lifecycle intelligence" description="One trusted history from OEM order and ownership through service, condition, valuation and resale." action={<DataSourceBadge source={source} />}>
+
+  async function submitCreateVehicle(form: { vin: string; make: string; model: string; variant: string; colour: string; registration: string; status: string }) {
+    setSaving(true);
+    try {
+      const result = await apiPost<{ vehicle: Vehicle }>("/api/v1/vehicles", form);
+      setModal(null);
+      loadList(query.trim());
+      setSelectedId(result.vehicle.id);
+      notify("Vehicle added to inventory.");
+    } catch (cause) {
+      notify(cause instanceof ApiError ? cause.message : "Could not create the vehicle.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function submitEditVehicle(form: { registration: string; colour: string; odometerKm: string; marketValue: string; status: string }) {
+    if (!vehicle) return;
+    setSaving(true);
+    try {
+      await apiPatch(`/api/v1/vehicles/${vehicle.id}`, { ...form, odometerKm: form.odometerKm ? Number(form.odometerKm) : undefined, marketValue: form.marketValue ? Number(form.marketValue) : undefined });
+      setModal(null);
+      apiGet<{ vehicle: Vehicle360 }>(`/api/v1/vehicles/${vehicle.id}/360`).then((result) => setVehicle(result.vehicle));
+      loadList(query.trim());
+      notify("Vehicle record updated.");
+    } catch (cause) {
+      notify(cause instanceof ApiError ? cause.message : "Could not update the vehicle.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteVehicle() {
+    if (!vehicle) return;
+    if (!window.confirm(`Delete ${vehicle.make} ${vehicle.model}? This cannot be undone.`)) return;
+    try {
+      await apiDelete(`/api/v1/vehicles/${vehicle.id}`);
+      setSelectedId(null);
+      loadList(query.trim());
+      notify("Vehicle deleted.");
+    } catch (cause) {
+      notify(cause instanceof ApiError ? cause.message : "Could not delete the vehicle.");
+    }
+  }
+
+  async function submitBookService(form: { repairOrderNumber: string; advisor: string; complaint: string }) {
+    if (!vehicle || !vehicle.ownerId) return;
+    setSaving(true);
+    try {
+      await apiPost("/api/v1/service-jobs", { customerId: vehicle.ownerId, vehicleId: vehicle.id, repairOrderNumber: form.repairOrderNumber, advisor: form.advisor, complaint: form.complaint });
+      setModal(null);
+      notify("Workshop booking confirmed.");
+    } catch (cause) {
+      notify(cause instanceof ApiError ? cause.message : "Could not create the booking.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const estimatedTrade = useMemo(() => (vehicle?.marketValue ? vehicle.marketValue * 0.93 : null), [vehicle]);
+  const wholesaleFloor = useMemo(() => (vehicle?.marketValue ? vehicle.marketValue * 0.89 : null), [vehicle]);
+
+  return <WorkspacePage title="Vehicle 360" eyebrow="VIN lifecycle intelligence" description="Search a VIN, registration, make or model. See ownership, service history and valuation from your database.">
     <div className="record-workbench">
       <aside className="record-directory-panel">
-        <header className="directory-panel-heading"><div><span>Vehicle directory</span><strong>{visibleVehicles.length} connected assets</strong></div><button type="button" onClick={() => setModal("vehicle")} aria-label="Add vehicle"><Plus /></button></header>
-        <form className="record-search" onSubmit={searchVehicle}><Search /><input aria-label="Search vehicles" value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="VIN, registration, make or model" />{query && <button className="search-clear" type="button" aria-label="Clear vehicle search" onClick={() => { setQuery(""); setError(null); setEmpty(false); }}><X /></button>}<button className="search-submit" type="submit" disabled={loading}>Search</button></form><SearchState loading={loading} error={error} />
-        <div className="directory-filter-scroll"><div className="filter-chips">{["All","Customer owned","In stock","Demo","Reserved"].map((item) => <button type="button" className={stockFilter === item ? "active" : ""} onClick={() => setStockFilter(item)} key={item}>{item}</button>)}</div></div>
-        <section className="vehicle-directory"><div className="vehicle-list-head"><span>Vehicle</span><span>Owner / status</span><span>Location</span><span>Value</span><span>Next action</span></div>{visibleVehicles.map((entry) => <button type="button" className={vehicle.registration === entry.registration ? "selected" : ""} key={entry.vin} onClick={() => selectVehicle(entry)}><span className="vehicle-list-icon"><CarFront /></span><div><strong>{entry.year} {entry.make} {entry.model}</strong><small>{entry.registration} · {entry.vin.slice(-8)}</small></div><span><b>{entry.owner}</b><small>{entry.status}</small></span><span>{entry.location}</span><b>{value.format(entry.value)}</b><em>{entry.next}</em><ArrowRight /></button>)}{!visibleVehicles.length && <div className="customer-list-empty"><Search />No matching assets.</div>}</section>
+        <header className="directory-panel-heading"><div><span>Vehicle directory</span><strong>{vehicles.length} connected assets</strong></div><button type="button" onClick={() => setModal("create-vehicle")} aria-label="Add vehicle"><Plus /></button></header>
+        <form className="record-search" onSubmit={searchVehicles}><Search /><input aria-label="Search vehicles" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="VIN, registration, make or model" />{query && <button className="search-clear" type="button" aria-label="Clear vehicle search" onClick={() => { setQuery(""); loadList(""); }}><X /></button>}<button className="search-submit" type="submit" disabled={listLoading}>Search</button></form>
+        <SearchState loading={listLoading} error={listError} />
+        <section className="vehicle-directory"><div className="vehicle-list-head"><span>Vehicle</span><span>Status</span><span>Value</span></div>
+          {vehicles.map((entry) => <button type="button" className={selectedId === entry.id ? "selected" : ""} key={entry.id} onClick={() => setSelectedId(entry.id)}><span className="vehicle-list-icon"><CarFront /></span><div><strong>{entry.modelYear ?? ""} {entry.make} {entry.model}</strong><small>{entry.registration ?? entry.vin.slice(-8)}</small></div><span>{entry.status}</span><b>{entry.marketValue ? money.format(entry.marketValue) : "-"}</b><ArrowRight /></button>)}
+          {!listLoading && !vehicles.length && <div className="customer-list-empty"><Search />No matching vehicles. Add one to get started.</div>}
+        </section>
       </aside>
       <section className="record-detail-panel">
-        {!empty && <><div className="record-primary-actions"><button type="button" onClick={() => setModal("vehicle")}><span><Plus /></span><div><strong>Add to stock</strong><small>Create the VIN master</small></div><ArrowRight /></button><button type="button" onClick={() => setModal("appraisal")}><span><Gauge /></span><div><strong>Start appraisal</strong><small>Condition and market value</small></div><ArrowRight /></button><button type="button" onClick={() => setModal("booking")}><span><Wrench /></span><div><strong>Book workshop</strong><small>Service, PDI or reconditioning</small></div><ArrowRight /></button><button type="button" onClick={() => setModal("auction")}><span><CarFront /></span><div><strong>Auction vehicle</strong><small>Controlled wholesale disposal</small></div><ArrowRight /></button></div><ActionBar><button type="button" onClick={() => setModal("rental")}><CalendarDays />Rent / demo</button><button type="button" onClick={actions.share}><Share2 />Share</button><button type="button" onClick={actions.exportRecord}><Download />Export</button></ActionBar></>}
-        {empty ? <div className="empty-state"><Search /><strong>No vehicles found</strong><p>Try a different VIN, registration, make or model.</p></div> : <div className="record-layout"><section className="record-main-card">
-      <div className="vehicle-hero"><div className="vehicle-silhouette"><CarFront /></div><div><span>{vehicle.modelYear} · {vehicle.status.replaceAll("-"," ")}</span><h3>{vehicle.make} {vehicle.model}</h3><p>{vehicle.variant} · {vehicle.colour}</p></div><div><span>Registration</span><strong>{vehicle.registration}</strong></div></div>
-      <div className="record-tabs" role="tablist">{["Overview","Lifecycle","Work orders","Valuation","Ownership","Documents"].map((item)=><button role="tab" aria-selected={tab===item} className={tab===item?"active":""} type="button" key={item} onClick={()=>setTab(item)}>{item}</button>)}</div>
-      {tab==="Overview" && <><div className="record-facts"><div><CarFront /><span>VIN</span><strong className="fact-small">{vehicle.vin}</strong></div><div><Gauge /><span>Odometer</span><strong>{new Intl.NumberFormat("en-AU").format(vehicle.odometerKm)} km</strong></div><div><WalletCards /><span>Market value</span><strong>{value.format(vehicle.marketValue)}</strong></div><div><CircleUserRound /><span>Current owner</span><button type="button" onClick={()=>onNavigate("customers")}>{vehicle.ownerName}</button></div></div><InfoGrid items={[["Vehicle health","92 / 100 · no critical faults"],["Warranty","Factory · expires Jun 2027"],["Insurance","Comprehensive · verified"],["Accident history","No reported accidents"],["Parts replaced","Brake pads · tyres · battery"],["Current location","Sydney Central · customer owned"]]} /></>}
-      {tab==="Lifecycle" && <><div className="record-section-heading"><div><span>Vehicle lifecycle</span><strong>Verified events across every owner</strong></div><div className="filter-chips">{["All","service","ownership","sale"].map((item)=><button type="button" className={filter===item?"active":""} onClick={()=>setFilter(item)} key={item}>{item}</button>)}</div></div><Timeline items={vehicle.timeline} filter={filter} /></>}
-      {tab==="Work orders" && <><SectionToolbar title="Workshop and inspection history" detail="Repair orders, campaigns, PDI and condition checks" action="Book workshop" onAction={() => setModal("booking")} /><OperationalTable columns={["Reference","Work performed","Status","Date","Value"]} rows={VEHICLE_WORK} onOpen={() => setModal("booking")} /><div className="detail-summary-strip"><div><Wrench /><span>Service retention</span><strong>100%</strong><small>9 of 9 visits in group</small></div><div><ClipboardCheck /><span>Inspection</span><strong>192 / 200</strong><small>No safety-critical items</small></div><div><Gauge /><span>Health score</span><strong>92 / 100</strong><small>Battery watch only</small></div></div></>}
-      {tab==="Valuation" && <div className="valuation-panel"><div><span>Retail market</span><strong>{value.format(vehicle.marketValue)}</strong><em>+1.8% in 30 days</em></div><div><span>Trade estimate</span><strong>{value.format(vehicle.marketValue-6300)}</strong><em>Confidence: high</em></div><div><span>Wholesale floor</span><strong>{value.format(vehicle.marketValue-9200)}</strong><em>8 recent comparables</em></div><button type="button" onClick={()=>setModal("appraisal")}>Start condition appraisal <ArrowRight /></button></div>}
-      {tab==="Ownership" && <InfoGrid items={[["Current owner",vehicle.ownerName],["Previous owner","Pacific Motor Group demonstrator"],["Purchase date","18 Jun 2022"],["Purchase branch","Sydney Central"],["Registration","NSW · expires 18 Jun 2027"],["Ownership status","Verified · no finance flag"]]} />}
-      {tab==="Documents" && <><SectionToolbar title="Vehicle document vault" detail="Seven verified records across ownership and service" action="Upload document" onAction={() => setModal("documents")} /><OperationalTable columns={["Document","Source","Status","Updated"]} rows={[["Registration certificate","Transport NSW","Verified","18 Jun 2026"],["Purchase contract","Sales","Signed","18 Jun 2022"],["Factory warranty","OEM","Active","18 Jun 2022"],["Insurance certificate","Customer","Verified","14 Nov 2025"],["Latest service invoice","Service","Paid","18 Aug 2026"],["200-point inspection","Used vehicles","Complete","21 Aug 2026"]]} onOpen={() => setModal("documents")} /></>}
-    </section><aside className="record-side-column"><div className="side-panel"><span>Connected signal</span><strong>Service-to-trade ready</strong><p>Inspection, positive equity and ownership age support a proactive appraisal now.</p><button type="button" onClick={()=>setModal("appraisal")}>Start appraisal <ArrowRight /></button></div><div className="side-panel side-panel--light"><span>Operational state</span>{["Ownership verified","Warranty active","No open recalls","Service history complete"].map((item)=><div className="status-check" key={item}><i />{item}</div>)}<button type="button" className="panel-link" onClick={()=>setModal("documents")}><FileText />Open 7 documents</button></div></aside></div>}
+        {detailLoading && <div className="empty-state"><Search /><strong>Loading vehicle</strong></div>}
+        {!detailLoading && !vehicle && <div className="empty-state"><Search /><strong>No vehicle selected</strong><p>Search or add a vehicle to see its connected record.</p></div>}
+        {!detailLoading && vehicle && <>
+          <div className="record-primary-actions">
+            <button type="button" onClick={() => setModal("create-vehicle")}><span><Plus /></span><div><strong>Add to stock</strong><small>Create a VIN master record</small></div><ArrowRight /></button>
+            <button type="button" onClick={() => setModal("edit-vehicle")}><span><Gauge /></span><div><strong>Update valuation</strong><small>Odometer, colour and market value</small></div><ArrowRight /></button>
+            {vehicle.ownerId && <button type="button" onClick={() => setModal("book-service")}><span><Wrench /></span><div><strong>Book workshop</strong><small>Service or inspection</small></div><ArrowRight /></button>}
+          </div>
+          <ActionBar>
+            <button type="button" onClick={() => shareRecord(`${vehicle.make} ${vehicle.model}`).then(() => notify("Summary shared."))}><Share2 />Share</button>
+            <button type="button" onClick={() => { exportCsv(`${vehicle.make} ${vehicle.model}`); notify("CSV exported."); }}><Download />Export</button>
+            <button type="button" onClick={deleteVehicle} className="danger-action"><Trash2 />Delete</button>
+          </ActionBar>
+          <div className="record-layout">
+            <section className="record-main-card">
+              <div className="vehicle-hero"><div className="vehicle-silhouette"><CarFront /></div><div><span>{vehicle.modelYear ?? "Year unknown"} - {vehicle.status.replaceAll("-", " ")}</span><h3>{vehicle.make} {vehicle.model}</h3><p>{vehicle.variant ?? ""} {vehicle.colour ?? ""}</p></div><div><span>Registration</span><strong>{vehicle.registration ?? "Unregistered"}</strong></div></div>
+              <div className="record-tabs" role="tablist">{["Overview", "Lifecycle", "Work orders", "Valuation", "Ownership"].map((item) => <button role="tab" aria-selected={tab === item} className={tab === item ? "active" : ""} type="button" key={item} onClick={() => setTab(item)}>{item}</button>)}</div>
+              {tab === "Overview" && <div className="record-facts"><div><CarFront /><span>VIN</span><strong className="fact-small">{vehicle.vin}</strong></div><div><Gauge /><span>Odometer</span><strong>{vehicle.odometerKm ? `${new Intl.NumberFormat("en-AU").format(vehicle.odometerKm)} km` : "Not recorded"}</strong></div><div><WalletCards /><span>Market value</span><strong>{vehicle.marketValue ? money.format(vehicle.marketValue) : "Not set"}</strong></div><div><CircleUserRound /><span>Current owner</span>{vehicle.ownerId ? <button type="button" onClick={() => onNavigate("customers")}>{vehicle.ownerName}</button> : <strong>Unowned</strong>}</div></div>}
+              {tab === "Lifecycle" && <Timeline items={vehicle.timeline} />}
+              {tab === "Work orders" && <><SectionToolbar title="Workshop history" detail={`${jobs.length} repair orders on file`} action={vehicle.ownerId ? "Book workshop" : undefined} onAction={() => setModal("book-service")} /><OperationalTable columns={["Repair order", "Status", "Opened", "Labour"]} rows={jobs.map((job) => [job.repairOrderNumber, job.status, dateFormatter.format(new Date(job.openedAt)), money.format(job.labourTotal)])} /></>}
+              {tab === "Valuation" && <div className="valuation-panel"><div><span>Retail market</span><strong>{vehicle.marketValue ? money.format(vehicle.marketValue) : "Not set"}</strong></div>{estimatedTrade && <div><span>Estimated trade value</span><strong>{money.format(estimatedTrade)}</strong><em>Estimated at 93% of market value</em></div>}{wholesaleFloor && <div><span>Estimated wholesale floor</span><strong>{money.format(wholesaleFloor)}</strong><em>Estimated at 89% of market value</em></div>}<button type="button" onClick={() => setModal("edit-vehicle")}>Update valuation <ArrowRight /></button></div>}
+              {tab === "Ownership" && <InfoGrid items={[["Current owner", vehicle.ownerName ?? "Unowned"], ["Contact", vehicle.ownerMobile ?? "Not on file"], ["Status", vehicle.status]]} />}
+            </section>
+          </div>
+        </>}
       </section>
     </div>
-    {modal && !["documents","portal","opportunity","booking"].includes(modal) && <WorkflowModal title={modal==="vehicle"?"Add vehicle to inventory":modal==="appraisal"?"Condition appraisal":modal==="auction"?"Send to auction":"Create rental / demonstrator booking"} eyebrow={modal==="vehicle"?"Vehicle intake":modal==="appraisal"?"Used vehicle workflow":modal==="auction"?"Wholesale disposition":"Vehicle availability"} onClose={()=>setModal(null)} onComplete={()=>complete(modal==="vehicle"?"Vehicle saved and Vehicle 360 created.":modal==="appraisal"?"Appraisal AP-1042 saved at $78,200.":modal==="auction"?"Auction lot AU-882 published with $76,500 reserve.":"Rental booking RB-220 confirmed.")}><DemoFields kind={modal as "vehicle"|"appraisal"|"auction"|"rental"} /></WorkflowModal>}
-    {modal==="documents" && <WorkflowModal title="Vehicle documents" eyebrow="Verified deal pack" completeLabel="Download selected" onClose={()=>setModal(null)} onComplete={()=>complete("Selected documents prepared for download.")}><div className="document-list">{["Purchase contract","Registration certificate","Warranty policy","Insurance verification","Service invoice · 18 Aug"].map((item)=><label key={item}><input type="checkbox" defaultChecked /><FileText /><span>{item}</span><em>Verified</em></label>)}</div></WorkflowModal>}
-    {modal==="booking" && <WorkflowModal title="Create workshop booking" eyebrow="Vehicle operations" completeLabel="Confirm booking" onClose={()=>setModal(null)} onComplete={()=>complete("Workshop booking BK-4216 confirmed and owner notified.")}><div className="workflow-form-grid"><label><span>Vehicle</span><input defaultValue={`${vehicle.make} ${vehicle.model} · ${vehicle.registration}`} /></label><label><span>Work type</span><select defaultValue="Inspection"><option>Inspection</option><option>Scheduled service</option><option>Diagnostic</option><option>PDI</option><option>Reconditioning</option></select></label><label><span>Date</span><input type="date" defaultValue="2026-08-26" /></label><label><span>Technician team</span><select defaultValue="Team A"><option>Team A</option><option>Team B</option><option>Express lane</option></select></label><label><span>Estimate</span><input defaultValue="$680" /></label><label><span>Owner approval</span><select defaultValue="Send digital approval"><option>Send digital approval</option><option>Already approved</option><option>Internal work</option></select></label></div></WorkflowModal>}
-    {actions.toast && <Toast message={actions.toast} />}
+    {modal === "create-vehicle" && <CreateVehicleModal saving={saving} onClose={() => setModal(null)} onSubmit={submitCreateVehicle} />}
+    {modal === "edit-vehicle" && vehicle && <EditVehicleModal vehicle={vehicle} saving={saving} onClose={() => setModal(null)} onSubmit={submitEditVehicle} />}
+    {modal === "book-service" && vehicle && <VehicleServiceModal saving={saving} onClose={() => setModal(null)} onSubmit={submitBookService} />}
+    {toast && <Toast message={toast} />}
   </WorkspacePage>;
 }
 
-function InfoGrid({ items }: { items: string[][] }) { return <div className="info-grid">{items.map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>; }
+function CreateVehicleModal({ onClose, onSubmit, saving }: { saving: boolean; onClose: () => void; onSubmit: (form: { vin: string; make: string; model: string; variant: string; colour: string; registration: string; status: string }) => void }) {
+  const [form, setForm] = useState({ vin: "", make: "", model: "", variant: "", colour: "", registration: "", status: "in-stock" });
+  return <WorkflowModal title="Add vehicle to inventory" eyebrow="Vehicle intake" completeLabel="Create vehicle" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
+    <div className="workflow-form-grid">
+      <label><span>VIN</span><input required value={form.vin} onChange={(event) => setForm({ ...form, vin: event.target.value.toUpperCase() })} /></label>
+      <label><span>Registration</span><input value={form.registration} onChange={(event) => setForm({ ...form, registration: event.target.value })} /></label>
+      <label><span>Make</span><input required value={form.make} onChange={(event) => setForm({ ...form, make: event.target.value })} /></label>
+      <label><span>Model</span><input required value={form.model} onChange={(event) => setForm({ ...form, model: event.target.value })} /></label>
+      <label><span>Variant</span><input value={form.variant} onChange={(event) => setForm({ ...form, variant: event.target.value })} /></label>
+      <label><span>Colour</span><input value={form.colour} onChange={(event) => setForm({ ...form, colour: event.target.value })} /></label>
+      <label><span>Status</span><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}><option value="in-stock">In stock</option><option value="demo">Demo</option><option value="reserved">Reserved</option><option value="customer-owned">Customer owned</option></select></label>
+    </div>
+  </WorkflowModal>;
+}
 
-export function WorkspacePage({ title, eyebrow, description, action, children }: { title:string;eyebrow:string;description:string;action?:React.ReactNode;children:React.ReactNode }) {
-  return <div className="workspace-page"><header className="workspace-page-header"><div><span>{eyebrow}</span><h1>{title}</h1><p>{description}</p></div>{action&&<div className="workspace-page-action">{action}</div>}</header>{children}</div>;
+function EditVehicleModal({ vehicle, onClose, onSubmit, saving }: { vehicle: Vehicle360; saving: boolean; onClose: () => void; onSubmit: (form: { registration: string; colour: string; odometerKm: string; marketValue: string; status: string }) => void }) {
+  const [form, setForm] = useState({ registration: vehicle.registration ?? "", colour: vehicle.colour ?? "", odometerKm: vehicle.odometerKm?.toString() ?? "", marketValue: vehicle.marketValue?.toString() ?? "", status: vehicle.status });
+  return <WorkflowModal title="Update vehicle" eyebrow="Vehicle record" completeLabel="Save changes" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
+    <div className="workflow-form-grid">
+      <label><span>Registration</span><input value={form.registration} onChange={(event) => setForm({ ...form, registration: event.target.value })} /></label>
+      <label><span>Colour</span><input value={form.colour} onChange={(event) => setForm({ ...form, colour: event.target.value })} /></label>
+      <label><span>Odometer (km)</span><input type="number" min="0" value={form.odometerKm} onChange={(event) => setForm({ ...form, odometerKm: event.target.value })} /></label>
+      <label><span>Market value (AUD)</span><input type="number" min="0" value={form.marketValue} onChange={(event) => setForm({ ...form, marketValue: event.target.value })} /></label>
+      <label><span>Status</span><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}><option value="in-stock">In stock</option><option value="demo">Demo</option><option value="reserved">Reserved</option><option value="customer-owned">Customer owned</option><option value="sold">Sold</option></select></label>
+    </div>
+  </WorkflowModal>;
+}
+
+function VehicleServiceModal({ onClose, onSubmit, saving }: { saving: boolean; onClose: () => void; onSubmit: (form: { repairOrderNumber: string; advisor: string; complaint: string }) => void }) {
+  const [form, setForm] = useState({ repairOrderNumber: `RO-${Math.floor(Math.random() * 90000 + 10000)}`, advisor: "", complaint: "" });
+  return <WorkflowModal title="Create workshop booking" eyebrow="Vehicle operations" completeLabel="Confirm booking" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
+    <div className="workflow-form-grid">
+      <label><span>Repair order number</span><input value={form.repairOrderNumber} onChange={(event) => setForm({ ...form, repairOrderNumber: event.target.value })} /></label>
+      <label><span>Advisor</span><input value={form.advisor} onChange={(event) => setForm({ ...form, advisor: event.target.value })} /></label>
+      <label className="workflow-form-full"><span>Work requested</span><input value={form.complaint} onChange={(event) => setForm({ ...form, complaint: event.target.value })} /></label>
+    </div>
+  </WorkflowModal>;
+}
+
+function InfoGrid({ items }: { items: string[][] }) {
+  return <div className="info-grid">{items.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>;
+}
+
+export function WorkspacePage({ title, eyebrow, description, action, children }: { title: string; eyebrow: string; description: string; action?: ReactNode; children: ReactNode }) {
+  return <div className="workspace-page"><header className="workspace-page-header"><div><span>{eyebrow}</span><h1>{title}</h1><p>{description}</p></div>{action && <div className="workspace-page-action">{action}</div>}</header>{children}</div>;
 }

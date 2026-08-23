@@ -19,7 +19,7 @@ after(async () => {
   await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
 });
 
-test("health returns a safe database mode", async () => {
+test("health reports a safe database mode without a configured database", async () => {
   const response = await fetch(`${baseUrl}/api/health`);
   const body = await response.json();
   assert.equal(response.status, 200);
@@ -28,21 +28,33 @@ test("health returns a safe database mode", async () => {
   assert.ok(response.headers.get("x-request-id"));
 });
 
-test("validation errors use the public error envelope", async () => {
-  const response = await fetch(`${baseUrl}/api/v1/customers/search?q=x`);
+test("signup validation errors use the public error envelope", async () => {
+  const response = await fetch(`${baseUrl}/api/v1/auth/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ organizationName: "x" }),
+  });
   const body = await response.json();
   assert.equal(response.status, 400);
-  assert.equal(body.error.code, "INVALID_SEARCH_QUERY");
+  assert.equal(body.error.code, "INVALID_INPUT");
   assert.ok(body.error.requestId);
   assert.equal(typeof body.error.message, "string");
 });
 
-test("demonstration customer search remains available when the database is not configured", async () => {
-  const response = await fetch(`${baseUrl}/api/v1/customers/search?q=James`);
+test("protected routes require authentication", async () => {
+  const response = await fetch(`${baseUrl}/api/v1/customers`);
   const body = await response.json();
-  assert.equal(response.status, 200);
-  assert.equal(body.dataSource, "demonstration");
-  assert.equal(body.customers.length, 1);
+  assert.equal(response.status, 401);
+  assert.equal(body.error.code, "AUTHENTICATION_REQUIRED");
+});
+
+test("an invalid bearer token is rejected", async () => {
+  const response = await fetch(`${baseUrl}/api/v1/customers`, {
+    headers: { Authorization: "Bearer not-a-real-token" },
+  });
+  const body = await response.json();
+  assert.equal(response.status, 401);
+  assert.equal(body.error.code, "SESSION_INVALID");
 });
 
 test("not-found routes use a stable code", async () => {

@@ -2,9 +2,21 @@ import { randomUUID } from "node:crypto";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
-import { databaseStatus, findCustomers, findVehicles, getCustomer360, getVehicle360 } from "./db.js";
-import { demoCustomer, overview } from "./demo-data.js";
+import { databaseStatus } from "./db.js";
 import { asyncRoute, errorEnvelope, HttpError } from "./errors.js";
+import { authenticate } from "./middleware.js";
+import { authRouter } from "./routes/auth.js";
+import { branchesRouter } from "./routes/branches.js";
+import { communicationsRouter } from "./routes/communications.js";
+import { customersRouter } from "./routes/customers.js";
+import { financeContractsRouter, insurancePoliciesRouter } from "./routes/finance.js";
+import { organizationsRouter } from "./routes/organizations.js";
+import { overviewRouter } from "./routes/overview.js";
+import { partsRouter } from "./routes/parts.js";
+import { leadsRouter, salesOrdersRouter } from "./routes/sales.js";
+import { serviceJobsRouter } from "./routes/service.js";
+import { usersRouter } from "./routes/users.js";
+import { vehiclesRouter } from "./routes/vehicles.js";
 
 export const app = express();
 
@@ -39,80 +51,29 @@ app.get("/api/health", asyncRoute(async (_request, response) => {
     .json({
       service: "autoaxis-api",
       status: degraded ? "degraded" : "ok",
-      mode: database.status === "not-configured" ? "demonstration" : "connected",
+      mode: database.status === "not-configured" ? "not-configured" : "connected",
       database,
     });
 }));
 
-app.get("/api/v1/overview", (_request, response) => response.json(overview));
+// Authentication routes issue and verify their own tokens, so they run before the auth gate below.
+app.use("/api/v1/auth", authRouter);
 
-app.get("/api/v1/customers/search", asyncRoute(async (request, response) => {
-  const query = String(request.query.q ?? "").trim();
-  if (query.length < 2 || query.length > 120) {
-    throw new HttpError(400, "INVALID_SEARCH_QUERY", "Enter between two and 120 characters.");
-  }
+app.use("/api/v1", authenticate);
 
-  const rows = await findCustomers(query);
-  if (rows) return response.json({ dataSource: "postgresql", customers: rows });
-
-  const normalized = query.replace(/\s/g, "").toLowerCase();
-  const customers = [demoCustomer].filter((customer) =>
-    [customer.displayName, customer.mobile, customer.email]
-      .some((value) => value.replace(/\s/g, "").toLowerCase().includes(normalized)),
-  );
-  return response.json({ dataSource: "demonstration", customers });
-}));
-
-app.get("/api/v1/customers/:id/360", asyncRoute(async (request, response) => {
-  const customer = await getCustomer360(request.params.id);
-  if (customer === undefined) throw new HttpError(404, "CUSTOMER_NOT_FOUND", "Customer not found.");
-  if (customer) return response.json({ dataSource: "postgresql", customer });
-  if (request.params.id !== demoCustomer.id) throw new HttpError(404, "CUSTOMER_NOT_FOUND", "Customer not found.");
-  return response.json({ dataSource: "demonstration", customer: demoCustomer });
-}));
-
-app.get("/api/v1/vehicles/search", asyncRoute(async (request, response) => {
-  const query = String(request.query.q ?? "").trim();
-  if (query.length < 2 || query.length > 120) {
-    throw new HttpError(400, "INVALID_SEARCH_QUERY", "Enter between two and 120 characters.");
-  }
-
-  const rows = await findVehicles(query);
-  if (rows) return response.json({ dataSource: "postgresql", vehicles: rows });
-
-  const vehicle = demoCustomer.vehicles[0];
-  const normalized = query.toLowerCase();
-  const vehicles = [vehicle].filter((item) =>
-    [item.vin, item.registration, item.make, item.model]
-      .some((value) => value.toLowerCase().includes(normalized)),
-  );
-  return response.json({ dataSource: "demonstration", vehicles });
-}));
-
-app.get("/api/v1/vehicles/:id/360", asyncRoute(async (request, response) => {
-  const vehicle = await getVehicle360(request.params.id);
-  if (vehicle === undefined) throw new HttpError(404, "VEHICLE_NOT_FOUND", "Vehicle not found.");
-  if (vehicle) return response.json({ dataSource: "postgresql", vehicle });
-
-  const demoVehicle = demoCustomer.vehicles.find((item) => item.id === request.params.id);
-  if (!demoVehicle) throw new HttpError(404, "VEHICLE_NOT_FOUND", "Vehicle not found.");
-  return response.json({
-    dataSource: "demonstration",
-    vehicle: {
-      ...demoVehicle,
-      ownerId: demoCustomer.id,
-      ownerName: demoCustomer.displayName,
-      ownerMobile: demoCustomer.mobile,
-      timeline: demoCustomer.timeline,
-    },
-  });
-}));
-
-app.get("/api/v1/modules/:module/summary", (request, response) => {
-  const modules = new Set(["sales", "service", "parts", "finance", "marketing", "usedcars", "inventory", "branch", "group"]);
-  if (!modules.has(request.params.module)) throw new HttpError(404, "MODULE_NOT_FOUND", "Module not found.");
-  return response.json({ dataSource: "demonstration", module: request.params.module, generatedAt: new Date().toISOString(), kpis: overview.kpis });
-});
+app.use("/api/v1/organizations", organizationsRouter);
+app.use("/api/v1/branches", branchesRouter);
+app.use("/api/v1/users", usersRouter);
+app.use("/api/v1/overview", overviewRouter);
+app.use("/api/v1/customers", customersRouter);
+app.use("/api/v1/vehicles", vehiclesRouter);
+app.use("/api/v1/leads", leadsRouter);
+app.use("/api/v1/sales-orders", salesOrdersRouter);
+app.use("/api/v1/service-jobs", serviceJobsRouter);
+app.use("/api/v1/parts", partsRouter);
+app.use("/api/v1/finance-contracts", financeContractsRouter);
+app.use("/api/v1/insurance-policies", insurancePoliciesRouter);
+app.use("/api/v1/communications", communicationsRouter);
 
 app.use((request, _response, next) => next(new HttpError(404, "ROUTE_NOT_FOUND", `Route ${request.method} ${request.path} was not found.`)));
 

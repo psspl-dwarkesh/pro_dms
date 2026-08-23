@@ -8,7 +8,7 @@ import { PUBLIC_DOMAINS } from "./data";
 import { Brand, IconFrame } from "./components/Brand";
 import type { DashView } from "./types";
 
-type LandingPageProps = { onOpenWorkspace: (view?: DashView) => void };
+type LandingPageProps = { onOpenWorkspace: (view?: DashView) => void; onGoToLogin: () => void; onGoToSignup: () => void };
 type PreviewMode = "pulse" | "customer" | "vehicle" | "service";
 
 const previewModes: Array<{ id: PreviewMode; label: string; icon: typeof Gauge; view: DashView }> = [
@@ -34,7 +34,7 @@ const operatingSteps = [
   { label: "Optimise", detail: "Margin, capacity, risk, forecast", icon: BarChart3 },
 ];
 
-function ProductPreview({ onOpenWorkspace }: LandingPageProps) {
+function ProductPreview({ onOpenWorkspace }: Pick<LandingPageProps, "onOpenWorkspace">) {
   const [mode, setMode] = useState<PreviewMode>("pulse");
   const active = previewModes.find((item) => item.id === mode)!;
   return (
@@ -86,7 +86,7 @@ function PreviewService() {
   return <div className="mini-service"><div><small>Connected opportunity</small><strong>Service-to-trade</strong><p>James' X5 is in Bay 06. Positive equity and 48-month ownership make this a qualified appraisal moment.</p></div><ol><li className="done"><i />RO checked in <b>08:10</b></li><li className="done"><i />Inspection complete <b>09:05</b></li><li className="active"><i />Trade appraisal <b>Now</b></li><li><i />Sales follow-up <b>Queued</b></li></ol></div>;
 }
 
-export default function LandingPage({ onOpenWorkspace }: LandingPageProps) {
+export default function LandingPage({ onOpenWorkspace, onGoToLogin, onGoToSignup }: LandingPageProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [axisIndex, setAxisIndex] = useState(0);
   const axis = axisDomains[axisIndex];
@@ -95,11 +95,11 @@ export default function LandingPage({ onOpenWorkspace }: LandingPageProps) {
       <header className="marketing-header marketing-header--dark">
         <div className="site-shell header-inner">
           <a href="#top" aria-label="AutoAxis home"><Brand inverse /></a>
-          <nav className="desktop-nav" aria-label="Primary navigation"><a href="#platform">Platform</a><a href="#journey">Connected journey</a><a href="#roles">Workspaces</a><a href="#trust">Trust</a></nav>
-          <button className="button button--header desktop-cta" type="button" onClick={() => onOpenWorkspace("overview")}>Open live workspace <ArrowRight size={16} /></button>
+          <nav className="desktop-nav" aria-label="Primary navigation"><a href="#platform">Platform</a><a href="#journey">Connected journey</a><a href="#roles">Workspaces</a><a href="#trust">Trust</a><button type="button" onClick={onGoToLogin}>Sign in</button></nav>
+          <button className="button button--header desktop-cta" type="button" onClick={onGoToSignup}>Sign up your company <ArrowRight size={16} /></button>
           <button className="mobile-menu-button" type="button" aria-label="Toggle navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)}>{menuOpen ? <X /> : <Menu />}</button>
         </div>
-        {menuOpen && <nav className="mobile-nav mobile-nav--dark" aria-label="Mobile navigation"><a href="#platform" onClick={() => setMenuOpen(false)}>Platform</a><a href="#journey" onClick={() => setMenuOpen(false)}>Connected journey</a><a href="#roles" onClick={() => setMenuOpen(false)}>Workspaces</a><button className="button button--signal" type="button" onClick={() => onOpenWorkspace("overview")}>Open live workspace</button></nav>}
+        {menuOpen && <nav className="mobile-nav mobile-nav--dark" aria-label="Mobile navigation"><a href="#platform" onClick={() => setMenuOpen(false)}>Platform</a><a href="#journey" onClick={() => setMenuOpen(false)}>Connected journey</a><a href="#roles" onClick={() => setMenuOpen(false)}>Workspaces</a><button className="button button--light" type="button" onClick={onGoToLogin}>Sign in</button><button className="button button--signal" type="button" onClick={onGoToSignup}>Sign up your company</button></nav>}
       </header>
 
       <main id="top">
@@ -109,7 +109,7 @@ export default function LandingPage({ onOpenWorkspace }: LandingPageProps) {
             <div className="hero-copy">
               <p className="eyebrow"><span /> Automotive Integration Hub</p>
               <h1>One operating system for the <em>whole dealership.</em></h1>
-              <p className="hero-lede">AutoAxis connects every customer, vehicle, team and transaction around two trusted records—so work flows from enquiry to ownership without losing context.</p>
+              <p className="hero-lede">AutoAxis connects every customer, vehicle, team and transaction around two trusted records, so work flows from enquiry to ownership without losing context.</p>
               <div className="hero-actions"><button className="button button--signal" type="button" onClick={() => onOpenWorkspace("customers")}>Search a customer <ArrowRight size={17} /></button><a className="text-link" href="#journey">Follow the connected journey <ChevronRight size={16} /></a></div>
               <div className="hero-proof"><div><strong>360°</strong><span>customer + vehicle context</span></div><div><strong>13</strong><span>role-based workspaces</span></div><div><strong>1</strong><span>real-time operating layer</span></div></div>
             </div>
@@ -146,7 +146,7 @@ export default function LandingPage({ onOpenWorkspace }: LandingPageProps) {
 
         <section className="trust-section" id="trust"><div className="site-shell trust-grid"><div className="trust-copy"><p className="eyebrow eyebrow--dark"><span /> Enterprise foundation</p><h2>Built for control, not just dashboards.</h2><p>The showcase uses clearly labelled demonstration workflows. Production connections add approved identity, tenant isolation, audit history and observed service levels.</p></div><div className="trust-cards"><div><ShieldCheck /><strong>Tenant-ready boundaries</strong><p>Organization and branch scope built into the data model.</p></div><div><BadgeCheck /><strong>Evidence discipline</strong><p>Illustrative outcomes remain separate from customer proof.</p></div><div><Sparkles /><strong>Release confidence</strong><p>Feature branches, database verification and staged promotion.</p></div></div></div></section>
 
-        <section className="closing-section"><div className="site-shell closing-inner"><div><span>See the operating model in motion.</span><h2>Walk from one mobile number to one VIN—and every decision between.</h2></div><button className="button button--signal" type="button" onClick={() => onOpenWorkspace("customers")}>Launch the demonstration <ArrowRight size={17} /></button></div></section>
+        <section className="closing-section"><div className="site-shell closing-inner"><div><span>See the operating model in motion.</span><h2>Walk from one mobile number to one VIN, and every decision between.</h2></div><button className="button button--signal" type="button" onClick={() => onOpenWorkspace("customers")}>Launch the demonstration <ArrowRight size={17} /></button></div></section>
       </main>
 
       <footer className="marketing-footer"><div className="site-shell footer-grid"><div><Brand inverse /><p>Connected operating software for modern automotive retail.</p><a className="builder-lockup" href="https://prakashinfotech.com" target="_blank" rel="noreferrer"><span>Designed &amp; built by</span><strong>Prakash Infotech</strong></a></div><div><span>Platform</span><a href="#platform">Operating model</a><a href="#journey">Connected journey</a><a href="#roles">Workspaces</a></div><div><span>Product</span><button type="button" onClick={() => onOpenWorkspace("customers")}>Customer 360</button><button type="button" onClick={() => onOpenWorkspace("vehicles")}>Vehicle 360</button><button type="button" onClick={() => onOpenWorkspace("group")}>Group analytics</button></div><div><span>Contact</span><a href="mailto:dms@prakashinfotech.com">dms@prakashinfotech.com</a><a href="https://prakashinfotech.com" target="_blank" rel="noreferrer">prakashinfotech.com</a><a href="#trust">Trust &amp; delivery</a></div></div><div className="site-shell footer-bottom"><span>© 2026 AutoAxis · A Prakash Infotech product case study.</span><span>Operational data shown is illustrative.</span></div></footer>
