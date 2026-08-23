@@ -493,7 +493,7 @@ export async function listSalesOrders(organizationId, branchId, { status, custom
   values.push(limit, offset);
   const result = await query(
     `select s.id, s.branch_id as "branchId", s.customer_id as "customerId", c.display_name as "customerName",
-            s.vehicle_id as "vehicleId", v.make, v.model, s.status, s.total_amount::float as "totalAmount",
+            s.vehicle_id as "vehicleId", v.make, v.model, s.lead_id as "leadId", s.status, s.total_amount::float as "totalAmount",
             s.ordered_at as "orderedAt", s.delivered_at as "deliveredAt"
        from sales_orders s
        join customers c on c.id = s.customer_id
@@ -505,15 +505,74 @@ export async function listSalesOrders(organizationId, branchId, { status, custom
   return result.rows;
 }
 
-export async function createSalesOrder(organizationId, branchId, { customerId, vehicleId, status, totalAmount, orderedAt }) {
+export async function createSalesOrder(organizationId, branchId, { customerId, vehicleId, leadId, status, totalAmount, orderedAt }) {
   const result = await query(
-    `insert into sales_orders (organization_id, branch_id, customer_id, vehicle_id, status, total_amount, ordered_at)
-     values ($1, $2, $3, $4, $5, $6, $7)
-     returning id, branch_id as "branchId", customer_id as "customerId", vehicle_id as "vehicleId",
+    `insert into sales_orders (organization_id, branch_id, customer_id, vehicle_id, lead_id, status, total_amount, ordered_at)
+     values ($1, $2, $3, $4, $5, $6, $7, $8)
+     returning id, branch_id as "branchId", customer_id as "customerId", vehicle_id as "vehicleId", lead_id as "leadId",
                status, total_amount::float as "totalAmount", ordered_at as "orderedAt", delivered_at as "deliveredAt"`,
-    [organizationId, branchId ?? null, customerId, vehicleId, status, totalAmount, orderedAt ?? new Date().toISOString()],
+    [organizationId, branchId ?? null, customerId, vehicleId, leadId ?? null, status, totalAmount, orderedAt ?? new Date().toISOString()],
   );
   return result.rows[0];
+}
+
+export async function getLead360(organizationId, id) {
+  const leadResult = await query(
+    `select l.id, l.branch_id as "branchId", l.customer_id as "customerId", c.display_name as "customerName",
+            c.mobile as "customerMobile", c.email as "customerEmail",
+            l.source, l.stage, l.interested_vehicle as "interestedVehicle", l.assigned_to as "assignedTo",
+            l.expected_value::float as "expectedValue", l.created_at as "createdAt"
+       from leads l left join customers c on c.id = l.customer_id
+      where l.id = $1 and l.organization_id = $2`,
+    [id, organizationId],
+  );
+  if (!leadResult.rowCount) return undefined;
+
+  const [testDrives, salesOrder] = await Promise.all([
+    query(
+      `select id, vehicle_id as "vehicleId", scheduled_at as "scheduledAt", status, feedback
+         from test_drives where lead_id = $1 order by scheduled_at desc`,
+      [id],
+    ),
+    query(
+      `select s.id, s.status, s.total_amount::float as "totalAmount", s.ordered_at as "orderedAt", s.delivered_at as "deliveredAt"
+         from sales_orders s where s.lead_id = $1 and s.organization_id = $2`,
+      [id, organizationId],
+    ),
+  ]);
+
+  return { ...leadResult.rows[0], testDrives: testDrives.rows, salesOrder: salesOrder.rows[0] ?? null };
+}
+
+export async function getSalesOrder360(organizationId, id) {
+  const orderResult = await query(
+    `select s.id, s.branch_id as "branchId", s.status, s.total_amount::float as "totalAmount",
+            s.ordered_at as "orderedAt", s.delivered_at as "deliveredAt", s.lead_id as "leadId",
+            c.id as "customerId", c.display_name as "customerName", c.mobile as "customerMobile", c.email as "customerEmail",
+            v.id as "vehicleId", v.vin, v.registration, v.make, v.model, v.variant
+       from sales_orders s
+       join customers c on c.id = s.customer_id
+       join vehicles v on v.id = s.vehicle_id
+      where s.id = $1 and s.organization_id = $2`,
+    [id, organizationId],
+  );
+  if (!orderResult.rowCount) return undefined;
+  const order = orderResult.rows[0];
+
+  const [contract, policies] = await Promise.all([
+    query(
+      `select id, provider, product_type as "productType", amount_financed::float as "amountFinanced", status, commission::float as "commission"
+         from finance_contracts where sales_order_id = $1`,
+      [id],
+    ),
+    query(
+      `select id, provider, policy_number as "policyNumber", status, starts_on as "startsOn", expires_on as "expiresOn", premium::float as "premium"
+         from insurance_policies where customer_id = $1 and vehicle_id = $2 order by expires_on desc`,
+      [order.customerId, order.vehicleId],
+    ),
+  ]);
+
+  return { ...order, financeContract: contract.rows[0] ?? null, insurancePolicies: policies.rows };
 }
 
 export async function updateSalesOrder(organizationId, id, { status, deliveredAt }) {
@@ -579,6 +638,23 @@ export async function createServiceJob(organizationId, branchId, { customerId, v
     }
     throw cause;
   });
+  return result.rows[0];
+}
+
+export async function getServiceJob360(organizationId, id) {
+  const result = await query(
+    `select sj.id, sj.branch_id as "branchId", sj.repair_order_number as "repairOrderNumber",
+            sj.status, sj.advisor, sj.technician, sj.complaint,
+            sj.labour_total::float as "labourTotal", sj.parts_total::float as "partsTotal",
+            sj.opened_at as "openedAt", sj.promised_at as "promisedAt", sj.closed_at as "closedAt",
+            c.id as "customerId", c.display_name as "customerName", c.mobile as "customerMobile", c.email as "customerEmail",
+            v.id as "vehicleId", v.vin, v.registration, v.make, v.model, v.variant, v.odometer_km as "odometerKm"
+       from service_jobs sj
+       join customers c on c.id = sj.customer_id
+       join vehicles v on v.id = sj.vehicle_id
+      where sj.id = $1 and sj.organization_id = $2`,
+    [id, organizationId],
+  );
   return result.rows[0];
 }
 

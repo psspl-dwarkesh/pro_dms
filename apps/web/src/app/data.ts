@@ -56,19 +56,19 @@ export const PAGE_HELP: Partial<Record<DashView, { summary: string; canDo: strin
     ],
   },
   sales: {
-    summary: "The lead pipeline from first enquiry through to a won or lost deal.",
+    summary: "Every lead's connected record - source, stage, test drives, and the sale it becomes.",
     canDo: [
-      "Create a lead from the sidebar and track it through each stage.",
-      "Filter the pipeline by stage, or change a lead's stage directly from the list.",
-      "Export the current queue to CSV for offline review.",
+      "Search or create a lead on the left; select one to open its full record.",
+      "Use Quick actions in the sidebar to log a test drive, or convert a won lead into a sale.",
+      "Change stage directly from the record; once won and converted, jump straight to Finance and insurance.",
     ],
   },
   service: {
-    summary: "The workshop queue - every repair order from booking through to close.",
+    summary: "Every repair order's connected record - customer, vehicle, and job status in one place.",
     canDo: [
-      "Book a new repair order from the sidebar.",
-      "Filter jobs by status, or move a job to its next status directly from the list.",
-      "Open the linked customer or vehicle record for full context on any job.",
+      "Search or book a repair order on the left; select one to open its full record.",
+      "Update status directly from the record as work progresses.",
+      "Open the linked customer for full context on who the vehicle belongs to.",
     ],
   },
   parts: {
@@ -80,11 +80,11 @@ export const PAGE_HELP: Partial<Record<DashView, { summary: string; canDo: strin
     ],
   },
   finance: {
-    summary: "Finance contracts and insurance policies tied to your sales orders.",
+    summary: "Every deal's connected record - the vehicle, its finance contract, and any insurance policies.",
     canDo: [
-      "Create a finance contract or insurance policy from the sidebar.",
-      "Switch between the Contracts and Policies tabs to review either list.",
-      "Each contract links back to the sales order that financed it.",
+      "Search or create a deal on the left; select one to open its full record.",
+      "Use Quick actions in the sidebar to attach a finance contract or an insurance policy.",
+      "Deals convert here automatically once a lead is won and converted from Sales and CRM.",
     ],
   },
   company: {

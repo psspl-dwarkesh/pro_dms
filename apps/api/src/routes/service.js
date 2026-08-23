@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createServiceJob, listServiceJobs, updateServiceJob } from "../db.js";
+import { createServiceJob, getServiceJob360, listServiceJobs, updateServiceJob } from "../db.js";
 import { asyncRoute, HttpError } from "../errors.js";
 import { branchScope, resolveWriteBranchId } from "../middleware.js";
 import { optionalNumber, optionalString, requireEnum, requireString, requireUuid, paginationParams } from "../validate.js";
@@ -39,6 +39,13 @@ serviceJobsRouter.patch("/:id", asyncRoute(async (request, response) => {
   const partsTotal = optionalNumber(request.body.partsTotal);
   const closedAt = status === "closed" ? new Date().toISOString() : (request.body.closedAt ?? null);
   const serviceJob = await updateServiceJob(request.auth.organizationId, id, { status, technician, labourTotal, partsTotal, closedAt });
+  if (!serviceJob) throw new HttpError(404, "SERVICE_JOB_NOT_FOUND", "Service job not found.");
+  response.json({ serviceJob });
+}));
+
+serviceJobsRouter.get("/:id/360", asyncRoute(async (request, response) => {
+  const id = requireUuid(request.params.id, "Service job id");
+  const serviceJob = await getServiceJob360(request.auth.organizationId, id);
   if (!serviceJob) throw new HttpError(404, "SERVICE_JOB_NOT_FOUND", "Service job not found.");
   response.json({ serviceJob });
 }));

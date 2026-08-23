@@ -13,6 +13,10 @@ export type SidebarAction = {
   onClick?: () => void;
   href?: string;
   tone?: "danger";
+  // Groups actions under their own labeled section in the sidebar (default "Quick actions").
+  // Also added on fix/sidebar-popover-polish (which renders the grouped sections) - identical
+  // change on both branches, trivial to reconcile whichever merges second.
+  group?: "Quick actions" | "This record";
 };
 
 type SidebarActionsContextValue = { setActions: (actions: SidebarAction[]) => void };

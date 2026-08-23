@@ -114,6 +114,21 @@ export type Lead = {
   createdAt: string;
 };
 
+export type TestDrive = {
+  id: string;
+  vehicleId: string | null;
+  scheduledAt: string;
+  status: string;
+  feedback: string | null;
+};
+
+export type Lead360 = Lead & {
+  customerMobile: string | null;
+  customerEmail: string | null;
+  testDrives: TestDrive[];
+  salesOrder: { id: string; status: string; totalAmount: number; orderedAt: string; deliveredAt: string | null } | null;
+};
+
 export type SalesOrder = {
   id: string;
   branchId: string | null;
@@ -122,10 +137,33 @@ export type SalesOrder = {
   vehicleId: string;
   make: string;
   model: string;
+  leadId: string | null;
   status: string;
   totalAmount: number;
   orderedAt: string;
   deliveredAt: string | null;
+};
+
+export type SalesOrder360 = {
+  id: string;
+  branchId: string | null;
+  status: string;
+  totalAmount: number;
+  orderedAt: string;
+  deliveredAt: string | null;
+  leadId: string | null;
+  customerId: string;
+  customerName: string;
+  customerMobile: string | null;
+  customerEmail: string | null;
+  vehicleId: string;
+  vin: string;
+  registration: string | null;
+  make: string;
+  model: string;
+  variant: string | null;
+  financeContract: FinanceContract | null;
+  insurancePolicies: InsurancePolicy[];
 };
 
 export type ServiceJob = {
@@ -146,6 +184,15 @@ export type ServiceJob = {
   openedAt: string;
   promisedAt: string | null;
   closedAt: string | null;
+};
+
+export type ServiceJob360 = ServiceJob & {
+  customerMobile: string | null;
+  customerEmail: string | null;
+  vin: string;
+  registration: string | null;
+  variant: string | null;
+  odometerKm: number | null;
 };
 
 export type Part = {
