@@ -1,8 +1,9 @@
 import { AlertCircle, Building2, Users } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, RefObject, useEffect, useRef, useState } from "react";
 import { apiGet, apiPatch, apiPost, ApiError } from "../../lib/api";
 import type { Branch, Role, UserAccount } from "../types";
 import { WorkspacePage } from "./RecordViews";
+import { useContextualActions } from "./SidebarActions";
 
 const ROLES: Role[] = ["admin", "branch_manager", "sales", "service", "staff"];
 const ROLE_LABELS: Record<Role, string> = { admin: "Admin", branch_manager: "Branch manager", sales: "Sales", service: "Service", staff: "Staff" };
@@ -17,6 +18,19 @@ export function CompanyAdmin() {
 
   const [userForm, setUserForm] = useState({ name: "", email: "", password: "", role: "staff" as Role, branchId: "" });
   const [userSaving, setUserSaving] = useState(false);
+
+  const branchCodeRef = useRef<HTMLInputElement>(null);
+  const userNameRef = useRef<HTMLInputElement>(null);
+
+  function focusField(ref: RefObject<HTMLInputElement>) {
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    ref.current?.focus();
+  }
+
+  useContextualActions(() => [
+    { id: "add-branch", label: "Add branch", icon: Building2, onClick: () => focusField(branchCodeRef) },
+    { id: "add-user", label: "Add team member", icon: Users, onClick: () => focusField(userNameRef) },
+  ], []);
 
   function reload() {
     Promise.all([apiGet<{ branches: Branch[] }>("/api/v1/branches"), apiGet<{ users: UserAccount[] }>("/api/v1/users")])
@@ -81,7 +95,7 @@ export function CompanyAdmin() {
             </tbody>
           </table>
           <form className="admin-inline-form" onSubmit={createBranch}>
-            <input required placeholder="Code (e.g. SYD)" value={branchForm.code} onChange={(event) => setBranchForm({ ...branchForm, code: event.target.value.toUpperCase() })} maxLength={12} />
+            <input ref={branchCodeRef} required placeholder="Code (e.g. SYD)" value={branchForm.code} onChange={(event) => setBranchForm({ ...branchForm, code: event.target.value.toUpperCase() })} maxLength={12} />
             <input required placeholder="Branch name" value={branchForm.name} onChange={(event) => setBranchForm({ ...branchForm, name: event.target.value })} />
             <input placeholder="City" value={branchForm.city} onChange={(event) => setBranchForm({ ...branchForm, city: event.target.value })} />
             <button type="submit" disabled={branchSaving}>{branchSaving ? "Adding..." : "Add branch"}</button>
@@ -106,7 +120,7 @@ export function CompanyAdmin() {
             </tbody>
           </table>
           <form className="admin-inline-form" onSubmit={createUser}>
-            <input required placeholder="Full name" value={userForm.name} onChange={(event) => setUserForm({ ...userForm, name: event.target.value })} />
+            <input ref={userNameRef} required placeholder="Full name" value={userForm.name} onChange={(event) => setUserForm({ ...userForm, name: event.target.value })} />
             <input required type="email" placeholder="Work email" value={userForm.email} onChange={(event) => setUserForm({ ...userForm, email: event.target.value })} />
             <input required type="password" placeholder="Temporary password" value={userForm.password} onChange={(event) => setUserForm({ ...userForm, password: event.target.value })} minLength={8} />
             <select value={userForm.role} onChange={(event) => setUserForm({ ...userForm, role: event.target.value as Role })}>

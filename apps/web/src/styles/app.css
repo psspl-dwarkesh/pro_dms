@@ -632,10 +632,6 @@
 .channel-rail b { display: flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 99px; padding: 8px 12px; background: white; font-size: 9px; }
 .channel-rail svg { width: 13px; color: var(--teal-deep); }
 
-.record-action-bar { margin-bottom: 12px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.record-action-bar a, .record-action-bar button { min-height: 38px; display: flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 8px; padding: 0 12px; background: white; color: var(--ink-700); cursor: pointer; font-size: 9px; font-weight: 800; }
-.record-action-bar a:hover, .record-action-bar button:hover { border-color: var(--teal); color: var(--teal-deep); }
-.record-action-bar svg { width: 14px; }
 .record-tabs { margin-top: 20px; display: flex; gap: 22px; border-bottom: 1px solid var(--line); }
 .record-tabs button { min-height: 38px; border-bottom: 2px solid transparent; background: transparent; color: var(--ink-500); cursor: pointer; font-size: 9px; font-weight: 800; }
 .record-tabs button.active { border-color: var(--signal); color: var(--ink-950); }
@@ -773,8 +769,6 @@
   .journey-track button, .journey-track button:nth-child(3) { min-height: 120px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
   .journey-track button:nth-child(2n) { border-right: 0; }
   .journey-track button:nth-last-child(-n+2) { border-bottom: 0; }
-  .record-action-bar { display: grid; grid-template-columns: 1fr 1fr; }
-  .record-action-bar a, .record-action-bar button { justify-content: center; }
   .record-tabs { gap: 8px; overflow-x: auto; }
   .record-tabs button { flex: 0 0 auto; padding-inline: 7px; }
   .info-grid { grid-template-columns: 1fr 1fr; }
@@ -1132,6 +1126,32 @@
 .collapse-button { border-color: var(--line); background: white; color: var(--ink-500); }
 .collapse-button:hover { background: var(--paper-2); color: var(--ink-950); }
 
+.all-workspaces-link { margin: 10px 12px 0; display: flex; align-items: center; gap: 10px; height: 38px; border: 1px solid var(--line); border-radius: 6px; padding-inline: 11px; background: var(--paper-subtle); color: var(--ink-600); cursor: pointer; font-size: 11px; font-weight: 700; }
+.all-workspaces-link:hover { border-color: rgba(20,99,255,.32); background: var(--blue-soft); color: var(--blue); }
+.operations-sidebar.collapsed .all-workspaces-link { margin-inline: 12px; justify-content: center; padding: 0; }
+.operations-sidebar.collapsed .all-workspaces-link span { display: none; }
+
+/* Contextual sidebar: quick actions and related-workspace links registered by the active page */
+.operations-nav a { position: relative; width: 100%; min-height: 42px; display: flex; align-items: center; gap: 12px; border: 1px solid transparent; border-radius: 6px; padding-inline: 11px; color: var(--ink-600); cursor: pointer; font-size: 13px; text-decoration: none; }
+.operations-nav a:hover { background: var(--paper-2); color: var(--ink-950); }
+.operations-sidebar.collapsed .operations-nav a { width: 42px; height: 40px; justify-content: center; padding: 0; }
+.operations-sidebar.collapsed .operations-nav a span { display: none; }
+.operations-nav button.danger-action,
+.operations-nav a.danger-action { color: var(--red); }
+.operations-nav button.danger-action:hover,
+.operations-nav a.danger-action:hover { background: #fce9e7; color: var(--red); }
+
+.planned-list { display: flex; flex-direction: column; gap: 2px; padding-inline: 10px; }
+.planned-item { display: flex; align-items: center; gap: 10px; min-height: 34px; color: var(--ink-500); font-size: 11px; line-height: 1.3; }
+.planned-item svg { flex: 0 0 auto; color: var(--blue); }
+.operations-sidebar.collapsed .planned-item { justify-content: center; }
+.operations-sidebar.collapsed .planned-item span { display: none; }
+
+.page-help-popover { position: absolute; z-index: 60; top: 60px; left: 20px; width: min(320px, calc(100% - 40px)); border: 1px solid var(--line); border-radius: 11px; padding: 16px; background: white; box-shadow: var(--shadow-md); }
+.page-help-popover > span { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 750; }
+.page-help-popover > p { margin: 0 0 10px; color: var(--ink-600); font-size: 11px; line-height: 1.5; }
+.page-help-popover > ul { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 6px; color: var(--ink-600); font-size: 10px; line-height: 1.45; }
+
 .operations-main { position: relative; }
 .operations-topbar { position: relative; z-index: 50; min-height: 72px; height: 72px; border-bottom: 1px solid var(--line); padding-inline: 24px; background: rgba(255,255,255,.94); color: var(--ink-950); backdrop-filter: blur(16px); }
 .operations-topbar .topbar-divider { background: var(--line); }
@@ -1311,25 +1331,6 @@
 .record-directory-panel .customer-directory > button > svg,
 .record-directory-panel .vehicle-directory > button > svg { grid-column: 3; grid-row: 1 / 3; align-self: center; width: 14px; color: var(--ink-400); }
 .record-detail-panel { min-width: 0; }
-.record-primary-actions { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; margin-bottom: 10px; }
-.record-primary-actions > button,
-.record-primary-actions > a { min-height: 94px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 11px; border: 1px solid var(--line); border-radius: 7px; padding: 13px; background: white; color: var(--ink-950); cursor: pointer; text-align: left; box-shadow: var(--shadow-sm); }
-.record-primary-actions > button:hover,
-.record-primary-actions > a:hover { border-color: rgba(20,99,255,.35); background: var(--blue-wash); }
-.record-primary-actions > button > span,
-.record-primary-actions > a > span { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 6px; background: var(--blue-soft); color: var(--blue); }
-.record-primary-actions span svg { width: 17px; }
-.record-primary-actions > button > div,
-.record-primary-actions > a > div { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.record-primary-actions strong { font-size: 11px; }
-.record-primary-actions small { color: var(--ink-500); font-size: 8px; line-height: 1.35; }
-.record-primary-actions > button > svg,
-.record-primary-actions > a > svg { width: 14px; color: var(--ink-400); }
-.record-action-bar { margin-bottom: 12px; gap: 7px; }
-.record-action-bar a,
-.record-action-bar button { min-height: 38px; border-radius: 5px; padding-inline: 11px; font-size: 9px; }
-.record-action-bar a:hover,
-.record-action-bar button:hover { border-color: rgba(20,99,255,.32); background: var(--blue-soft); color: var(--blue); }
 .record-detail-panel .record-layout { grid-template-columns: 1fr; gap: 12px; }
 .record-main-card { padding: 22px; }
 .record-avatar { border-radius: 7px; background: var(--blue); color: white; }
@@ -1394,10 +1395,10 @@
 .source-badge--connected i { background: var(--mint); }
 .notification-popover,
 .profile-popover,
+.page-help-popover,
 .command-palette { border-radius: 8px; }
 
 @media (max-width: 1380px) {
-  .record-primary-actions { grid-template-columns: 1fr 1fr; }
   .domain-work-grid { grid-template-columns: minmax(0,1fr) 280px; }
   .hero-grid { gap: 46px; }
   .studio-records { grid-template-columns: repeat(2,minmax(0,1fr)); }
@@ -1468,11 +1469,7 @@
   .metric-card { min-height: 124px; }
   .studio-records { grid-template-columns: 1fr; }
   .operating-studio > nav { grid-template-columns: 1fr 1fr; }
-  .record-primary-actions { grid-template-columns: 1fr 1fr; }
   .record-side-column { grid-template-columns: 1fr; }
-  .record-action-bar { display: flex; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
-  .record-action-bar a,
-  .record-action-bar button { flex: 0 0 auto; }
   .record-facts { grid-template-columns: 1fr 1fr; }
   .workflow-lane > div:last-child { grid-template-columns: repeat(2,1fr); }
   .workspace-menu { left: 8px; width: calc(100% - 16px); }
@@ -1484,9 +1481,6 @@
   .hero-proof div { grid-template-columns: 52px 1fr; gap: 8px; }
   .integration-strip div { grid-template-columns: 1fr 1fr; }
   .executive-metrics { grid-template-columns: 1fr; }
-  .record-primary-actions { grid-template-columns: 1fr; }
-  .record-primary-actions > button,
-  .record-primary-actions > a { min-height: 78px; }
   .operating-studio > nav { grid-template-columns: 1fr; }
   .studio-summary { align-items: stretch; flex-direction: column; }
   .studio-summary button { width: 100%; justify-content: center; }
