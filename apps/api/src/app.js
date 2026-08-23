@@ -26,6 +26,11 @@ const allowedOrigins = new Set(
     .map((origin) => origin.trim())
     .filter(Boolean),
 );
+// Vercel sets these automatically per-deployment; allowing them means the exact URL serving
+// this request (production alias or a preview build) always works without a manual WEB_ORIGIN
+// update, which is otherwise a common way to lock everyone out of login after a deploy.
+if (process.env.VERCEL_PROJECT_PRODUCTION_URL) allowedOrigins.add(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`);
+if (process.env.VERCEL_URL) allowedOrigins.add(`https://${process.env.VERCEL_URL}`);
 
 app.disable("x-powered-by");
 app.use(helmet());
