@@ -1,10 +1,12 @@
 import {
   AlertTriangle, ArrowRight, BadgeCheck, CalendarDays, CarFront, CircleUserRound, Copy, Download, Edit3,
-  Gauge, Mail, MapPin, MessageCircle, Phone, Plus, Search, Share2, ShieldCheck,
+  Gauge, Mail, MapPin, Phone, Plus, Search, Share2, ShieldCheck,
   Trash2, UserPlus, WalletCards, Wrench, X,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from "../../lib/api";
+import { GmailIcon, WhatsAppIcon } from "../components/BrandIcons";
 import type {
   Communication, Customer, Customer360, DashView, SalesOrder, ServiceJob, Vehicle, Vehicle360,
 } from "../types";
@@ -221,11 +223,11 @@ export function CustomerView({ onNavigate }: RecordViewProps) {
       { id: "create-lead", label: "Create opportunity", detail: "Start a connected sales path", icon: UserPlus, onClick: () => setModal("create-lead") },
       { id: "book-service", label: "Book service", detail: "Vehicle and workshop context", icon: CalendarDays, onClick: () => setModal("book-service") },
     ];
-    if (customer.mobile) list.push({ id: "whatsapp", label: "WhatsApp customer", detail: "Open a conversation", icon: MessageCircle, href: `https://wa.me/${customer.mobile.replace(/\D/g, "")}` });
+    if (customer.mobile) list.push({ id: "whatsapp", label: "WhatsApp customer", detail: "Open a conversation", icon: WhatsAppIcon as LucideIcon, href: `https://wa.me/${customer.mobile.replace(/\D/g, "")}` });
     list.push({ id: "log-communication", label: "Log communication", detail: "Record a call, email or message", icon: Mail, onClick: () => setModal("log-communication") });
     list.push({ id: "edit-profile", label: "Edit profile", icon: Edit3, onClick: () => setModal("edit-customer") });
     if (customer.mobile) list.push({ id: "call", label: "Call", icon: Phone, href: `tel:${customer.mobile}` });
-    if (customer.email) list.push({ id: "email", label: "Email", icon: Mail, href: `mailto:${customer.email}` });
+    if (customer.email) list.push({ id: "email", label: "Email", icon: GmailIcon as LucideIcon, href: `mailto:${customer.email}` });
     list.push({ id: "share", label: "Share", icon: Share2, onClick: () => shareRecord(customer.displayName).then(() => notify("Summary shared.")) });
     list.push({ id: "export", label: "Export", icon: Download, onClick: () => { exportCsv(customer.displayName); notify("CSV exported."); } });
     list.push({ id: "delete", label: "Delete", icon: Trash2, tone: "danger", onClick: deleteCustomer });

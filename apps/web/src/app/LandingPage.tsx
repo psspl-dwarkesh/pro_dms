@@ -1,11 +1,12 @@
 import {
   ArrowRight, BadgeCheck, BarChart3, CarFront, ChevronRight, CircleUserRound,
-  Gauge, Mail, Menu, MessageCircle, Network, Phone, Search, ShieldCheck, Sparkles,
+  Gauge, Menu, Network, Phone, Search, ShieldCheck, Sparkles,
   Wrench, X,
 } from "lucide-react";
 import { useState } from "react";
 import { PUBLIC_DOMAINS } from "./data";
 import { Brand, IconFrame } from "./components/Brand";
+import { GmailIcon, WhatsAppIcon } from "./components/BrandIcons";
 import type { DashView } from "./types";
 
 type LandingPageProps = { onOpenWorkspace: (view?: DashView) => void; onGoToLogin: () => void; onGoToSignup: () => void };
@@ -136,7 +137,7 @@ export default function LandingPage({ onOpenWorkspace, onGoToLogin, onGoToSignup
           <div className="site-shell">
             <div className="section-intro"><p className="eyebrow eyebrow--dark"><span /> Killer demonstration</p><h2>One service visit. Six connected decisions.</h2><p>Open a customer, inspect the vehicle, find a value signal and carry it into a controlled used-vehicle workflow.</p></div>
             <div className="journey-track">{["Search mobile", "Open owned VIN", "Service inspection", "Trade appraisal", "Acquire + recondition", "Publish + follow up"].map((label, index) => <button type="button" key={label} onClick={() => onOpenWorkspace(index === 0 ? "customers" : index < 3 ? "vehicles" : index === 3 ? "usedcars" : "sales")}><span>0{index + 1}</span><strong>{label}</strong><ArrowRight /></button>)}</div>
-            <div className="channel-rail"><span>Act from the record</span><b><Phone /> Call</b><b><MessageCircle /> WhatsApp</b><b><Mail /> Email</b><b><Search /> Filter history</b><b><ArrowRight /> Share or export</b></div>
+            <div className="channel-rail"><span>Act from the record</span><b><Phone /> Call</b><b><WhatsAppIcon size={15} /> WhatsApp</b><b><GmailIcon size={15} /> Email</b><b><Search /> Filter history</b><b><ArrowRight /> Share or export</b></div>
           </div>
         </section>
 
