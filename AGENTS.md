@@ -10,10 +10,10 @@ AutoAxis is a dealership operations platform built around shared Customer 360 an
 
 ## Required working agreements
 
-- Work on `feature/*`, `fix/*`, `refactor/*`, or `chore/*` branches. Do not commit directly to `main` or `develop`.
-- Keep `main` deployable and use `develop` as the integration branch. See `docs/rules/git-workflow.md`.
+- Work on `feature/*`, `fix/*`, `refactor/*`, or `chore/*` branches. Do not commit directly to `main`.
+- Keep `main` deployable; feature branches are reviewed and merged directly into it. See `docs/rules/git-workflow.md`.
 - Never commit secrets or log connection strings. Use `.env.example` for names and safe placeholders only.
-- Keep API responses, errors, and database access tenant-ready even while the showcase uses demonstration data.
+- Keep API responses, errors, and database access tenant-ready. Every write is real and persisted, scoped to the authenticated user's organization and branch; only the seeded demo organization's rows are demonstration data.
 - Do not publish invented customer claims or metrics as facts. Mark them as demonstration data, illustrative workflow, or product concept.
 - Remove files only after proving they are unreferenced with repository search and verifying the build still passes.
 - Prefer small domain modules and lazy-loaded route/workspace boundaries over a single large component or bundle.

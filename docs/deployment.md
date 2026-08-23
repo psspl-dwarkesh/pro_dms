@@ -8,6 +8,7 @@ Configure these variables in Vercel without committing their values:
 
 - `DATABASE_URL`: pooled Neon PostgreSQL connection string with TLS required.
 - `WEB_ORIGIN`: comma-separated allowed deployed origins.
+- `JWT_SECRET`: required. A long random value used to sign session tokens; rotating it signs every user out.
 - `DATABASE_POOL_MAX`: optional; defaults to `5`.
 - `DATABASE_CONNECT_TIMEOUT_MS`: optional; defaults to `5000`.
 
@@ -28,16 +29,15 @@ Confirm that migrations needed by the release have been applied to the identifie
 ## Promotion
 
 1. Push a focused feature branch for a preview deployment.
-2. Merge the reviewed branch into `develop` for shared integration/staging.
-3. Verify the hosted `/api/health`, public page, workspace loading, and live Customer/Vehicle search.
-4. Promote the reviewed `develop` state to `main` for production.
-5. Re-run the hosted smoke checks and keep the previous Vercel deployment available for rollback.
+2. Open a pull request targeting `main` and verify the hosted preview: `/api/health`, public page, workspace loading, and live Customer/Vehicle search.
+3. Merge the reviewed branch into `main` for production once checks and review pass.
+4. Re-run the hosted smoke checks and keep the previous Vercel deployment available for rollback.
 
 ## Hosted smoke checks
 
 - `GET /api/health` reports service `ok` and database `connected`.
 - Initial public HTML and hashed assets return successfully.
-- Entering operations downloads the deferred workspace chunk.
-- Customer 360 search for the demonstration record reports `Neon live data`.
-- Vehicle 360 search for registration `DMS-360` reports `Neon live data`.
-- Invalid search input returns the documented public error envelope with a request ID.
+- Signing up creates a new organization, branch, and admin user, and immediately reaches the dashboard.
+- Signing in with the seeded demo admin (`admin@prakashinfotech.com` / `Demo@12345`) reaches the dashboard with data scoped to the demo organization only.
+- Customer 360 and Vehicle 360 search return records from the signed-in user's own organization.
+- Invalid search input, and any request without a valid session, return the documented public error envelope with a request ID.

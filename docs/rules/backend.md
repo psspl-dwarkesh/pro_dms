@@ -4,7 +4,7 @@
 
 - Routes translate HTTP concerns; services coordinate business rules; database modules own SQL. Do not duplicate route implementations for local and serverless runtimes.
 - Keep API paths versioned under `/api/v1`. Health and readiness endpoints may remain unversioned.
-- Treat demonstration fallback as an explicit product mode, never as silent production recovery from a database failure.
+- There is no demonstration fallback. Every authenticated route reads and writes the real database; a missing or unavailable database returns the `DATABASE_UNAVAILABLE` dependency error, never fabricated data.
 
 ## Contracts and validation
 
@@ -15,8 +15,8 @@
 
 ## Security
 
-- Authentication identifies the actor; authorization checks tenant, branch, role, and record access on every protected request.
-- Never accept tenant or privilege claims from the client without verifying the authenticated server-side context.
+- Authentication identifies the actor; authorization checks tenant, branch, role, and record access on every protected request. Every `/api/v1/*` route other than `/api/v1/auth/*` runs through `authenticate` (`src/middleware.js`), and admin-only routes add `authorize("admin")`.
+- Never accept tenant or privilege claims from the client without verifying the authenticated server-side context. Route handlers read `organizationId`/`branchId`/`role` from `request.auth` (set from the verified bearer token), never from the request body or query string.
 - Keep Helmet enabled, use an explicit CORS allowlist in deployed environments, cap request sizes, and avoid leaking stack traces.
 - Parameterize all SQL. Do not build SQL from request strings.
 - Avoid logging PII. Redact tokens, cookies, database URLs, mobile numbers, email addresses, and document identifiers.
