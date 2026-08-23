@@ -25,6 +25,5 @@ AutoAxis is a dealership operations platform built around shared Customer 360 an
 - `apps/api`: HTTP transport, validation, orchestration, and database access.
 - `database`: ordered, repeatable SQL migrations only.
 - `docs`: product, architecture, operating rules, and decisions.
-- `.agents/skills`: focused repository workflows for coding agents.
 
 Keep dependencies pointing inward: UI calls the API; API calls data access; database modules do not depend on HTTP or UI code.

@@ -7,7 +7,7 @@ AutoAxis deploys to Vercel with a Vite frontend and a shared Express serverless 
 Configure these variables in Vercel without committing their values:
 
 - `DATABASE_URL`: pooled Neon PostgreSQL connection string with TLS required.
-- `WEB_ORIGIN`: comma-separated allowed deployed origins.
+- `WEB_ORIGIN`: comma-separated allowed deployed origins. The API also auto-allows the exact origin Vercel assigns the current deployment (`VERCEL_PROJECT_PRODUCTION_URL` and `VERCEL_URL`), so a new preview or production alias is never locked out while `WEB_ORIGIN` is updated.
 - `JWT_SECRET`: required. A long random value used to sign session tokens; rotating it signs every user out.
 - `DATABASE_POOL_MAX`: optional; defaults to `5`.
 - `DATABASE_CONNECT_TIMEOUT_MS`: optional; defaults to `5000`.

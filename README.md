@@ -6,7 +6,7 @@ The repository includes a production-shaped React workspace, a Node/Express API 
 
 ## Quick start
 
-Requirements: Node.js 20 or newer and npm.
+Requirements: Node.js 24.x (see `engines` in `package.json`) and npm.
 
 ```bash
 npm install

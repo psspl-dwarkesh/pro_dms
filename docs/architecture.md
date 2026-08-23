@@ -24,7 +24,7 @@ Neon PostgreSQL
   └─ ordered schema_migrations history
 ```
 
-The same Express application serves local Node and Vercel Functions. `api/[...path].js` is deliberately a one-line adapter, which prevents local and deployed API contracts from drifting.
+The same Express application serves local Node and Vercel Functions. `api/index.js` is deliberately a one-line adapter, which prevents local and deployed API contracts from drifting.
 
 ## Frontend boundaries
 
