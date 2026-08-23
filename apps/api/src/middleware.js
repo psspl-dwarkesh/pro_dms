@@ -26,9 +26,9 @@ export function authorize(...roles) {
   };
 }
 
-// Only admins see every branch in the organization; every other role is scoped to its own branch.
+// Admins and general managers see every branch in the organization; every other role is scoped to its own branch.
 export function isOrgWideRole(role) {
-  return role === "admin";
+  return role === "admin" || role === "general_manager";
 }
 
 export function branchScope(auth) {

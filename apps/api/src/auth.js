@@ -40,7 +40,7 @@ export function verifySessionToken(token) {
   };
 }
 
-export const ROLES = ["admin", "branch_manager", "sales", "service", "staff"];
+export const ROLES = ["admin", "general_manager", "sales_manager", "bdc_rep", "finance_manager", "service_advisor", "receptionist"];
 
 export function slugifyCompanyName(name) {
   const base = String(name)

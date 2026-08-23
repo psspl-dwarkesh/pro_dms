@@ -11,10 +11,12 @@ type LoginPageProps = { onSuccess: () => void; onBackToSite: () => void; onGoToS
 // trade-off in exchange for not having to run locally to use this.
 const QUICK_SIGN_IN_ACCOUNTS = [
   { email: "admin@prakashinfotech.com", password: "Demo@12345", label: "Admin", detail: "Pacific Motor Group" },
-  { email: "manager@prakashinfotech.com", password: "Demo@12345", label: "Branch manager", detail: "Pacific Motor Group" },
-  { email: "sales@prakashinfotech.com", password: "Demo@12345", label: "Sales", detail: "Pacific Motor Group" },
-  { email: "service@prakashinfotech.com", password: "Demo@12345", label: "Service", detail: "Pacific Motor Group" },
-  { email: "staff@prakashinfotech.com", password: "Demo@12345", label: "Staff", detail: "Pacific Motor Group" },
+  { email: "manager@prakashinfotech.com", password: "Demo@12345", label: "General manager", detail: "Pacific Motor Group" },
+  { email: "sales@prakashinfotech.com", password: "Demo@12345", label: "Sales manager", detail: "Pacific Motor Group" },
+  { email: "bdc@prakashinfotech.com", password: "Demo@12345", label: "BDC representative", detail: "Pacific Motor Group" },
+  { email: "finance@prakashinfotech.com", password: "Demo@12345", label: "Finance manager", detail: "Pacific Motor Group" },
+  { email: "service@prakashinfotech.com", password: "Demo@12345", label: "Service advisor", detail: "Pacific Motor Group" },
+  { email: "staff@prakashinfotech.com", password: "Demo@12345", label: "Receptionist", detail: "Pacific Motor Group" },
 ];
 
 export default function LoginPage({ onSuccess, onBackToSite, onGoToSignup }: LoginPageProps) {

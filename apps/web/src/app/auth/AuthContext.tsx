@@ -95,10 +95,12 @@ export function useAuth() {
 export function roleLabel(role: Role): string {
   return {
     admin: "Company admin",
-    branch_manager: "Branch manager",
-    sales: "Sales team",
-    service: "Service and vehicle team",
-    staff: "Staff",
+    general_manager: "General manager",
+    sales_manager: "Sales manager",
+    bdc_rep: "BDC representative",
+    finance_manager: "Finance manager",
+    service_advisor: "Service advisor",
+    receptionist: "Receptionist",
   }[role];
 }
 

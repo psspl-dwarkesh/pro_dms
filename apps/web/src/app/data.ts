@@ -99,10 +99,14 @@ export const PAGE_HELP: Partial<Record<DashView, { summary: string; canDo: strin
 
 const ORG_WIDE_VIEWS: DashView[] = ["overview", "customers", "vehicles", "sales", "service", "parts", "finance", "marketing", "usedcars", "inventory", "branch", "group", "workforce"];
 
+// Each role maps to a genuinely distinct access need in a real dealership org structure -
+// see database/009_role_model_expansion.sql for the roles this replaced and why.
 export const ROLE_NAV: Record<Role, DashView[]> = {
   admin: [...ORG_WIDE_VIEWS, "company"],
-  branch_manager: ORG_WIDE_VIEWS,
-  sales: ["overview", "customers", "vehicles", "sales", "finance", "marketing"],
-  service: ["overview", "customers", "vehicles", "service", "parts", "inventory", "usedcars"],
-  staff: ["overview", "customers", "vehicles"],
+  general_manager: ORG_WIDE_VIEWS,
+  sales_manager: ["overview", "customers", "vehicles", "sales", "marketing", "usedcars", "inventory"],
+  bdc_rep: ["overview", "customers", "sales"],
+  finance_manager: ["overview", "customers", "vehicles", "sales", "finance"],
+  service_advisor: ["overview", "customers", "vehicles", "service", "parts"],
+  receptionist: ["overview", "customers", "vehicles"],
 };
