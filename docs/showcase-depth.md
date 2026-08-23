@@ -12,20 +12,20 @@ This journey is the product spine. Department views add context to the same cust
 
 ## Complete demonstration paths
 
-- Customer 360: connected search, consent and household context, owned vehicles, cross-department timeline, lifetime value, call, WhatsApp, email, share, export, portal preview and opportunity creation.
-- Vehicle 360: connected VIN search, identity, ownership, warranty, insurance, service and parts history, condition, market/trade value, documents, appraisal, auction/disposition, inventory intake and contextual rental/demo booking.
-- Operating cockpits: one visible domain workflow, actionable queue selection, filters, CSV export, a primary guided action and saved-result feedback.
-- Global workspace: keyboard search with Customer, Vehicle and Repair Order routes; visible Neon connection state; responsive navigation.
+- Signup and sign-in: creating a company self-provisions a new organization, its first branch, and an admin account; every account is scoped to one organization and (for non-admin roles) one branch.
+- Customer 360: connected search, owned vehicles, cross-department timeline, lifetime value, call, WhatsApp, email, share, export, and opportunity creation, all reading and writing the real database.
+- Vehicle 360: connected VIN search, identity, ownership, service history, condition, market/trade value, inventory intake and workshop booking.
+- Operating cockpits (Sales, Service, Parts, Finance and insurance): a live queue backed by the database, filters, CSV export, and a primary guided action that creates or updates a real record.
+- Global workspace: keyboard search across Customer and Vehicle records; visible Neon connection state; role-filtered navigation; responsive navigation.
 - Product site: shared brand/header system, four-state interactive workspace preview, interactive Customer/Vehicle operating model and linked service-to-trade journey.
 
 ## Scope discipline
 
-- Rental remains a secondary Vehicle 360 action, not a new module.
-- Auction remains a used-vehicle disposition step, not a marketplace product.
 - Finance, insurance, parts and communications appear inside connected workflows as well as their role views.
-- Third-party names are shown as integration-ready categories. They do not claim an active production connection.
-- Demonstration mutations are intentionally session-only and are labelled as such.
-- No new top-level module is added unless it has a meaningful workflow, record context and visible result.
+- Third-party names on the product site are shown as integration-ready categories. They do not claim an active production connection.
+- Every workflow mutation is persisted to the database, scoped to the signed-in user's organization and branch. Nothing in the authenticated workspace is session-only or reset on refresh.
+- Marketing, Group analytics, Workforce, Branch performance, Inventory, and Used-vehicle remarketing have no data model yet and are shown as a labelled "coming soon" placeholder rather than an invented workflow.
+- No new top-level module is added unless it has a meaningful workflow, a real record context, and a visible, persisted result.
 
 ## Integration priorities
 
@@ -39,5 +39,5 @@ This journey is the product spine. Department views add context to the same cust
 - No dead primary buttons in the showcased journey.
 - Desktop and 360 px layouts are readable without horizontal overflow.
 - Keyboard focus is visible; dialogs are labelled and Escape closes workspace overlays.
-- Web and API checks pass, Neon health is connected, and the production build is promoted through feature → develop → main.
+- Web and API checks pass, Neon health is connected, and the production build is promoted through a reviewed feature branch merged into `main`.
 - Public metrics and outcomes remain labelled demonstration/illustrative until evidence is approved.

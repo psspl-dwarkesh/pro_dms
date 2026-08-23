@@ -1,238 +1,488 @@
-import { AlertTriangle, ArrowRight, ArrowUpRight, BadgeCheck, BarChart3, CalendarClock, CarFront, CheckCircle2, Clock3, Copy, DollarSign, Download, Filter, Gauge, Lightbulb, Mail, Sparkles, Target, TrendingUp, Users, Wrench } from "lucide-react";
+import { AlertTriangle, BadgeCheck, CalendarClock, Download, Filter, Package, Plus, Users, Wrench } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { DOMAIN_CONFIG, REVENUE_TREND } from "../data";
-import type { DashView, DomainConfig } from "../types";
+import { apiGet, apiPatch, apiPost, ApiError } from "../../lib/api";
+import type { DashView, FinanceContract, InsurancePolicy, Lead, Overview, Part, SalesOrder, ServiceJob } from "../types";
+import { CustomerPicker, VehiclePicker } from "./Pickers";
 import { Toast, WorkflowModal, WorkspacePage } from "./RecordViews";
 
-function MetricCard({ metric }: { metric: DomainConfig["metrics"][number] }) {
-  return (
-    <div className="metric-card">
-      <span>{metric.label}</span>
-      <strong>{metric.value}</strong>
-      <em className={`tone-${metric.tone ?? "neutral"}`}>{metric.delta}</em>
-    </div>
-  );
+const money = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 });
+const dateFormatter = new Intl.DateTimeFormat("en-AU", { day: "2-digit", month: "short", year: "numeric" });
+
+function MetricCard({ label, value, meta, tone = "neutral" }: { label: string; value: string; meta: string; tone?: "good" | "warn" | "bad" | "neutral" }) {
+  return <div className="metric-card"><span>{label}</span><strong>{value}</strong><em className={`tone-${tone}`}>{meta}</em></div>;
 }
 
-const tooltipStyle = { background: "#000714", border: "1px solid rgba(255,255,255,.12)", borderRadius: "6px", color: "#ffffff", fontSize: 12 };
+function useToast() {
+  const [toast, setToast] = useState("");
+  function notify(message: string) { setToast(message); window.setTimeout(() => setToast(""), 2600); }
+  return { toast, notify };
+}
 
-type Studio = { title: string; tabs: Array<{ label: string; description: string; action: string; coverage: string[]; records: Array<{ name: string; meta: string; status: string }> }> };
-
-const OPERATING_STUDIOS: Partial<Record<DashView, Studio>> = {
-  sales: { title: "New vehicle retail desk", tabs: [
-    { label: "Enquiry & pipeline", description: "Capture, assign and qualify every lead with response ownership and a visible next step.", action: "Capture enquiry", coverage: ["Lead capture", "Assignment", "Pipeline", "Availability"], records: [{ name: "Ava Nguyen · Audi Q7", meta: "Web enquiry · 6m response", status: "Qualified" }, { name: "Rohan Mehta · Ranger", meta: "Trade-in · Sarah Cole", status: "Follow-up" }, { name: "Mia Wilson · Ioniq 5", meta: "OEM campaign · unassigned", status: "New" }] },
-    { label: "Configure & drive", description: "Match live stock, configure model and variant, and control test-drive availability and outcomes.", action: "Schedule test drive", coverage: ["Vehicle match", "Variant selection", "Test drive", "Accessories"], records: [{ name: "Audi Q7 55 TFSI · Glacier White", meta: "Demo A-07 · 14:30", status: "Confirmed" }, { name: "BMW X5 xDrive40i · M Sport", meta: "Incoming · 26 Aug", status: "Configure" }, { name: "Ford Ranger Wildtrak · V6", meta: "Yard C-12 · available", status: "Ready" }] },
-    { label: "Quote, KYC & F&I", description: "Build a controlled deal from quotation through identity, finance, insurance, accessories and booking.", action: "Build quotation", coverage: ["Quotation", "KYC", "Finance", "Insurance", "Booking", "Invoice"], records: [{ name: "Q-44128 · Ava Nguyen", meta: "$148,900 · 2 lender offers", status: "KYC due" }, { name: "Q-44119 · James Hartley", meta: "$127,450 · trade linked", status: "Approved" }, { name: "Q-44131 · Rohan Mehta", meta: "$78,450 · insurance pending", status: "Review" }] },
-    { label: "Register & deliver", description: "Control registration, PDI, delivery checklist, customer handover and post-delivery follow-up.", action: "Open delivery", coverage: ["Registration", "PDI", "Checklist", "Handover", "Follow-up"], records: [{ name: "D-10982 · James Hartley", meta: "BMW X5 · 23 Aug 10:00", status: "Ready" }, { name: "D-10991 · Mia Wilson", meta: "Ioniq 5 · registration due", status: "At risk" }, { name: "D-10975 · Emily Chen", meta: "XC60 · follow-up tomorrow", status: "Delivered" }] },
-  ]},
-  service: { title: "Connected fixed operations", tabs: [
-    { label: "Book & prepare", description: "Turn customer intent into a capacity-aware booking with mobility, parts and advisor context ready before arrival.", action: "Create booking", coverage: ["Online booking", "Capacity", "Mobility", "Parts pre-pick"], records: [{ name: "BK-4216 · James Hartley", meta: "BMW X5 · loan vehicle requested", status: "Confirmed" }, { name: "BK-4219 · Emily Chen", meta: "Volvo XC60 · diagnostic", status: "Triage" }, { name: "BK-4224 · Noah Williams", meta: "LandCruiser · first service", status: "Prepare" }] },
-    { label: "Workshop control", description: "See every repair order by bay, technician, promise time, approval state and blocked dependency.", action: "Open workshop board", coverage: ["Check-in", "Bay plan", "Technicians", "Promise clock"], records: [{ name: "RO-18492 · Volvo XC60", meta: "Bay 04 · diagnostic support", status: "Blocked" }, { name: "RO-18506 · BMW X5", meta: "Bay 06 · approval sent 34m ago", status: "Waiting" }, { name: "RO-18488 · Mazda CX-5", meta: "QC complete · pickup 15:30", status: "Ready" }] },
-    { label: "Approve & repair", description: "Package inspection evidence, labour and parts into a clear digital decision and retain the customer promise.", action: "Send approval", coverage: ["Inspection media", "Estimate", "Digital approval", "Warranty"], records: [{ name: "AP-8842 · RO-18506", meta: "$1,280 · WhatsApp + email", status: "Unopened" }, { name: "WAR-552 · RO-18492", meta: "OEM technical case attached", status: "Review" }, { name: "AP-8845 · RO-18511", meta: "$842 · customer approved", status: "Approved" }] },
-    { label: "Handover & retain", description: "Complete quality control, invoice, payment, pickup and the next retention action from the same repair order.", action: "Prepare handover", coverage: ["Quality check", "Invoice", "Payment", "CSI", "Next service"], records: [{ name: "RO-18488 · Mazda CX-5", meta: "Invoice paid · pickup 15:30", status: "Handover" }, { name: "RO-18474 · Audi Q5", meta: "CSI due tomorrow", status: "Follow-up" }, { name: "RO-18469 · Golf R", meta: "Next service Nov 2026", status: "Closed" }] },
-  ]},
-  parts: { title: "Parts supply control", tabs: [
-    { label: "VIN request", description: "Start from the repair order or VIN so fitment, supersession and warranty eligibility are known before commitment.", action: "Create parts request", coverage: ["VIN fitment", "Supersession", "Warranty", "Availability"], records: [{ name: "RO-18506 · brake kit", meta: "BMW X5 · VIN fit verified", status: "Reserve" }, { name: "RO-18492 · diagnostic module", meta: "Volvo XC60 · supersession found", status: "Review" }, { name: "S-10982 · tow pack", meta: "BMW X5 · delivery accessory", status: "Available" }] },
-    { label: "Reserve & issue", description: "Reserve stock to the exact job, control pick location and expose missing parts before a bay is blocked.", action: "Open pick wave", coverage: ["Reservation", "Bins", "Pick", "Issue", "Returns"], records: [{ name: "5Q0-698-151 · pad set", meta: "Bin A-14-03 · RO-18511", status: "Picked" }, { name: "11-42-8-659-230 · oil filter", meta: "Need 18 · available 7", status: "Short" }, { name: "31416791911 · brake disc", meta: "Parramatta · 6 units", status: "Transfer" }] },
-    { label: "Replenish", description: "Use live workshop demand, min/max policy and supplier lead time to avoid emergency freight and dead stock.", action: "Build replenishment", coverage: ["Demand forecast", "Min/max", "Supplier", "Transfer"], records: [{ name: "Brake service family", meta: "Six-day shortage forecast", status: "Order" }, { name: "EV cooling components", meta: "North Shore excess · 12 units", status: "Rebalance" }, { name: "Fast-moving filters", meta: "Three-branch consolidated order", status: "Ready" }] },
-  ]},
-  usedcars: { title: "Pre-owned vehicle centre", tabs: [
-    { label: "Acquire & appraise", description: "Source trade-ins and direct purchases with condition evidence, market comparables and a controlled offer.", action: "Start appraisal", coverage: ["Acquisition", "Trade-in", "Appraisal", "Auto valuation", "Market comparison"], records: [{ name: "2022 BMW X5 · DMS-360", meta: "48,620 km · 8 comparables", status: "$78,200" }, { name: "2021 Volvo XC90 · U-30418", meta: "64,100 km · direct purchase", status: "$66,500" }, { name: "2023 Mazda CX-60 · U-30462", meta: "18,440 km · trade-in", status: "Inspect" }] },
-    { label: "Inspect & recondition", description: "Move every unit through a 200-point inspection, photos, workshop preparation and recon cost control.", action: "Open inspection", coverage: ["200-point check", "Photos/video", "Workshop prep", "Refurbishment", "Recon cost"], records: [{ name: "U-30462 · Mazda CX-60", meta: "184/200 · photos booked", status: "92%" }, { name: "U-30418 · Volvo XC90", meta: "$2,840 est. · $2,610 actual", status: "QC" }, { name: "U-30471 · Audi A4", meta: "Tyres + cosmetic repair", status: "Workshop" }] },
-    { label: "Price & stock", description: "Set retail and wholesale positions using aging, margin, location and expected-versus-actual recon economics.", action: "Set retail price", coverage: ["Stocking", "Pricing", "Aging", "Location", "Profitability", "Margin"], records: [{ name: "U-30418 · Volvo XC90", meta: "64 days · 7% above market", status: "Reprice" }, { name: "U-30398 · BMW 330i", meta: "22 days · 9.8% margin", status: "On target" }, { name: "U-30462 · Mazda CX-60", meta: "2 days · $8,420 expected", status: "Price" }] },
-    { label: "Publish & dispose", description: "Publish approved merchandising or route aged and non-retail units to a controlled wholesale auction.", action: "Publish vehicle", coverage: ["Marketplace publish", "Auction", "Reserve", "Buy/sell margin", "Actual resale"], records: [{ name: "U-30462 · Mazda CX-60", meta: "6 channels · 24 approved images", status: "Publish" }, { name: "U-30280 · Mercedes GLC", meta: "Auction reserve $48,500", status: "Approve" }, { name: "U-30398 · BMW 330i", meta: "$48,400 sold · $4,710 margin", status: "Sold" }] },
-  ]},
-  finance: { title: "Finance & insurance control", tabs: [
-    { label: "Applications", description: "Compare lender offers, manage KYC evidence, conditions, contracts and settlement from the deal record.", action: "New application", coverage: ["KYC", "Lender compare", "Conditions", "Contract", "Settlement"], records: [{ name: "FI-62014 · Ava Nguyen", meta: "$112,000 · income evidence due", status: "Hold" }, { name: "FI-62018 · Rohan Mehta", meta: "2 offers · best 7.14%", status: "Compare" }] },
-    { label: "Insurance", description: "Quote, bind and track policies with vehicle, customer, finance and delivery context attached.", action: "Create insurance quote", coverage: ["Policy tracking", "Quotation", "Insurer connection", "Workshop link"], records: [{ name: "INS-8841 · Audi Q7", meta: "3 quotes · delivery 23 Aug", status: "Select" }, { name: "INS-8829 · BMW X5", meta: "Comprehensive · active", status: "Bound" }] },
-    { label: "Claims & renewals", description: "Control accident intake, claim progress, repair-order linkage and proactive renewal activity.", action: "Register claim", coverage: ["Renewal alert", "Claims", "Accident", "Repair order", "Customer update"], records: [{ name: "CLM-1844 · Volvo XC60", meta: "RO-18492 · assessor pending", status: "Open" }, { name: "RNW-9921 · BMW X5", meta: "Renews 14 Nov · contact consent", status: "Scheduled" }] },
-    { label: "Commission", description: "Reconcile product attachment, insurer and lender commission against settled deals and reversals.", action: "Run reconciliation", coverage: ["Commission", "Product attachment", "Reversal", "Audit"], records: [{ name: "August commission run", meta: "31 deals · $84,220 gross", status: "Ready" }, { name: "REV-114 · cancelled policy", meta: "$1,240 reversal", status: "Review" }] },
-  ]},
-  marketing: { title: "Consent-aware customer journeys", tabs: [
-    { label: "Audience studio", description: "Build audiences from ownership, intent, service and value signals without exporting disconnected customer lists.", action: "Build audience", coverage: ["Customer 360", "Vehicle 360", "Consent", "Suppression"], records: [{ name: "48-month ownership cohort", meta: "342 customers · 211 stock matches", status: "Ready" }, { name: "Lapsed service recovery", meta: "684 customers · 18 suppressed", status: "Review" }, { name: "First-service welcome", meta: "142 customers enter tomorrow", status: "Live" }] },
-    { label: "Journey builder", description: "Coordinate email, SMS and WhatsApp around real lifecycle events with accountable follow-up paths.", action: "Create journey", coverage: ["Triggers", "Channels", "Templates", "Frequency cap"], records: [{ name: "Ownership renewal", meta: "Email → advisor task → WhatsApp", status: "Active" }, { name: "Delivery welcome", meta: "3-step · 31 customers today", status: "Sending" }, { name: "Recall outreach", meta: "VIN matched · service capacity held", status: "Draft" }] },
-    { label: "Attribution & retention", description: "Connect campaign engagement to enquiry, deal, service and lifetime-value outcomes on the shared record.", action: "Open attribution", coverage: ["Pipeline", "Revenue", "Retention", "ROI"], records: [{ name: "August OEM campaign", meta: "$428k attributed pipeline", status: "Strong" }, { name: "Service win-back", meta: "71.3% retained · +2.8 pts", status: "On plan" }, { name: "Used SUV demand", meta: "31 enquiries · 9 qualified", status: "Scale" }] },
-  ]},
-  inventory: { title: "Vehicle stock control", tabs: [
-    { label: "Stock book", description: "One VIN-led book for new, used, incoming, allocated, reserved and available vehicles.", action: "Add stock vehicle", coverage: ["New stock", "Used stock", "VIN", "Incoming", "Reserved", "Valuation"], records: [{ name: "WBA11EU09R9Y40122 · BMW iX1", meta: "Incoming · allocated", status: "26 Aug" }, { name: "U-30462 · Mazda CX-60", meta: "Used · Sydney Central", status: "Available" }] },
-    { label: "Yard & transfers", description: "Locate units by yard position and move stock between branches with accountable handover.", action: "Create transfer", coverage: ["Yard", "Location", "Transfer", "Branch", "Aging"], records: [{ name: "Ioniq 5 · Yard C-12", meta: "PDI parts reserved", status: "Located" }, { name: "9 SUVs · North Shore", meta: "Transfer to demand-matched branches", status: "Proposed" }] },
-    { label: "Demo & test drive", description: "Control demonstrator assignment, availability, bookings, mileage and return condition.", action: "Assign demo vehicle", coverage: ["Demo vehicles", "Test-drive fleet", "Availability", "Mileage", "Condition"], records: [{ name: "Audi Q7 · Demo A-07", meta: "Test drive 14:30 · Ava Nguyen", status: "Booked" }, { name: "BMW i4 · Demo E-02", meta: "Return inspection due 17:00", status: "Out" }] },
-    { label: "PDI & delivery", description: "Move incoming vehicles through receipt, PDI, registration dependencies and customer delivery status.", action: "Open PDI", coverage: ["Receipt", "PDI status", "Registration", "Delivery", "Aging alert"], records: [{ name: "BMW iX1 · PDI-22014", meta: "6/8 checks · software update", status: "In progress" }, { name: "Golf R · PDI-22008", meta: "Deal S-10982 · all clear", status: "Ready" }] },
-  ]},
-  branch: { title: "Branch operating room", tabs: [
-    { label: "Daily control", description: "Bring local revenue, customer promises, workshop flow and stock exceptions into one accountable shift plan.", action: "Start shift review", coverage: ["Targets", "Promises", "Capacity", "Risk owners"], records: [{ name: "Sydney Central · morning review", meta: "4 critical · 7 watch", status: "Live" }, { name: "Delivery risk stand-up", meta: "Sales · Inventory · F&I", status: "10:30" }, { name: "Workshop load review", meta: "Service · Parts", status: "13:00" }] },
-    { label: "Department drill-down", description: "Move from branch variance to the exact people, customers, VINs and jobs creating the result.", action: "Compare departments", coverage: ["Sales", "Service", "Parts", "F&I", "Used"], records: [{ name: "Workshop promise", meta: "4 ROs · below group floor", status: "Recover" }, { name: "Used acquisition", meta: "8 units behind pace", status: "Plan" }, { name: "F&I penetration", meta: "48.2% · best in group", status: "Share" }] },
-    { label: "People & actions", description: "Assign recovery actions, confirm owners and keep decisions visible until the operating signal changes.", action: "Assign branch action", coverage: ["Owner", "Due date", "Escalation", "Outcome"], records: [{ name: "Promise recovery plan", meta: "Fixed Ops Director · today", status: "Open" }, { name: "Lead response coaching", meta: "8 advisors · this week", status: "Assigned" }, { name: "Aged stock review", meta: "Sales Manager · 16:00", status: "Due" }] },
-  ]},
-  group: { title: "Multi-branch intelligence", tabs: [
-    { label: "Group scorecard", description: "Compare every branch on consistent revenue, margin, CX, working capital and risk definitions.", action: "Open scorecard", coverage: ["Revenue", "Margin", "CX", "Forecast", "Risk"], records: [{ name: "Sydney Central", meta: "103.8% plan · 18.6% margin", status: "Leading" }, { name: "North Shore", meta: "$640k aged stock", status: "Review" }, { name: "Parramatta", meta: "+$18.2k emergency freight", status: "Watch" }] },
-    { label: "Cross-branch actions", description: "Turn comparison into a specific stock, capacity or coaching action with a named receiving branch and owner.", action: "Create group action", coverage: ["Stock transfer", "Capacity", "Best practice", "Escalation"], records: [{ name: "Rebalance 9 SUVs", meta: "3 branches · demand matched", status: "Proposed" }, { name: "Share F&I playbook", meta: "Sydney Central → group", status: "Ready" }, { name: "EV technician coverage", meta: "2 people · afternoon roster", status: "Plan" }] },
-    { label: "OEM & board reporting", description: "Prepare consistent operational evidence for OEM scorecards, forecasts and the leadership briefing.", action: "Prepare briefing", coverage: ["OEM scorecard", "Forecast", "Board pack", "Audit"], records: [{ name: "August trading pulse", meta: "12 branches · 92% confidence", status: "Current" }, { name: "OEM retail report", meta: "VIN and delivery reconciled", status: "Ready" }, { name: "Risk committee pack", meta: "6 critical across 4 branches", status: "Draft" }] },
-  ]},
-  workforce: { title: "Dealership workforce", tabs: [
-    { label: "Team & attendance", description: "Role-based team directory with branch, roster, attendance and current workload.", action: "Add team member", coverage: ["Sales", "Advisors", "Technicians", "Parts", "Finance", "Attendance"], records: [{ name: "Sarah Cole · Sales manager", meta: "Sydney Central · present", status: "8 open" }, { name: "Noah Patel · Technician", meta: "EV certified · Bay 06", status: "Productive" }] },
-    { label: "Targets & incentives", description: "Track individual and team targets, incentive attainment and auditable commission inputs.", action: "Set target", coverage: ["Targets", "Incentives", "Commission", "Attainment"], records: [{ name: "Sales team · August", meta: "94% revenue · 102% gross", status: "On track" }, { name: "Service advisors", meta: "91% labour recovery", status: "Coach" }] },
-    { label: "Skills & training", description: "Maintain skill matrices, certification expiry and role-specific training plans.", action: "Assign training", coverage: ["Skill matrix", "Training", "Certification", "Succession"], records: [{ name: "EV safety certification", meta: "5 technicians · due 4 Sep", status: "Assign" }, { name: "F&I compliance annual", meta: "12 team members · 83% complete", status: "Due" }] },
-    { label: "Productivity", description: "Connect output and quality to actual leads, deals, repair orders and parts work.", action: "Open coaching plan", coverage: ["Productivity", "Performance", "Quality", "Capacity"], records: [{ name: "Workshop team", meta: "91.4% productive · 2.1% comeback", status: "Strong" }, { name: "Lead response cohort", meta: "11m avg · target 10m", status: "Coach" }] },
-  ]},
-};
+// ---------------------------------------------------------------------------
+// Executive overview
+// ---------------------------------------------------------------------------
 
 export function OverviewView({ onNavigate }: { onNavigate: (view: DashView) => void }) {
-  const [toast, setToast] = useState("");
-  const [briefingOpen, setBriefingOpen] = useState(false);
-  const briefingText = "AutoAxis daily briefing — Pacific Motor Group\n\n1. Revenue is 7.4% ahead of plan.\n2. Four workshop promises need intervention before 11:00.\n3. Seven customers need OEM delivery updates.\n4. $640k of used inventory is above 60 days.\n5. Sydney Central F&I performance is a group best-practice candidate.\n\nPrepared in the Prakash Infotech demonstration workspace.";
-  function notify(message: string) { setToast(message); window.setTimeout(() => setToast(""), 2600); }
-  function downloadBriefing() { const url = URL.createObjectURL(new Blob([briefingText], { type: "text/plain" })); const anchor = document.createElement("a"); anchor.href = url; anchor.download = "autoaxis-daily-briefing.txt"; anchor.click(); URL.revokeObjectURL(url); setBriefingOpen(false); notify("Daily briefing downloaded and recorded."); }
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
+
+  useEffect(() => {
+    apiGet<{ overview: Overview }>("/api/v1/overview")
+      .then((result) => setOverview(result.overview))
+      .catch((cause) => setError(cause instanceof ApiError ? cause : new ApiError("Could not load the overview.", { status: 500 })));
+  }, []);
+
   return (
-    <WorkspacePage
-      eyebrow="Pacific Motor Group · 21 August 2026"
-      title="Executive pulse"
-      description="The operating signals, exceptions, and opportunities that need a decision today."
-      action={<button type="button" className="workspace-button workspace-button--dark" onClick={() => setBriefingOpen(true)}><Sparkles size={15} /> Prepare daily briefing</button>}
-    >
-      <div className="executive-metrics">
-        <MetricCard metric={{ label: "Group revenue", value: "$48.7m", delta: "+7.4% vs plan", tone: "good" }} />
-        <MetricCard metric={{ label: "Gross margin", value: "18.6%", delta: "+0.8 pts vs plan", tone: "good" }} />
-        <MetricCard metric={{ label: "Workshop utilisation", value: "86%", delta: "12 approvals waiting", tone: "warn" }} />
-        <MetricCard metric={{ label: "Customer promise risk", value: "11", delta: "4 critical today", tone: "bad" }} />
-      </div>
-
-      <div className="overview-grid">
-        <section className="workspace-card trend-card">
-          <div className="card-heading"><div><span>Revenue trajectory</span><strong>Actual vs operating plan</strong></div><button type="button" onClick={() => onNavigate("group")}>View P&amp;L <ArrowUpRight size={15} /></button></div>
-          <div className="trend-summary"><strong>$7.8m</strong><span>August actual</span><em>105.4% of plan</em></div>
-          <div className="chart-wrap">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={REVENUE_TREND} margin={{ top: 12, right: 6, left: -18, bottom: 0 }}>
-                <defs><linearGradient id="executiveArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#1463ff" stopOpacity={0.24} /><stop offset="100%" stopColor="#1463ff" stopOpacity={0} /></linearGradient></defs>
-                <CartesianGrid stroke="rgba(8,30,43,.08)" vertical={false} />
-                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "#6e7e87", fontSize: 11 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: "#6e7e87", fontSize: 11 }} tickFormatter={(value) => `$${value}m`} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`$${value}m`]} />
-                <Area type="monotone" dataKey="plan" stroke="#97a5ad" strokeDasharray="5 6" fill="transparent" strokeWidth={1.5} />
-                <Area type="monotone" dataKey="actual" stroke="#1463ff" fill="url(#executiveArea)" strokeWidth={2.5} />
-              </AreaChart>
-            </ResponsiveContainer>
+    <WorkspacePage eyebrow="Executive pulse" title="Executive pulse" description="A live count of open work across your connected operations.">
+      {error && <p className="inline-error"><AlertTriangle size={14} />{error.message}</p>}
+      {!overview && !error && <p className="record-search-state">Loading operating signals...</p>}
+      {overview && (
+        <>
+          <div className="executive-metrics">
+            <MetricCard label="Revenue this month" value={money.format(overview.revenueMtd)} meta="Sum of sales orders placed this month" tone={overview.revenueMtd > 0 ? "good" : "neutral"} />
+            <MetricCard label="Units sold this month" value={String(overview.unitsSoldMtd)} meta="Sales orders placed this month" tone="neutral" />
+            <MetricCard label="Open leads" value={String(overview.openLeads)} meta="Leads not yet won or lost" tone={overview.openLeads > 0 ? "warn" : "good"} />
+            <MetricCard label="Active service jobs" value={String(overview.activeServiceJobs)} meta="Repair orders not yet closed" tone={overview.activeServiceJobs > 0 ? "warn" : "good"} />
           </div>
-        </section>
-
-        <section className="workspace-card exception-card">
-          <div className="card-heading"><div><span>Decision queue</span><strong>4 critical · 7 watch</strong></div><button type="button" onClick={() => onNavigate("group")}>All exceptions</button></div>
-          <div className="exception-list">
-            <button type="button" onClick={() => onNavigate("service")}><span className="exception-icon bad"><Wrench /></span><div><strong>Workshop promise risk</strong><p>4 repair orders need intervention</p></div><em>Critical</em></button>
-            <button type="button" onClick={() => onNavigate("inventory")}><span className="exception-icon warn"><CarFront /></span><div><strong>OEM delivery movement</strong><p>7 customers require updates</p></div><em>Today</em></button>
-            <button type="button" onClick={() => onNavigate("usedcars")}><span className="exception-icon warn"><Clock3 /></span><div><strong>Aged stock exposure</strong><p>$640k above 60 days</p></div><em>Review</em></button>
-            <button type="button" onClick={() => onNavigate("finance")}><span className="exception-icon good"><BadgeCheck /></span><div><strong>F&amp;I performance</strong><p>Best-practice candidate</p></div><em>Share</em></button>
+          <div className="overview-grid">
+            <section className="workspace-card exception-card">
+              <div className="card-heading"><div><span>Open work</span><strong>Where to focus next</strong></div></div>
+              <div className="exception-list">
+                <button type="button" onClick={() => onNavigate("sales")}><span className="exception-icon warn"><Users /></span><div><strong>{overview.openLeads} open leads</strong><p>Sales and CRM pipeline</p></div><em>Open</em></button>
+                <button type="button" onClick={() => onNavigate("service")}><span className="exception-icon warn"><Wrench /></span><div><strong>{overview.activeServiceJobs} active service jobs</strong><p>Service workshop</p></div><em>Open</em></button>
+                <button type="button" onClick={() => onNavigate("parts")}><span className="exception-icon bad"><Package /></span><div><strong>{overview.lowStockParts} parts at or below reorder point</strong><p>Parts control</p></div><em>Reorder</em></button>
+                <button type="button" onClick={() => onNavigate("customers")}><span className="exception-icon good"><BadgeCheck /></span><div><strong>Customer 360</strong><p>Search and manage customers</p></div><em>Open</em></button>
+              </div>
+            </section>
+            <section className="workspace-card agenda-card">
+              <div className="card-heading"><div><span>Connected record spine</span><strong>Every module shares one record</strong></div><CalendarClock size={18} /></div>
+              <div><p><strong>Customer 360</strong><span>Search a name, mobile, or email to see everything connected to that relationship.</span></p></div>
+              <div><p><strong>Vehicle 360</strong><span>Search a VIN or registration to see ownership, service, and valuation history.</span></p></div>
+            </section>
           </div>
-        </section>
-      </div>
-
-      <div className="overview-lower-grid">
-        <section className="workspace-card flow-card">
-          <div className="card-heading"><div><span>Dealership flow</span><strong>Today across every department</strong></div><span className="live-pill"><i /> Live</span></div>
-          <div className="flow-stages">
-            {[
-              { icon: Users, label: "New enquiries", value: "84", meta: "8m avg response" },
-              { icon: TrendingUp, label: "Active deals", value: "126", meta: "$8.4m pipeline" },
-              { icon: CarFront, label: "Deliveries", value: "31", meta: "7 at risk" },
-              { icon: Wrench, label: "Repair orders", value: "72", meta: "86% utilised" },
-              { icon: DollarSign, label: "Payments", value: "$1.2m", meta: "98.7% matched" },
-            ].map(({ icon: Icon, label, value, meta }, index) => <div key={label} className="flow-stage"><span><Icon /></span><div><em>0{index + 1}</em><strong>{value}</strong><p>{label}</p><small>{meta}</small></div>{index < 4 && <ArrowRight />}</div>)}
-          </div>
-        </section>
-        <section className="workspace-card agenda-card">
-          <div className="card-heading"><div><span>Leadership agenda</span><strong>Next operating moments</strong></div><CalendarClock size={18} /></div>
-          <div><time>10:30</time><p><strong>Delivery risk stand-up</strong><span>Sales · Inventory · F&amp;I</span></p></div>
-          <div><time>13:00</time><p><strong>Workshop load review</strong><span>Service · Parts</span></p></div>
-          <div><time>16:15</time><p><strong>Group trading pulse</strong><span>All branch leaders</span></p></div>
-        </section>
-      </div>
-      {briefingOpen && <WorkflowModal title="Daily leadership briefing" eyebrow="Generated from current operating signals" completeLabel="Download briefing" onClose={() => setBriefingOpen(false)} onComplete={downloadBriefing}><div className="briefing-sheet"><header><span>Pacific Motor Group · 21 August 2026</span><strong>Five decisions for today</strong></header><ol><li><b>01</b><div><strong>Protect four customer promises</strong><p>Workshop exceptions need owners before 11:00.</p></div><em>Critical</em></li><li><b>02</b><div><strong>Contact seven delivery customers</strong><p>OEM timing changed overnight; approved templates are ready.</p></div><em>Today</em></li><li><b>03</b><div><strong>Reprice aged used inventory</strong><p>$640k of stock is above the 60-day group threshold.</p></div><em>Review</em></li></ol><div className="briefing-actions"><button type="button" onClick={() => { navigator.clipboard?.writeText(briefingText); notify("Briefing copied to clipboard."); }}><Copy />Copy summary</button><a href={`mailto:olivia.lawson@prakashinfotech.com?subject=AutoAxis daily briefing&body=${encodeURIComponent(briefingText)}`}><Mail />Email briefing</a></div><footer>Prepared in AutoAxis · Built by Prakash Infotech</footer></div></WorkflowModal>}
-      {toast && <Toast message={toast} />}
+        </>
+      )}
     </WorkspacePage>
   );
 }
 
-export function DomainView({ view }: { view: Exclude<DashView, "overview" | "customers" | "vehicles"> }) {
-  const config = DOMAIN_CONFIG[view];
-  const [selected, setSelected] = useState(0);
-  const [modal, setModal] = useState(false);
-  const [filtered, setFiltered] = useState(false);
-  const [toast, setToast] = useState("");
-  const [studioTab, setStudioTab] = useState(0);
-  const [studioRecord, setStudioRecord] = useState(-1);
-  const studio = OPERATING_STUDIOS[view];
-  const activeStudioTab = studio?.tabs[studioTab];
-  useEffect(() => { setStudioTab(0); setStudioRecord(-1); setSelected(0); }, [view]);
-  const steps: Record<typeof view, string[]> = {
-    sales: ["Enquiry", "Qualify", "Test drive", "Quote", "F&I", "Delivery"],
-    service: ["Booking", "Check-in", "Diagnose", "Approve", "Repair", "Handover"],
-    parts: ["Request", "VIN fit", "Reserve", "Pick", "Issue", "Replenish"],
-    finance: ["KYC", "Compare", "Approve", "Insure", "Contract", "Settle"],
-    marketing: ["Audience", "Consent", "Channel", "Launch", "Attribute", "Retain"],
-    usedcars: ["Acquire", "Appraise", "Inspect", "Recondition", "Price", "Publish"],
-    inventory: ["Order", "Allocate", "Transit", "Receive", "PDI", "Deliver"],
-    branch: ["Compare", "Drill down", "Assign", "Recover", "Track", "Brief"],
-    group: ["Compare", "Signal", "Drill down", "Assign", "Track", "Brief"],
-    workforce: ["Plan", "Assign", "Roster", "Deliver", "Measure", "Coach"],
-  };
-  function complete(message: string) { setModal(false); setToast(message); window.setTimeout(() => setToast(""), 2600); }
-  function exportQueue() {
-    const lines = ["record,status,detail", ...config.queue.map((item) => `"${item.primary}","${item.status}","${item.meta}"`)];
-    const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" })); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `${view}-work-queue.csv`; anchor.click(); URL.revokeObjectURL(url); complete(`${config.title} work queue exported.`);
+// ---------------------------------------------------------------------------
+// Sales (leads)
+// ---------------------------------------------------------------------------
+
+const LEAD_STAGES = ["new", "qualified", "test-drive", "quoted", "won", "lost"];
+
+function SalesView() {
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [stageFilter, setStageFilter] = useState("");
+  const [modal, setModal] = useState<null | "create" | number>(null);
+  const [saving, setSaving] = useState(false);
+  const { toast, notify } = useToast();
+
+  function load() {
+    setLoading(true);
+    apiGet<{ leads: Lead[] }>(`/api/v1/leads${stageFilter ? `?stage=${stageFilter}` : ""}`)
+      .then((result) => setLeads(result.leads))
+      .catch((cause) => setError(cause instanceof ApiError ? cause : new ApiError("Could not load leads.", { status: 500 })))
+      .finally(() => setLoading(false));
   }
+
+  useEffect(() => { load(); }, [stageFilter]);
+
+  const openLeads = leads.filter((lead) => lead.stage !== "won" && lead.stage !== "lost");
+  const pipelineValue = openLeads.reduce((total, lead) => total + (lead.expectedValue ?? 0), 0);
+
+  async function createLead(form: { customerId: string; customerLabel: string; source: string; interestedVehicle: string; expectedValue: string }) {
+    setSaving(true);
+    try {
+      await apiPost("/api/v1/leads", { customerId: form.customerId || undefined, source: form.source, interestedVehicle: form.interestedVehicle, expectedValue: form.expectedValue ? Number(form.expectedValue) : undefined });
+      setModal(null);
+      load();
+      notify("Lead created.");
+    } catch (cause) {
+      notify(cause instanceof ApiError ? cause.message : "Could not create the lead.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function updateStage(lead: Lead, stage: string) {
+    try {
+      await apiPatch(`/api/v1/leads/${lead.id}`, { stage });
+      load();
+      notify(`Lead moved to ${stage}.`);
+    } catch (cause) {
+      notify(cause instanceof ApiError ? cause.message : "Could not update the lead.");
+    }
+  }
+
+  function exportQueue() {
+    const lines = ["lead,customer,stage,expected_value", ...leads.map((lead) => `"${lead.source}","${lead.customerName ?? ""}","${lead.stage}","${lead.expectedValue ?? 0}"`)];
+    const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
+    const anchor = document.createElement("a");
+    anchor.href = url; anchor.download = "leads.csv"; anchor.click(); URL.revokeObjectURL(url);
+    notify("Leads exported.");
+  }
+
   return (
-    <WorkspacePage eyebrow={config.eyebrow} title={config.title} description={config.description} action={<button type="button" className="workspace-button workspace-button--dark" onClick={() => { setStudioRecord(-1); setModal(true); }}>{config.action} <ArrowRight size={15} /></button>}>
-      <div className="executive-metrics">{config.metrics.map((metric) => <MetricCard key={metric.label} metric={metric} />)}</div>
-      {studio && activeStudioTab && <section className="workspace-card operating-studio"><header><div><span>Operating cockpit</span><strong>{studio.title}</strong></div><em>Connected demonstration</em></header><nav aria-label={`${studio.title} workflows`}>{studio.tabs.map((item, index) => <button type="button" className={studioTab === index ? "active" : ""} key={item.label} onClick={() => { setStudioTab(index); setStudioRecord(-1); }}>{item.label}<small>{item.coverage.length} controls</small></button>)}</nav><div className="studio-summary"><div><span>{activeStudioTab.label}</span><strong>{activeStudioTab.description}</strong></div><button type="button" onClick={() => { setStudioRecord(-1); setModal(true); }}>{activeStudioTab.action}<ArrowRight /></button></div><div className="studio-coverage">{activeStudioTab.coverage.map((item) => <span key={item}><CheckCircle2 />{item}</span>)}</div><div className="studio-records">{activeStudioTab.records.map((record, index) => <button type="button" key={record.name} onClick={() => { setStudioRecord(index); setModal(true); }}><i>{String(index + 1).padStart(2,"0")}</i><div><strong>{record.name}</strong><span>{record.meta}</span></div><em>{record.status}</em><ArrowRight /></button>)}</div></section>}
-      <section className="workspace-card workflow-lane"><div className="card-heading"><div><span>Connected workflow</span><strong>One record through every accountable handoff</strong></div><span className="live-pill"><i /> Demonstration</span></div><div>{steps[view].map((step, index) => <button type="button" key={step} className={index <= selected ? "active" : ""} onClick={() => setSelected(index)}><i>{index + 1}</i><span>{step}</span>{index < steps[view].length - 1 && <ArrowRight />}</button>)}</div></section>
-      <div className="domain-work-grid">
-        <section className="workspace-card queue-card">
-          <div className="card-heading"><div><span>{config.queueTitle}</span><strong>{filtered ? "Critical and watch items only" : "Prioritised by customer and profit impact"}</strong></div><div className="queue-tools"><button type="button" className={filtered ? "active" : ""} onClick={() => setFiltered((value) => !value)}><Filter />Filter</button><button type="button" onClick={exportQueue}><Download />Export</button></div></div>
-          <div className="work-queue">
-            {config.queue.filter((item) => !filtered || item.tone !== "good").map((item, index) => (
-              <button type="button" key={item.primary} className={selected === index ? "selected" : ""} onClick={() => setSelected(index)}>
-                <span className={`queue-signal tone-bg-${item.tone}`}><QueueIcon tone={item.tone} /></span>
-                <div><strong>{item.primary}</strong><p>{item.secondary}</p></div>
-                <span className="queue-meta">{item.meta}</span>
-                <em className={`queue-status tone-${item.tone}`}>{item.status}</em>
-                <ArrowRight size={15} />
-              </button>
-            ))}
-          </div>
-        </section>
-        <aside className="insight-card">
-          <span><Lightbulb size={15} /> AutoAxis signal</span>
-          <strong>{config.insightTitle}</strong>
-          <p>{config.insight}</p>
-          <button type="button" onClick={() => setModal(true)}>Start recommended action <ArrowRight size={14} /></button>
-        </aside>
+    <WorkspacePage eyebrow="Revenue operations" title="Sales and CRM" description="Every lead connected to a customer record, from first enquiry to a won or lost decision." action={<button type="button" className="workspace-button workspace-button--dark" onClick={() => setModal("create")}><Plus size={15} /> Create lead</button>}>
+      {error && <p className="inline-error"><AlertTriangle size={14} />{error.message}</p>}
+      <div className="executive-metrics">
+        <MetricCard label="Open leads" value={String(openLeads.length)} meta={`${leads.length} total leads`} tone="neutral" />
+        <MetricCard label="Open pipeline value" value={money.format(pipelineValue)} meta="Sum of expected value on open leads" tone="good" />
+        <MetricCard label="Won" value={String(leads.filter((lead) => lead.stage === "won").length)} meta="Leads marked won" tone="good" />
+        <MetricCard label="Lost" value={String(leads.filter((lead) => lead.stage === "lost").length)} meta="Leads marked lost" tone="bad" />
       </div>
-      <div className="domain-lower-grid">
-        <section className="workspace-card activity-card">
-          <div className="card-heading"><div><span>Operational cadence</span><strong>Today's completion profile</strong></div><BarChart3 size={17} /></div>
-          <div className="activity-bars">
-            {[72, 48, 88, 64, 81, 56, 92, 76, 68, 84, 61, 78].map((value, index) => <i key={index} style={{ height: `${value}%` }} className={index === 10 ? "warn" : ""} />)}
+      <section className="workspace-card queue-card">
+        <div className="card-heading">
+          <div><span>Lead pipeline</span><strong>{loading ? "Loading..." : `${leads.length} leads`}</strong></div>
+          <div className="queue-tools">
+            <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value)}><option value="">All stages</option>{LEAD_STAGES.map((stage) => <option key={stage} value={stage}>{stage}</option>)}</select>
+            <button type="button" onClick={exportQueue}><Download />Export</button>
           </div>
-          <div className="activity-axis"><span>08:00</span><span>12:00</span><span>16:00</span><span>20:00</span></div>
-        </section>
-        <section className="workspace-card focus-card">
-          <div className="card-heading"><div><span>Control checks</span><strong>Shift readiness</strong></div><Target size={17} /></div>
-          <div><CheckCircle2 /><p><strong>Owners assigned</strong><span>All critical work has an accountable owner</span></p></div>
-          <div><CheckCircle2 /><p><strong>Customer updates</strong><span>Automated and manual contacts are current</span></p></div>
-          <div className="attention"><AlertTriangle /><p><strong>One threshold outside plan</strong><span>Review the highlighted queue before close</span></p></div>
-        </section>
-      </div>
-      {modal && <WorkflowModal title={activeStudioTab?.action ?? config.action} eyebrow={`${config.title} · connected workflow`} onClose={() => setModal(false)} onComplete={() => complete(`${activeStudioTab?.action ?? config.action} saved and assigned to the work queue.`)}><div className="workflow-progress"><b className="active">1. Context</b><i /><b>2. Details</b><i /><b>3. Review</b></div><div className="selected-context"><span>Linked context</span><strong>{studioRecord >= 0 ? activeStudioTab?.records[studioRecord]?.name : config.queue[selected]?.primary ?? config.title}</strong><p>{studioRecord >= 0 ? activeStudioTab?.records[studioRecord]?.meta : config.queue[selected]?.secondary ?? config.description}</p></div><div className="workflow-form-grid"><label><span>Accountable owner</span><input defaultValue={view === "workforce" ? "People & Culture" : "Sarah Cole"} /></label><label><span>Due</span><input defaultValue="Today · 16:00" /></label><label><span>{view === "inventory" || view === "usedcars" ? "Vehicle / VIN" : view === "workforce" ? "Team / branch" : "Customer channel"}</span><input defaultValue={view === "inventory" || view === "usedcars" ? "Linked from selected record" : view === "workforce" ? "Sydney Central" : "Email + WhatsApp"} /></label><label><span>Next status</span><input defaultValue={studioRecord >= 0 ? activeStudioTab?.records[studioRecord]?.status : steps[view][Math.min(selected + 1, steps[view].length - 1)]} /></label></div><div className="workflow-callout"><CheckCircle2 /><div><strong>Shared record context retained</strong><p>Customer, vehicle, team, documents and financial impact remain linked through the workflow.</p></div></div></WorkflowModal>}
+        </div>
+        <div className="work-queue">
+          {leads.map((lead) => (
+            <div className="work-queue-row" key={lead.id}>
+              <div><strong>{lead.customerName ?? "Unassigned customer"}</strong><p>{lead.interestedVehicle ?? lead.source}</p></div>
+              <span className="queue-meta">{lead.expectedValue ? money.format(lead.expectedValue) : "-"}</span>
+              <select value={lead.stage} onChange={(event) => updateStage(lead, event.target.value)}>{LEAD_STAGES.map((stage) => <option key={stage} value={stage}>{stage}</option>)}</select>
+            </div>
+          ))}
+          {!loading && !leads.length && <div className="timeline-empty">No leads yet. Create one to start the pipeline.</div>}
+        </div>
+      </section>
+      {modal === "create" && <CreateLeadDialog saving={saving} onClose={() => setModal(null)} onSubmit={createLead} />}
       {toast && <Toast message={toast} />}
     </WorkspacePage>
   );
 }
 
-function QueueIcon({ tone }: { tone: "good" | "warn" | "bad" | "neutral" }) {
-  if (tone === "good") return <CheckCircle2 />;
-  if (tone === "bad") return <AlertTriangle />;
-  if (tone === "warn") return <Clock3 />;
-  return <Gauge />;
+function CreateLeadDialog({ onClose, onSubmit, saving }: { saving: boolean; onClose: () => void; onSubmit: (form: { customerId: string; customerLabel: string; source: string; interestedVehicle: string; expectedValue: string }) => void }) {
+  const [form, setForm] = useState({ customerId: "", customerLabel: "", source: "web", interestedVehicle: "", expectedValue: "" });
+  return <WorkflowModal title="Create lead" eyebrow="Sales pipeline" completeLabel="Create lead" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
+    <div className="workflow-form-grid">
+      <label className="workflow-form-full"><span>Customer</span><CustomerPicker value={form.customerLabel} onSelect={(customer) => setForm({ ...form, customerId: customer.id, customerLabel: customer.displayName })} /></label>
+      <label><span>Source</span><select value={form.source} onChange={(event) => setForm({ ...form, source: event.target.value })}><option value="web">Web enquiry</option><option value="walk-in">Walk-in</option><option value="phone">Phone</option><option value="referral">Referral</option></select></label>
+      <label><span>Vehicle interest</span><input value={form.interestedVehicle} onChange={(event) => setForm({ ...form, interestedVehicle: event.target.value })} /></label>
+      <label><span>Expected value (AUD)</span><input type="number" min="0" value={form.expectedValue} onChange={(event) => setForm({ ...form, expectedValue: event.target.value })} /></label>
+    </div>
+  </WorkflowModal>;
+}
+
+// ---------------------------------------------------------------------------
+// Service (repair orders)
+// ---------------------------------------------------------------------------
+
+const JOB_STATUSES = ["booked", "checked-in", "diagnosing", "awaiting-approval", "in-progress", "quality-check", "closed"];
+
+function ServiceView() {
+  const [jobs, setJobs] = useState<ServiceJob[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [statusFilter, setStatusFilter] = useState("");
+  const [modal, setModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const { toast, notify } = useToast();
+
+  function load() {
+    setLoading(true);
+    apiGet<{ serviceJobs: ServiceJob[] }>(`/api/v1/service-jobs${statusFilter ? `?status=${statusFilter}` : ""}`)
+      .then((result) => setJobs(result.serviceJobs))
+      .catch((cause) => setError(cause instanceof ApiError ? cause : new ApiError("Could not load service jobs.", { status: 500 })))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, [statusFilter]);
+
+  const active = jobs.filter((job) => job.status !== "closed");
+  const revenue = jobs.reduce((total, job) => total + job.labourTotal + job.partsTotal, 0);
+
+  async function createJob(form: { customerId: string; vehicleId: string; repairOrderNumber: string; advisor: string; complaint: string }) {
+    setSaving(true);
+    try {
+      await apiPost("/api/v1/service-jobs", form);
+      setModal(false);
+      load();
+      notify("Repair order created.");
+    } catch (cause) {
+      notify(cause instanceof ApiError ? cause.message : "Could not create the repair order.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function updateStatus(job: ServiceJob, status: string) {
+    try {
+      await apiPatch(`/api/v1/service-jobs/${job.id}`, { status });
+      load();
+      notify(`Repair order ${job.repairOrderNumber} moved to ${status}.`);
+    } catch (cause) {
+      notify(cause instanceof ApiError ? cause.message : "Could not update the repair order.");
+    }
+  }
+
+  return (
+    <WorkspacePage eyebrow="Fixed operations" title="Service workshop" description="Every repair order connected to a customer and vehicle, from booking to closed invoice." action={<button type="button" className="workspace-button workspace-button--dark" onClick={() => setModal(true)}><Plus size={15} /> New booking</button>}>
+      {error && <p className="inline-error"><AlertTriangle size={14} />{error.message}</p>}
+      <div className="executive-metrics">
+        <MetricCard label="Active jobs" value={String(active.length)} meta={`${jobs.length} total repair orders`} tone="neutral" />
+        <MetricCard label="Workshop revenue" value={money.format(revenue)} meta="Labour and parts across all jobs" tone="good" />
+        <MetricCard label="Awaiting approval" value={String(jobs.filter((job) => job.status === "awaiting-approval").length)} meta="Repair orders on hold" tone="warn" />
+        <MetricCard label="Closed" value={String(jobs.filter((job) => job.status === "closed").length)} meta="Completed repair orders" tone="good" />
+      </div>
+      <section className="workspace-card queue-card">
+        <div className="card-heading">
+          <div><span>Repair orders</span><strong>{loading ? "Loading..." : `${jobs.length} jobs`}</strong></div>
+          <div className="queue-tools"><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All statuses</option>{JOB_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}</select></div>
+        </div>
+        <div className="work-queue">
+          {jobs.map((job) => (
+            <div className="work-queue-row" key={job.id}>
+              <div><strong>{job.repairOrderNumber} - {job.customerName}</strong><p>{job.make} {job.model} - {job.complaint ?? "No complaint on file"}</p></div>
+              <span className="queue-meta">{money.format(job.labourTotal + job.partsTotal)}</span>
+              <select value={job.status} onChange={(event) => updateStatus(job, event.target.value)}>{JOB_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}</select>
+            </div>
+          ))}
+          {!loading && !jobs.length && <div className="timeline-empty">No repair orders yet.</div>}
+        </div>
+      </section>
+      {modal && <CreateServiceJobDialog saving={saving} onClose={() => setModal(false)} onSubmit={createJob} />}
+      {toast && <Toast message={toast} />}
+    </WorkspacePage>
+  );
+}
+
+function CreateServiceJobDialog({ onClose, onSubmit, saving }: { saving: boolean; onClose: () => void; onSubmit: (form: { customerId: string; vehicleId: string; repairOrderNumber: string; advisor: string; complaint: string }) => void }) {
+  const [form, setForm] = useState({ customerId: "", customerLabel: "", vehicleId: "", vehicleLabel: "", repairOrderNumber: `RO-${Math.floor(Math.random() * 90000 + 10000)}`, advisor: "", complaint: "" });
+  return <WorkflowModal title="Create repair order" eyebrow="Service booking" completeLabel="Create booking" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
+    <div className="workflow-form-grid">
+      <label className="workflow-form-full"><span>Customer</span><CustomerPicker value={form.customerLabel} onSelect={(customer) => setForm({ ...form, customerId: customer.id, customerLabel: customer.displayName })} /></label>
+      <label className="workflow-form-full"><span>Vehicle</span><VehiclePicker value={form.vehicleLabel} onSelect={(vehicle) => setForm({ ...form, vehicleId: vehicle.id, vehicleLabel: `${vehicle.make} ${vehicle.model}` })} /></label>
+      <label><span>Repair order number</span><input value={form.repairOrderNumber} onChange={(event) => setForm({ ...form, repairOrderNumber: event.target.value })} /></label>
+      <label><span>Advisor</span><input value={form.advisor} onChange={(event) => setForm({ ...form, advisor: event.target.value })} /></label>
+      <label className="workflow-form-full"><span>Complaint or work requested</span><input value={form.complaint} onChange={(event) => setForm({ ...form, complaint: event.target.value })} /></label>
+    </div>
+  </WorkflowModal>;
+}
+
+// ---------------------------------------------------------------------------
+// Parts
+// ---------------------------------------------------------------------------
+
+function PartsView() {
+  const [parts, setParts] = useState<Part[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [modal, setModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const { toast, notify } = useToast();
+
+  function load() {
+    setLoading(true);
+    apiGet<{ parts: Part[] }>(`/api/v1/parts${lowStockOnly ? "?lowStock=true" : ""}`)
+      .then((result) => setParts(result.parts))
+      .catch((cause) => setError(cause instanceof ApiError ? cause : new ApiError("Could not load parts.", { status: 500 })))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, [lowStockOnly]);
+
+  const stockValue = parts.reduce((total, part) => total + part.unitCost * part.quantityOnHand, 0);
+  const lowStockCount = parts.filter((part) => part.quantityOnHand <= part.reorderPoint).length;
+
+  async function createPart(form: { sku: string; name: string; quantityOnHand: string; reorderPoint: string; unitCost: string; retailPrice: string }) {
+    setSaving(true);
+    try {
+      await apiPost("/api/v1/parts", { ...form, quantityOnHand: Number(form.quantityOnHand), reorderPoint: Number(form.reorderPoint), unitCost: Number(form.unitCost), retailPrice: Number(form.retailPrice) });
+      setModal(false);
+      load();
+      notify("Part added.");
+    } catch (cause) {
+      notify(cause instanceof ApiError ? cause.message : "Could not create the part.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function adjustStock(part: Part, delta: number) {
+    try {
+      await apiPatch(`/api/v1/parts/${part.id}`, { quantityOnHand: Math.max(0, part.quantityOnHand + delta) });
+      load();
+    } catch (cause) {
+      notify(cause instanceof ApiError ? cause.message : "Could not update stock.");
+    }
+  }
+
+  return (
+    <WorkspacePage eyebrow="Warehouse and supply" title="Parts control" description="Live stock levels connected to reorder points and unit economics." action={<button type="button" className="workspace-button workspace-button--dark" onClick={() => setModal(true)}><Plus size={15} /> Add part</button>}>
+      {error && <p className="inline-error"><AlertTriangle size={14} />{error.message}</p>}
+      <div className="executive-metrics">
+        <MetricCard label="Parts on file" value={String(parts.length)} meta="Total SKUs" tone="neutral" />
+        <MetricCard label="Stock value" value={money.format(stockValue)} meta="Unit cost times quantity on hand" tone="neutral" />
+        <MetricCard label="At or below reorder point" value={String(lowStockCount)} meta="Needs replenishment" tone={lowStockCount > 0 ? "bad" : "good"} />
+      </div>
+      <section className="workspace-card queue-card">
+        <div className="card-heading"><div><span>Parts inventory</span><strong>{loading ? "Loading..." : `${parts.length} parts`}</strong></div><div className="queue-tools"><button type="button" className={lowStockOnly ? "active" : ""} onClick={() => setLowStockOnly((value) => !value)}><Filter />Low stock only</button></div></div>
+        <div className="work-queue">
+          {parts.map((part) => (
+            <div className="work-queue-row" key={part.id}>
+              <div><strong>{part.name}</strong><p>{part.sku}</p></div>
+              <span className="queue-meta">{part.quantityOnHand} on hand - reorder at {part.reorderPoint}</span>
+              <div className="stock-adjust"><button type="button" onClick={() => adjustStock(part, -1)}>-</button><button type="button" onClick={() => adjustStock(part, 1)}>+</button></div>
+            </div>
+          ))}
+          {!loading && !parts.length && <div className="timeline-empty">No parts on file yet.</div>}
+        </div>
+      </section>
+      {modal && <CreatePartDialog saving={saving} onClose={() => setModal(false)} onSubmit={createPart} />}
+      {toast && <Toast message={toast} />}
+    </WorkspacePage>
+  );
+}
+
+function CreatePartDialog({ onClose, onSubmit, saving }: { saving: boolean; onClose: () => void; onSubmit: (form: { sku: string; name: string; quantityOnHand: string; reorderPoint: string; unitCost: string; retailPrice: string }) => void }) {
+  const [form, setForm] = useState({ sku: "", name: "", quantityOnHand: "0", reorderPoint: "0", unitCost: "0", retailPrice: "0" });
+  return <WorkflowModal title="Add part" eyebrow="Parts control" completeLabel="Add part" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
+    <div className="workflow-form-grid">
+      <label><span>SKU</span><input required value={form.sku} onChange={(event) => setForm({ ...form, sku: event.target.value })} /></label>
+      <label><span>Name</span><input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label>
+      <label><span>Quantity on hand</span><input type="number" min="0" value={form.quantityOnHand} onChange={(event) => setForm({ ...form, quantityOnHand: event.target.value })} /></label>
+      <label><span>Reorder point</span><input type="number" min="0" value={form.reorderPoint} onChange={(event) => setForm({ ...form, reorderPoint: event.target.value })} /></label>
+      <label><span>Unit cost (AUD)</span><input type="number" min="0" value={form.unitCost} onChange={(event) => setForm({ ...form, unitCost: event.target.value })} /></label>
+      <label><span>Retail price (AUD)</span><input type="number" min="0" value={form.retailPrice} onChange={(event) => setForm({ ...form, retailPrice: event.target.value })} /></label>
+    </div>
+  </WorkflowModal>;
+}
+
+// ---------------------------------------------------------------------------
+// Finance and insurance
+// ---------------------------------------------------------------------------
+
+function FinanceView() {
+  const [contracts, setContracts] = useState<FinanceContract[]>([]);
+  const [policies, setPolicies] = useState<InsurancePolicy[]>([]);
+  const [tab, setTab] = useState<"contracts" | "policies">("contracts");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<ApiError | null>(null);
+  const [modal, setModal] = useState<null | "contract" | "policy">(null);
+  const [saving, setSaving] = useState(false);
+  const { toast, notify } = useToast();
+
+  function load() {
+    setLoading(true);
+    Promise.all([
+      apiGet<{ financeContracts: FinanceContract[] }>("/api/v1/finance-contracts"),
+      apiGet<{ insurancePolicies: InsurancePolicy[] }>("/api/v1/insurance-policies"),
+    ])
+      .then(([financeResult, insuranceResult]) => { setContracts(financeResult.financeContracts); setPolicies(insuranceResult.insurancePolicies); })
+      .catch((cause) => setError(cause instanceof ApiError ? cause : new ApiError("Could not load finance data.", { status: 500 })))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, []);
+
+  const financedTotal = contracts.reduce((total, contract) => total + contract.amountFinanced, 0);
+  const activePolicies = policies.filter((policy) => policy.status === "active").length;
+
+  async function createContract(form: { salesOrderId: string; provider: string; productType: string; amountFinanced: string }) {
+    setSaving(true);
+    try {
+      await apiPost("/api/v1/finance-contracts", { ...form, amountFinanced: Number(form.amountFinanced) });
+      setModal(null);
+      load();
+      notify("Finance contract created.");
+    } catch (cause) {
+      notify(cause instanceof ApiError ? cause.message : "Could not create the finance contract.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function createPolicy(form: { customerId: string; vehicleId: string; provider: string; policyNumber: string; startsOn: string; expiresOn: string; premium: string }) {
+    setSaving(true);
+    try {
+      await apiPost("/api/v1/insurance-policies", { ...form, premium: form.premium ? Number(form.premium) : undefined });
+      setModal(null);
+      load();
+      notify("Insurance policy created.");
+    } catch (cause) {
+      notify(cause instanceof ApiError ? cause.message : "Could not create the insurance policy.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <WorkspacePage eyebrow="Deal profitability" title="Finance and insurance" description="Finance contracts and insurance policies connected to each sales order and customer." action={<button type="button" className="workspace-button workspace-button--dark" onClick={() => setModal(tab === "contracts" ? "contract" : "policy")}><Plus size={15} /> {tab === "contracts" ? "New contract" : "New policy"}</button>}>
+      {error && <p className="inline-error"><AlertTriangle size={14} />{error.message}</p>}
+      <div className="executive-metrics">
+        <MetricCard label="Finance contracts" value={String(contracts.length)} meta="Total contracts on file" tone="neutral" />
+        <MetricCard label="Amount financed" value={money.format(financedTotal)} meta="Sum across all contracts" tone="good" />
+        <MetricCard label="Active insurance policies" value={String(activePolicies)} meta={`${policies.length} total policies`} tone="good" />
+      </div>
+      <div className="record-tabs" role="tablist"><button role="tab" aria-selected={tab === "contracts"} className={tab === "contracts" ? "active" : ""} type="button" onClick={() => setTab("contracts")}>Finance contracts</button><button role="tab" aria-selected={tab === "policies"} className={tab === "policies" ? "active" : ""} type="button" onClick={() => setTab("policies")}>Insurance policies</button></div>
+      {tab === "contracts" && (
+        <section className="workspace-card queue-card">
+          <div className="work-queue">
+            {contracts.map((contract) => <div className="work-queue-row" key={contract.id}><div><strong>{contract.customerName}</strong><p>{contract.provider} - {contract.productType}</p></div><span className="queue-meta">{money.format(contract.amountFinanced)}</span><em className="queue-status">{contract.status}</em></div>)}
+            {!loading && !contracts.length && <div className="timeline-empty">No finance contracts yet.</div>}
+          </div>
+        </section>
+      )}
+      {tab === "policies" && (
+        <section className="workspace-card queue-card">
+          <div className="work-queue">
+            {policies.map((policy) => <div className="work-queue-row" key={policy.id}><div><strong>{policy.customerName}</strong><p>{policy.provider} - {policy.policyNumber}</p></div><span className="queue-meta">Expires {dateFormatter.format(new Date(policy.expiresOn))}</span><em className="queue-status">{policy.status}</em></div>)}
+            {!loading && !policies.length && <div className="timeline-empty">No insurance policies yet.</div>}
+          </div>
+        </section>
+      )}
+      {modal === "contract" && <CreateFinanceContractDialog saving={saving} onClose={() => setModal(null)} onSubmit={createContract} />}
+      {modal === "policy" && <CreateInsurancePolicyDialog saving={saving} onClose={() => setModal(null)} onSubmit={createPolicy} />}
+      {toast && <Toast message={toast} />}
+    </WorkspacePage>
+  );
+}
+
+function CreateFinanceContractDialog({ onClose, onSubmit, saving }: { saving: boolean; onClose: () => void; onSubmit: (form: { salesOrderId: string; provider: string; productType: string; amountFinanced: string }) => void }) {
+  const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
+  const [form, setForm] = useState({ salesOrderId: "", provider: "", productType: "loan", amountFinanced: "" });
+  useEffect(() => { apiGet<{ salesOrders: SalesOrder[] }>("/api/v1/sales-orders?limit=20").then((result) => setSalesOrders(result.salesOrders)).catch(() => setSalesOrders([])); }, []);
+  return <WorkflowModal title="Create finance contract" eyebrow="Finance workflow" completeLabel="Create contract" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
+    <div className="workflow-form-grid">
+      <label className="workflow-form-full"><span>Sales order</span><select required value={form.salesOrderId} onChange={(event) => setForm({ ...form, salesOrderId: event.target.value })}><option value="">Select a sales order</option>{salesOrders.map((order) => <option key={order.id} value={order.id}>{order.customerName} - {order.make} {order.model} - {money.format(order.totalAmount)}</option>)}</select></label>
+      {!salesOrders.length && <p className="workflow-form-full inline-error"><AlertTriangle size={14} />No sales orders yet. Create one from a customer record first.</p>}
+      <label><span>Provider</span><input required value={form.provider} onChange={(event) => setForm({ ...form, provider: event.target.value })} /></label>
+      <label><span>Product type</span><select value={form.productType} onChange={(event) => setForm({ ...form, productType: event.target.value })}><option value="loan">Loan</option><option value="lease">Lease</option><option value="balloon">Balloon</option></select></label>
+      <label><span>Amount financed (AUD)</span><input required type="number" min="0" value={form.amountFinanced} onChange={(event) => setForm({ ...form, amountFinanced: event.target.value })} /></label>
+    </div>
+  </WorkflowModal>;
+}
+
+function CreateInsurancePolicyDialog({ onClose, onSubmit, saving }: { saving: boolean; onClose: () => void; onSubmit: (form: { customerId: string; vehicleId: string; provider: string; policyNumber: string; startsOn: string; expiresOn: string; premium: string }) => void }) {
+  const [form, setForm] = useState({ customerId: "", customerLabel: "", vehicleId: "", vehicleLabel: "", provider: "", policyNumber: "", startsOn: "", expiresOn: "", premium: "" });
+  return <WorkflowModal title="Create insurance policy" eyebrow="Insurance workflow" completeLabel="Create policy" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
+    <div className="workflow-form-grid">
+      <label className="workflow-form-full"><span>Customer</span><CustomerPicker value={form.customerLabel} onSelect={(customer) => setForm({ ...form, customerId: customer.id, customerLabel: customer.displayName })} /></label>
+      <label className="workflow-form-full"><span>Vehicle</span><VehiclePicker value={form.vehicleLabel} onSelect={(vehicle) => setForm({ ...form, vehicleId: vehicle.id, vehicleLabel: `${vehicle.make} ${vehicle.model}` })} /></label>
+      <label><span>Provider</span><input required value={form.provider} onChange={(event) => setForm({ ...form, provider: event.target.value })} /></label>
+      <label><span>Policy number</span><input required value={form.policyNumber} onChange={(event) => setForm({ ...form, policyNumber: event.target.value })} /></label>
+      <label><span>Starts on</span><input required type="date" value={form.startsOn} onChange={(event) => setForm({ ...form, startsOn: event.target.value })} /></label>
+      <label><span>Expires on</span><input required type="date" value={form.expiresOn} onChange={(event) => setForm({ ...form, expiresOn: event.target.value })} /></label>
+      <label><span>Premium (AUD)</span><input type="number" min="0" value={form.premium} onChange={(event) => setForm({ ...form, premium: event.target.value })} /></label>
+    </div>
+  </WorkflowModal>;
+}
+
+// ---------------------------------------------------------------------------
+
+export function DomainView({ view }: { view: "sales" | "service" | "parts" | "finance" }) {
+  if (view === "sales") return <SalesView />;
+  if (view === "service") return <ServiceView />;
+  if (view === "parts") return <PartsView />;
+  return <FinanceView />;
 }

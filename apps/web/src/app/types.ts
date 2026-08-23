@@ -1,4 +1,4 @@
-export type AppView = "landing" | "dashboard";
+export type AppView = "landing" | "login" | "signup" | "dashboard";
 
 export type DashView =
   | "overview"
@@ -13,54 +13,189 @@ export type DashView =
   | "inventory"
   | "branch"
   | "group"
-  | "workforce";
+  | "workforce"
+  | "company";
 
-export type Customer360 = {
+export type Role = "admin" | "branch_manager" | "sales" | "service" | "staff";
+
+export type SessionUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  organizationId: string;
+  branchId: string | null;
+};
+
+export type Organization = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export type Branch = {
+  id: string;
+  organizationId: string;
+  code: string;
+  name: string;
+  city: string | null;
+};
+
+export type UserAccount = {
+  id: string;
+  organizationId: string;
+  branchId: string | null;
+  branchName?: string | null;
+  name: string;
+  email: string;
+  role: Role;
+  isActive: boolean;
+  createdAt: string;
+};
+
+export type TimelineEvent = { occurredAt: string; type: string; summary: string };
+
+export type Customer = {
   id: string;
   displayName: string;
-  mobile: string;
-  email: string;
-  preferredChannel: string;
-  address: string;
+  customerType: "individual" | "company";
+  mobile: string | null;
+  email: string | null;
+  preferredChannel: string | null;
+  address: string | null;
   lifetimeValue: number;
   customerSince: string;
-  serviceVisitCount: number;
+};
+
+export type Customer360 = Customer & {
   vehicles: Array<{
     id?: string;
     make: string;
     model: string;
-    variant: string;
+    variant: string | null;
     vin: string;
-    registration?: string;
+    registration?: string | null;
   }>;
-  timeline: Array<{ occurredAt: string; type: string; summary: string }>;
+  timeline: TimelineEvent[];
+  serviceVisitCount: number;
 };
 
-export type Vehicle360 = {
+export type Vehicle = {
   id: string;
   vin: string;
-  registration: string;
+  registration: string | null;
   make: string;
   model: string;
-  variant: string;
-  colour: string;
-  modelYear: number;
-  odometerKm: number;
-  marketValue: number;
+  variant: string | null;
+  colour: string | null;
+  modelYear: number | null;
+  odometerKm: number | null;
+  marketValue: number | null;
   status: string;
-  ownerName: string;
-  ownerMobile: string;
-  timeline: Array<{ occurredAt: string; type: string; summary: string }>;
 };
 
-export type DomainConfig = {
-  title: string;
-  eyebrow: string;
-  description: string;
-  action: string;
-  metrics: Array<{ label: string; value: string; delta: string; tone?: "good" | "warn" | "bad" | "neutral" }>;
-  queueTitle: string;
-  queue: Array<{ primary: string; secondary: string; meta: string; status: string; tone: "good" | "warn" | "bad" | "neutral" }>;
-  insightTitle: string;
-  insight: string;
+export type Vehicle360 = Vehicle & {
+  ownerId?: string;
+  ownerName?: string | null;
+  ownerMobile?: string | null;
+  timeline: TimelineEvent[];
+};
+
+export type Lead = {
+  id: string;
+  branchId: string | null;
+  customerId: string | null;
+  customerName: string | null;
+  source: string;
+  stage: string;
+  interestedVehicle: string | null;
+  assignedTo: string | null;
+  expectedValue: number | null;
+  createdAt: string;
+};
+
+export type SalesOrder = {
+  id: string;
+  branchId: string | null;
+  customerId: string;
+  customerName: string;
+  vehicleId: string;
+  make: string;
+  model: string;
+  status: string;
+  totalAmount: number;
+  orderedAt: string;
+  deliveredAt: string | null;
+};
+
+export type ServiceJob = {
+  id: string;
+  branchId: string | null;
+  customerId: string;
+  customerName: string;
+  vehicleId: string;
+  make: string;
+  model: string;
+  repairOrderNumber: string;
+  status: string;
+  advisor: string | null;
+  technician: string | null;
+  complaint: string | null;
+  labourTotal: number;
+  partsTotal: number;
+  openedAt: string;
+  promisedAt: string | null;
+  closedAt: string | null;
+};
+
+export type Part = {
+  id: string;
+  sku: string;
+  name: string;
+  quantityOnHand: number;
+  reorderPoint: number;
+  unitCost: number;
+  retailPrice: number;
+};
+
+export type FinanceContract = {
+  id: string;
+  salesOrderId: string;
+  provider: string;
+  productType: string;
+  amountFinanced: number;
+  status: string;
+  commission: number;
+  customerName: string;
+};
+
+export type InsurancePolicy = {
+  id: string;
+  customerId: string;
+  customerName: string;
+  vehicleId: string;
+  provider: string;
+  policyNumber: string;
+  status: string;
+  startsOn: string;
+  expiresOn: string;
+  premium: number | null;
+};
+
+export type Communication = {
+  id: string;
+  customerId: string;
+  channel: string;
+  direction: string;
+  subject: string | null;
+  summary: string;
+  occurredAt: string;
+};
+
+export type Overview = {
+  openLeads: number;
+  unitsSoldMtd: number;
+  activeServiceJobs: number;
+  lowStockParts: number;
+  revenueMtd: number;
 };

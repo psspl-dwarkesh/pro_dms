@@ -8,15 +8,23 @@ Customer 360 and Vehicle 360 remain the shared data spine. Sales, used vehicles,
 
 ## Implemented cockpit coverage
 
-| Cockpit | Complete demonstration stages |
-| --- | --- |
-| Customer 360 | Seven-record searchable directory; segment filters; profile and consent editing; call, WhatsApp and email; tasks and notes; activity filters; owned vehicles; sales and finance history; insurance; service bookings and repair orders; document wallet; portal preview; share and CSV export |
-| Vehicle 360 | Six-asset searchable directory; ownership/stock/demo/reserved filters; VIN master; lifecycle filters; repair orders, inspections, recalls and PDI; valuation and appraisal; ownership chain; document vault; inventory intake, auction and rental/demo booking; share and CSV export |
-| New vehicle sales | Enquiry and assignment; qualification and pipeline; availability and configuration; test drive; quotation; KYC; finance; insurance; accessories; booking and invoice; registration; PDI; delivery checklist; handover; follow-up |
-| Used vehicles | Acquisition and trade-in; appraisal and automated valuation; market comparison; 200-point inspection; photos/video; workshop preparation; refurbishment and recon cost; stock and pricing; aging; marketplace publishing; auction/reserve; expected and actual margin |
-| Finance and insurance | KYC and lender comparison; approvals and contracts; policy quotation and tracking; insurer/workshop context; renewals; claims and accidents; commissions, reversals, and reconciliation |
-| Vehicle inventory | New, used, incoming, allocated, reserved, and available VINs; yard location; branch transfer; demo/test-drive fleet; mileage and condition; receipt; PDI; registration dependencies; delivery and aging alerts; valuation |
-| Workforce | Sales, service, technician, parts, and finance teams; attendance/roster; targets; incentives and commission; productivity and quality; skill matrix; certification; training and coaching |
+Every row marked Implemented is backed by a real database table, authenticated and organization/branch-scoped CRUD routes, and a workspace view with no fabricated data. Rows marked Coming soon render the shared `ComingSoon` placeholder in the workspace instead of an invented workflow, because no data model exists for them yet.
+
+| Cockpit | Status | Current stages |
+| --- | --- | --- |
+| Customer 360 | Implemented | Searchable directory; create/edit/delete; owned vehicles; cross-department timeline; lifetime value; call, WhatsApp, email; logged communications; linked leads and service jobs; share and CSV export |
+| Vehicle 360 | Implemented | Searchable directory; create/edit/delete; VIN master; ownership; lifecycle timeline; linked repair orders; valuation (market value plus an estimated trade and wholesale figure derived from it); share and CSV export |
+| Sales and CRM | Implemented | Lead pipeline (source, stage, expected value) linked to a customer; stage updates; CSV export. Full enquiry-to-delivery stages (test drive, quotation, KYC, registration, PDI, handover) are not yet modeled |
+| Service workshop | Implemented | Repair orders linked to a customer and vehicle; advisor, technician, complaint, labour/parts totals; status workflow through to closed |
+| Parts control | Implemented | Parts catalog with SKU, stock on hand, reorder point, unit cost and retail price; stock adjustment; low-stock filter |
+| Finance and insurance | Implemented | Finance contracts linked to a sales order; insurance policies linked to a customer and vehicle; status tracking |
+| Company and users | Implemented, admin only | Branch directory and creation; team account directory, creation, and role/active-status management |
+| Used vehicles | Coming soon | Acquisition, appraisal, reconditioning, and marketplace publishing have no data model yet |
+| Vehicle inventory | Coming soon | Yard location, branch transfer, and PDI/delivery tracking beyond the Vehicle 360 record have no data model yet |
+| Marketing | Coming soon | Audience, journey, and attribution features have no data model yet |
+| Branch performance | Coming soon | A branch-level rollup across sales, service, and parts is planned once more operating data exists |
+| Group analytics | Coming soon | Cross-branch comparisons are planned once more than one branch has active operating data |
+| Workforce | Coming soon | Team roster, targets, incentives, and skills tracking have no data model yet |
 
 ## Connector evidence policy
 

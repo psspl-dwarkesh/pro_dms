@@ -21,30 +21,66 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiGet<T>(path: string, options: { signal?: AbortSignal; timeoutMs?: number } = {}): Promise<T> {
+const TOKEN_STORAGE_KEY = "autoaxis.session.token";
+
+let onUnauthorized: (() => void) | null = null;
+
+export function registerUnauthorizedHandler(handler: (() => void) | null) {
+  onUnauthorized = handler;
+}
+
+export function getStoredToken(): string | null {
+  try {
+    return window.localStorage.getItem(TOKEN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredToken(token: string | null) {
+  try {
+    if (token) window.localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    else window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+  } catch {
+    // Storage may be unavailable (private browsing); the session simply will not persist across reloads.
+  }
+}
+
+type RequestOptions = { signal?: AbortSignal; timeoutMs?: number };
+
+async function apiRequest<T>(method: string, path: string, body: unknown, options: RequestOptions = {}): Promise<T> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), options.timeoutMs ?? 8000);
   const onAbort = () => controller.abort();
   options.signal?.addEventListener("abort", onAbort, { once: true });
 
+  const token = getStoredToken();
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (token) headers.Authorization = `Bearer ${token}`;
+
   try {
     const response = await fetch(path, {
-      method: "GET",
-      headers: { Accept: "application/json" },
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
       signal: controller.signal,
     });
-    const body = (await response.json().catch(() => ({}))) as ApiErrorBody & T;
+
+    if (response.status === 204) return undefined as T;
+    const responseBody = (await response.json().catch(() => ({}))) as ApiErrorBody & T;
 
     if (!response.ok) {
-      const structured = typeof body.error === "object" ? body.error : undefined;
-      throw new ApiError(structured?.message ?? (typeof body.error === "string" ? body.error : "The request could not be completed."), {
-        status: response.status,
-        code: structured?.code,
-        requestId: structured?.requestId,
-      });
+      const structured = typeof responseBody.error === "object" ? responseBody.error : undefined;
+      const apiError = new ApiError(
+        structured?.message ?? (typeof responseBody.error === "string" ? responseBody.error : "The request could not be completed."),
+        { status: response.status, code: structured?.code, requestId: structured?.requestId },
+      );
+      if (response.status === 401) onUnauthorized?.();
+      throw apiError;
     }
 
-    return body;
+    return responseBody;
   } catch (error) {
     if (error instanceof ApiError) throw error;
     if (controller.signal.aborted) throw new ApiError("The request timed out. Try again.", { status: 408, code: "REQUEST_TIMEOUT" });
@@ -53,4 +89,20 @@ export async function apiGet<T>(path: string, options: { signal?: AbortSignal; t
     window.clearTimeout(timeout);
     options.signal?.removeEventListener("abort", onAbort);
   }
+}
+
+export function apiGet<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return apiRequest<T>("GET", path, undefined, options);
+}
+
+export function apiPost<T>(path: string, body: unknown, options: RequestOptions = {}): Promise<T> {
+  return apiRequest<T>("POST", path, body, options);
+}
+
+export function apiPatch<T>(path: string, body: unknown, options: RequestOptions = {}): Promise<T> {
+  return apiRequest<T>("PATCH", path, body, options);
+}
+
+export function apiDelete<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return apiRequest<T>("DELETE", path, undefined, options);
 }
