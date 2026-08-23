@@ -3,6 +3,7 @@ import LandingPage from "./LandingPage";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import LoginPage from "./auth/LoginPage";
 import SignupPage from "./auth/SignupPage";
+import { CrashFallback, ErrorBoundary } from "./components/ErrorBoundary";
 import type { AppView, DashView } from "./types";
 
 const DashboardApp = lazy(() => import("./dashboard/DashboardApp"));
@@ -96,9 +97,22 @@ function AppShell() {
 
   if (appView === "dashboard") {
     return (
-      <Suspense fallback={<WorkspaceLoader />}>
-        <DashboardApp initialView={dashView} onNavigate={changeWorkspace} onLogout={handleLogout} />
-      </Suspense>
+      <ErrorBoundary
+        fallback={(reset) => (
+          <CrashFallback
+            title="This workspace hit a problem"
+            detail="Something went wrong rendering this page. Your session is still active — try again, or pick another workspace from the sidebar once it reloads."
+            onRetry={() => {
+              reset();
+              changeWorkspace("overview");
+            }}
+          />
+        )}
+      >
+        <Suspense fallback={<WorkspaceLoader />}>
+          <DashboardApp initialView={dashView} onNavigate={changeWorkspace} onLogout={handleLogout} />
+        </Suspense>
+      </ErrorBoundary>
     );
   }
 
@@ -110,8 +124,21 @@ function AppShell() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppShell />
-    </AuthProvider>
+    <ErrorBoundary
+      fallback={(reset) => (
+        <CrashFallback
+          title="AutoAxis hit an unexpected problem"
+          detail="Reloading usually clears this. If it keeps happening, sign out and back in."
+          onRetry={() => {
+            reset();
+            window.location.reload();
+          }}
+        />
+      )}
+    >
+      <AuthProvider>
+        <AppShell />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
