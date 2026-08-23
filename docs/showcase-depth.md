@@ -15,7 +15,7 @@ This journey is the product spine. Department views add context to the same cust
 - Signup and sign-in: creating a company self-provisions a new organization, its first branch, and an admin account; every account is scoped to one organization and (for non-admin roles) one branch.
 - Customer 360: connected search, owned vehicles, cross-department timeline, lifetime value, call, WhatsApp, email, share, export, and opportunity creation, all reading and writing the real database.
 - Vehicle 360: connected VIN search, identity, ownership, service history, condition, market/trade value, inventory intake and workshop booking.
-- Operating cockpits (Sales, Service, Parts, Finance and insurance): a live queue backed by the database, filters, CSV export, and a primary guided action that creates or updates a real record.
+- Operating cockpits: Sales, Service, and Finance and insurance are 360-style directory + detail hubs (same pattern as Customer/Vehicle 360) - a lead converts into a linked sales order, and a deal's finance contract and insurance policies show together. Parts remains a live queue (filters, stock adjustment) backed by the database, since there is no relational depth in the schema to hub around yet.
 - Global workspace: keyboard search across Customer and Vehicle records; visible Neon connection state; role-filtered navigation; responsive navigation.
 - Product site: shared brand/header system, four-state interactive workspace preview, interactive Customer/Vehicle operating model and linked service-to-trade journey.
 

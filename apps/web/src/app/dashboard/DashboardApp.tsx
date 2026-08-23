@@ -35,6 +35,7 @@ import { COMING_SOON_VIEWS, NAV_SECTIONS, PAGE_HELP, PAGE_RELATED, ROLE_NAV } fr
 import type { Customer, DashView, Overview, Vehicle } from "../types";
 import { CompanyAdmin } from "./CompanyAdmin";
 import { DomainView, OverviewView } from "./DashboardViews";
+import { FinanceView, SalesView, ServiceView } from "./Hubs";
 import { PAGE_WORKFLOW, WorkflowDiagram } from "./PageWorkflows";
 import { CustomerView, VehicleView } from "./RecordViews";
 import { SidebarActionsProvider } from "./SidebarActions";
@@ -216,11 +217,14 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
     if (view === "customers") return <CustomerView onNavigate={navigate} />;
     if (view === "vehicles") return <VehicleView onNavigate={navigate} />;
     if (view === "company") return <CompanyAdmin />;
+    if (view === "sales") return <SalesView onNavigate={navigate} />;
+    if (view === "service") return <ServiceView onNavigate={navigate} />;
+    if (view === "finance") return <FinanceView />;
     if (COMING_SOON_VIEWS.has(view)) {
       const copy = COMING_SOON_COPY[view];
       return <ComingSoon title={viewLabels[view]} description={copy?.description ?? "This workspace is planned next."} planned={copy?.planned ?? []} onNavigate={navigate} />;
     }
-    return <DomainView view={view as "sales" | "service" | "parts" | "finance"} />;
+    return <DomainView view={view as "parts"} />;
   }
 
   const CurrentViewIcon = viewIcons[view] ?? LayoutDashboard;

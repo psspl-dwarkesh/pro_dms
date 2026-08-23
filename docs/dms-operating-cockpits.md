@@ -14,10 +14,10 @@ Every row marked Implemented is backed by a real database table, authenticated a
 | --- | --- | --- |
 | Customer 360 | Implemented | Searchable directory; create/edit/delete; owned vehicles; cross-department timeline; lifetime value; call, WhatsApp, email; logged communications; linked leads and service jobs; share and CSV export |
 | Vehicle 360 | Implemented | Searchable directory; create/edit/delete; VIN master; ownership; lifecycle timeline; linked repair orders; valuation (market value plus an estimated trade and wholesale figure derived from it); share and CSV export |
-| Sales and CRM | Implemented | Lead pipeline (source, stage, expected value) linked to a customer; stage updates; CSV export. Full enquiry-to-delivery stages (test drive, quotation, KYC, registration, PDI, handover) are not yet modeled |
-| Service workshop | Implemented | Repair orders linked to a customer and vehicle; advisor, technician, complaint, labour/parts totals; status workflow through to closed |
-| Parts control | Implemented | Parts catalog with SKU, stock on hand, reorder point, unit cost and retail price; stock adjustment; low-stock filter |
-| Finance and insurance | Implemented | Finance contracts linked to a sales order; insurance policies linked to a customer and vehicle; status tracking |
+| Sales and CRM | Implemented | 360-style directory of leads; a lead's full record shows source, stage, expected value, logged test drives, and the sales order it becomes; stage updates; converting a won lead creates a linked sales order (`sales_orders.lead_id`). Full enquiry-to-delivery stages (quotation, KYC, registration, PDI, handover) are not yet modeled |
+| Service workshop | Implemented | 360-style directory of repair orders; a job's full record joins the linked customer and vehicle (contact info, VIN, odometer) alongside advisor, technician, complaint, labour/parts totals; status workflow through to closed |
+| Parts control | Implemented | Parts catalog with SKU, stock on hand, reorder point, unit cost and retail price; stock adjustment; low-stock filter. Kept as a flat queue, not a 360 hub: there is no line-item link between parts and repair orders (only an aggregate dollar total on the job), so there is no relational depth to hub around yet |
+| Finance and insurance | Implemented | 360-style directory of deals (sales orders); a deal's full record joins its customer, vehicle, finance contract, and every insurance policy on that customer/vehicle pair in one place; status tracking |
 | Company and users | Implemented, admin only | Branch directory and creation; team account directory, creation, and role/active-status management |
 | Used vehicles | Coming soon | Acquisition, appraisal, reconditioning, and marketplace publishing have no data model yet |
 | Vehicle inventory | Coming soon | Yard location, branch transfer, and PDI/delivery tracking beyond the Vehicle 360 record have no data model yet |

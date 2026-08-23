@@ -1,6 +1,6 @@
 import { Router } from "express";
 import {
-  createLead, createSalesOrder, deleteLead, listLeads, listSalesOrders, updateLead, updateSalesOrder,
+  createLead, createSalesOrder, deleteLead, getLead360, getSalesOrder360, listLeads, listSalesOrders, updateLead, updateSalesOrder,
 } from "../db.js";
 import { asyncRoute, HttpError } from "../errors.js";
 import { branchScope, resolveWriteBranchId } from "../middleware.js";
@@ -48,6 +48,13 @@ leadsRouter.delete("/:id", asyncRoute(async (request, response) => {
   response.status(204).end();
 }));
 
+leadsRouter.get("/:id/360", asyncRoute(async (request, response) => {
+  const id = requireUuid(request.params.id, "Lead id");
+  const lead = await getLead360(request.auth.organizationId, id);
+  if (!lead) throw new HttpError(404, "LEAD_NOT_FOUND", "Lead not found.");
+  response.json({ lead });
+}));
+
 salesOrdersRouter.get("/", asyncRoute(async (request, response) => {
   const status = optionalString(request.query.status, 40);
   const customerId = request.query.customerId ? requireUuid(request.query.customerId, "Customer id") : null;
@@ -59,10 +66,11 @@ salesOrdersRouter.get("/", asyncRoute(async (request, response) => {
 salesOrdersRouter.post("/", asyncRoute(async (request, response) => {
   const customerId = requireUuid(request.body.customerId, "Customer id");
   const vehicleId = requireUuid(request.body.vehicleId, "Vehicle id");
+  const leadId = request.body.leadId ? requireUuid(request.body.leadId, "Lead id") : null;
   const status = requireEnum(request.body.status ?? "pending", "Status", ORDER_STATUSES);
   const totalAmount = requireNumber(request.body.totalAmount, "Total amount", { min: 0 });
   const branchId = resolveWriteBranchId(request.auth, request.body.branchId);
-  const salesOrder = await createSalesOrder(request.auth.organizationId, branchId, { customerId, vehicleId, status, totalAmount });
+  const salesOrder = await createSalesOrder(request.auth.organizationId, branchId, { customerId, vehicleId, leadId, status, totalAmount });
   response.status(201).json({ salesOrder });
 }));
 
@@ -71,6 +79,13 @@ salesOrdersRouter.patch("/:id", asyncRoute(async (request, response) => {
   const status = request.body.status ? requireEnum(request.body.status, "Status", ORDER_STATUSES) : null;
   const deliveredAt = request.body.deliveredAt ?? null;
   const salesOrder = await updateSalesOrder(request.auth.organizationId, id, { status, deliveredAt });
+  if (!salesOrder) throw new HttpError(404, "SALES_ORDER_NOT_FOUND", "Sales order not found.");
+  response.json({ salesOrder });
+}));
+
+salesOrdersRouter.get("/:id/360", asyncRoute(async (request, response) => {
+  const id = requireUuid(request.params.id, "Sales order id");
+  const salesOrder = await getSalesOrder360(request.auth.organizationId, id);
   if (!salesOrder) throw new HttpError(404, "SALES_ORDER_NOT_FOUND", "Sales order not found.");
   response.json({ salesOrder });
 }));

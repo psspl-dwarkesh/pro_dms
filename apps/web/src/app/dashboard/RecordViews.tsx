@@ -18,13 +18,13 @@ type RecordViewProps = { onNavigate: (view: DashView) => void };
 const money = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 });
 const dateFormatter = new Intl.DateTimeFormat("en-AU", { day: "2-digit", month: "short", year: "numeric" });
 
-function SearchState({ loading, error }: { loading: boolean; error: ApiError | null }) {
+export function SearchState({ loading, error }: { loading: boolean; error: ApiError | null }) {
   if (loading) return <span className="record-search-state"><i className="loading-dot" />Searching connected records...</span>;
   if (error) return <span className="record-search-state record-search-state--error">{error.message}{error.requestId ? ` - ${error.requestId}` : ""}</span>;
   return <span className="record-search-state">Connected search - name, mobile, email, VIN, registration, make or model.</span>;
 }
 
-function Timeline({ items }: { items: Array<{ occurredAt: string; type: string; summary: string }> }) {
+export function Timeline({ items }: { items: Array<{ occurredAt: string; type: string; summary: string }> }) {
   if (!items.length) return <div className="timeline-empty">No activity recorded yet.</div>;
   return <div className="record-timeline">{items.map((item, index) => <div key={`${item.occurredAt}-${index}`} className="timeline-event"><i /><div><span>{dateFormatter.format(new Date(item.occurredAt))} - {item.type}</span><strong>{item.summary}</strong></div></div>)}</div>;
 }

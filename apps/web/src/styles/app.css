@@ -884,6 +884,19 @@
 .vehicle-directory > button em { color: var(--teal-deep); font-size: 9px; font-style: normal; font-weight: 800; }
 .vehicle-directory > button > svg { width: 14px; }
 
+/* Generic record-directory list, shared by Sales/Service/Finance 360 - same shape as the
+   customer/vehicle directory (icon, name, subtitle, status, arrow), narrowed the same way by the
+   .record-directory-panel override below. */
+.entity-directory { margin-bottom: 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: white; box-shadow: var(--shadow-sm); }
+.entity-directory > button { width: 100%; min-height: 62px; display: grid; grid-template-columns: auto minmax(170px,1.2fr) minmax(150px,1fr) 120px minmax(130px,.8fr) auto; align-items: center; gap: 12px; border-top: 1px solid var(--line); padding: 8px 16px; background: white; color: var(--ink-950); cursor: pointer; text-align: left; }
+.entity-directory > button:hover, .entity-directory > button.selected { background: linear-gradient(90deg, var(--teal-soft), white 65%); }
+.entity-directory > button > div { display: flex; flex-direction: column; gap: 4px; }
+.entity-directory > button strong { font-size: 10px; }
+.entity-directory > button small, .entity-directory > button > span:not(.entity-list-icon) { color: var(--ink-500); font-size: 9px; }
+.entity-directory > button b { font-family: var(--font-mono); font-size: 10px; }
+.entity-directory > button em { color: var(--teal-deep); font-size: 9px; font-style: normal; font-weight: 800; }
+.entity-directory > button > svg { width: 14px; }
+
 .section-toolbar { margin-top: 18px; min-height: 54px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .section-toolbar > div { display: flex; flex-direction: column; gap: 4px; }
 .section-toolbar span { color: var(--ink-500); font-size: 8px; font-weight: 800; text-transform: uppercase; }
@@ -1324,33 +1337,46 @@
 .filter-chips button { min-height: 28px; border-radius: 4px; padding: 4px 9px; color: var(--ink-600); font-size: 9px; }
 .filter-chips button.active { border-color: rgba(20,99,255,.24); background: var(--blue-soft); color: var(--blue); }
 .record-directory-panel .customer-directory,
-.record-directory-panel .vehicle-directory { flex: 1; min-height: 0; overflow-y: auto; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+.record-directory-panel .vehicle-directory,
+.record-directory-panel .entity-directory { flex: 1; min-height: 0; overflow-y: auto; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
 .record-directory-panel .customer-list-head,
 .record-directory-panel .vehicle-list-head { display: none; }
 .record-directory-panel .customer-directory > button,
-.record-directory-panel .vehicle-directory > button { min-height: 86px; grid-template-columns: auto minmax(0,1fr) auto; gap: 11px; padding: 12px; border-color: var(--line); }
+.record-directory-panel .vehicle-directory > button,
+.record-directory-panel .entity-directory > button { min-height: 86px; grid-template-columns: auto minmax(0,1fr) auto; gap: 11px; padding: 12px; border-color: var(--line); }
 .record-directory-panel .customer-directory > button:hover,
 .record-directory-panel .customer-directory > button.selected,
 .record-directory-panel .vehicle-directory > button:hover,
-.record-directory-panel .vehicle-directory > button.selected { background: var(--blue-wash); }
+.record-directory-panel .vehicle-directory > button.selected,
+.record-directory-panel .entity-directory > button:hover,
+.record-directory-panel .entity-directory > button.selected { background: var(--blue-wash); }
 .record-directory-panel .customer-directory > button.selected,
-.record-directory-panel .vehicle-directory > button.selected { box-shadow: inset 3px 0 var(--blue); }
+.record-directory-panel .vehicle-directory > button.selected,
+.record-directory-panel .entity-directory > button.selected { box-shadow: inset 3px 0 var(--blue); }
 .record-directory-panel .customer-list-avatar,
-.record-directory-panel .vehicle-list-icon { width: 38px; height: 38px; border-radius: 6px; background: var(--blue); color: white !important; }
+.record-directory-panel .vehicle-list-icon,
+.record-directory-panel .entity-list-icon { width: 38px; height: 38px; border-radius: 6px; background: var(--blue); color: white !important; }
 .record-directory-panel .customer-directory > button > div,
-.record-directory-panel .vehicle-directory > button > div { min-width: 0; }
+.record-directory-panel .vehicle-directory > button > div,
+.record-directory-panel .entity-directory > button > div { min-width: 0; }
 .record-directory-panel .customer-directory > button strong,
-.record-directory-panel .vehicle-directory > button strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.record-directory-panel .vehicle-directory > button strong,
+.record-directory-panel .entity-directory > button strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .record-directory-panel .customer-directory > button small,
-.record-directory-panel .vehicle-directory > button small { overflow: hidden; color: var(--ink-500); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.record-directory-panel .vehicle-directory > button small,
+.record-directory-panel .entity-directory > button small { overflow: hidden; color: var(--ink-500); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .record-directory-panel .customer-directory > button > span:not(.customer-list-avatar),
 .record-directory-panel .customer-directory > button > b,
 .record-directory-panel .vehicle-directory > button > span:not(.vehicle-list-icon),
-.record-directory-panel .vehicle-directory > button > b { display: none; }
+.record-directory-panel .vehicle-directory > button > b,
+.record-directory-panel .entity-directory > button > span:not(.entity-list-icon),
+.record-directory-panel .entity-directory > button > b { display: none; }
 .record-directory-panel .customer-directory > button > em,
-.record-directory-panel .vehicle-directory > button > em { grid-column: 2; justify-self: start; overflow: hidden; color: var(--blue); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.record-directory-panel .vehicle-directory > button > em,
+.record-directory-panel .entity-directory > button > em { grid-column: 2; justify-self: start; overflow: hidden; color: var(--blue); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .record-directory-panel .customer-directory > button > svg,
-.record-directory-panel .vehicle-directory > button > svg { grid-column: 3; grid-row: 1 / 3; align-self: center; width: 14px; color: var(--ink-400); }
+.record-directory-panel .vehicle-directory > button > svg,
+.record-directory-panel .entity-directory > button > svg { grid-column: 3; grid-row: 1 / 3; align-self: center; width: 14px; color: var(--ink-400); }
 .record-detail-panel { min-width: 0; }
 .record-detail-panel .record-layout { grid-template-columns: 1fr; gap: 12px; }
 .record-main-card { padding: 22px; }
