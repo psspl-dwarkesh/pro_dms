@@ -16,7 +16,7 @@ export type DashView =
   | "workforce"
   | "company";
 
-export type Role = "admin" | "branch_manager" | "sales" | "service" | "staff";
+export type Role = "admin" | "general_manager" | "sales_manager" | "bdc_rep" | "finance_manager" | "service_advisor" | "receptionist";
 
 export type SessionUser = {
   id: string;

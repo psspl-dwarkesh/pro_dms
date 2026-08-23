@@ -5,8 +5,16 @@ import type { Branch, Role, UserAccount } from "../types";
 import { WorkspacePage } from "./RecordViews";
 import { useContextualActions } from "./SidebarActions";
 
-const ROLES: Role[] = ["admin", "branch_manager", "sales", "service", "staff"];
-const ROLE_LABELS: Record<Role, string> = { admin: "Admin", branch_manager: "Branch manager", sales: "Sales", service: "Service", staff: "Staff" };
+const ROLES: Role[] = ["admin", "general_manager", "sales_manager", "bdc_rep", "finance_manager", "service_advisor", "receptionist"];
+const ROLE_LABELS: Record<Role, string> = {
+  admin: "Admin",
+  general_manager: "General manager",
+  sales_manager: "Sales manager",
+  bdc_rep: "BDC representative",
+  finance_manager: "Finance manager",
+  service_advisor: "Service advisor",
+  receptionist: "Receptionist",
+};
 
 export function CompanyAdmin() {
   const [branches, setBranches] = useState<Branch[] | null>(null);
@@ -16,7 +24,7 @@ export function CompanyAdmin() {
   const [branchForm, setBranchForm] = useState({ code: "", name: "", city: "" });
   const [branchSaving, setBranchSaving] = useState(false);
 
-  const [userForm, setUserForm] = useState({ name: "", email: "", password: "", role: "staff" as Role, branchId: "" });
+  const [userForm, setUserForm] = useState({ name: "", email: "", password: "", role: "receptionist" as Role, branchId: "" });
   const [userSaving, setUserSaving] = useState(false);
 
   const branchCodeRef = useRef<HTMLInputElement>(null);
@@ -61,7 +69,7 @@ export function CompanyAdmin() {
     setUserSaving(true);
     try {
       await apiPost("/api/v1/users", { ...userForm, branchId: userForm.branchId || null });
-      setUserForm({ name: "", email: "", password: "", role: "staff", branchId: "" });
+      setUserForm({ name: "", email: "", password: "", role: "receptionist", branchId: "" });
       reload();
     } catch (cause) {
       setError(cause instanceof ApiError ? cause.message : "Could not create the user.");
