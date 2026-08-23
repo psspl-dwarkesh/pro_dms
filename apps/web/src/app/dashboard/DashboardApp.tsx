@@ -11,13 +11,16 @@ import {
   CircleDollarSign,
   CircleUserRound,
   Globe2,
+  HelpCircle,
   LayoutDashboard,
+  LayoutGrid,
   LogOut,
   Menu,
   Megaphone,
   PackageSearch,
   Search,
   ShieldCheck,
+  Sparkles,
   UserRound,
   Users,
   Warehouse,
@@ -29,11 +32,13 @@ import { apiGet } from "../../lib/api";
 import { roleLabel, useAuth } from "../auth/AuthContext";
 import { Brand } from "../components/Brand";
 import { ComingSoon } from "../components/ComingSoon";
-import { COMING_SOON_VIEWS, NAV_SECTIONS, ROLE_NAV } from "../data";
+import { COMING_SOON_VIEWS, NAV_SECTIONS, PAGE_HELP, PAGE_RELATED, ROLE_NAV } from "../data";
 import type { Customer, DashView, Overview, Vehicle } from "../types";
 import { CompanyAdmin } from "./CompanyAdmin";
 import { DomainView, OverviewView } from "./DashboardViews";
 import { CustomerView, VehicleView } from "./RecordViews";
+import { SidebarActionsProvider } from "./SidebarActions";
+import type { SidebarAction } from "./SidebarActions";
 
 type DashboardAppProps = { initialView: DashView; onNavigate: (view: DashView) => void; onLogout: () => void };
 
@@ -80,6 +85,8 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
   const [commandLoading, setCommandLoading] = useState(false);
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [pageActions, setPageActions] = useState<SidebarAction[]>([]);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const allowedViews = useMemo(() => new Set(user ? ROLE_NAV[user.role] : []), [user]);
   const navSections = useMemo(
@@ -109,7 +116,7 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); setCommandOpen(true); }
-      if (event.key === "Escape") { setCommandOpen(false); setMobileOpen(false); setNoticeOpen(false); setProfileOpen(false); setWorkspaceMenuOpen(false); }
+      if (event.key === "Escape") { setCommandOpen(false); setMobileOpen(false); setNoticeOpen(false); setProfileOpen(false); setWorkspaceMenuOpen(false); setHelpOpen(false); }
     }
     window.addEventListener("keydown", handleKey); return () => window.removeEventListener("keydown", handleKey);
   }, []);
@@ -136,10 +143,55 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
   const currentLabel = useMemo(() => viewLabels[view] ?? "Executive pulse", [view, viewLabels]);
 
   function navigate(next: DashView) {
+    if (next !== view) setPageActions([]);
     setView(next);
     onNavigate(next);
     setMobileOpen(false);
     setWorkspaceMenuOpen(false);
+    setHelpOpen(false);
+  }
+
+  function renderContextualSidebar() {
+    if (COMING_SOON_VIEWS.has(view)) {
+      const planned = COMING_SOON_COPY[view]?.planned ?? [];
+      if (!planned.length) return null;
+      return (
+        <div>
+          {!collapsed && <span className="nav-section-label">Planned features</span>}
+          <div className="planned-list">
+            {planned.map((item) => <div key={item} className="planned-item" title={item}><Sparkles size={13} />{!collapsed && <span>{item}</span>}</div>)}
+          </div>
+        </div>
+      );
+    }
+    const related = (PAGE_RELATED[view] ?? []).filter((id) => allowedViews.has(id));
+    return (
+      <>
+        {pageActions.length > 0 && (
+          <div>
+            {!collapsed && <span className="nav-section-label">Quick actions</span>}
+            {pageActions.map((action) => {
+              const Icon = action.icon;
+              const content = <><Icon size={17} />{!collapsed && <span>{action.label}</span>}</>;
+              return action.href ? (
+                <a key={action.id} title={action.label} href={action.href} target={action.href.startsWith("http") ? "_blank" : undefined} rel={action.href.startsWith("http") ? "noreferrer" : undefined} className={action.tone === "danger" ? "danger-action" : ""}>{content}</a>
+              ) : (
+                <button key={action.id} type="button" title={action.label} className={action.tone === "danger" ? "danger-action" : ""} onClick={action.onClick}>{content}</button>
+              );
+            })}
+          </div>
+        )}
+        {related.length > 0 && (
+          <div>
+            {!collapsed && <span className="nav-section-label">Related</span>}
+            {related.map((id) => {
+              const Icon = viewIcons[id];
+              return <button title={viewLabels[id]} type="button" key={id} onClick={() => navigate(id)}><Icon size={17} />{!collapsed && <span>{viewLabels[id]}</span>}</button>;
+            })}
+          </div>
+        )}
+      </>
+    );
   }
 
   function renderView() {
@@ -158,95 +210,102 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
   const CurrentViewIcon = viewIcons[view] ?? LayoutDashboard;
   const orgInitials = (organization?.name ?? "AX").split(" ").map((part) => part[0]).slice(0, 3).join("").toUpperCase();
   const userInitials = (user?.name ?? "?").split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase();
+  const pageHelp = PAGE_HELP[view] ?? {
+    summary: COMING_SOON_COPY[view]?.description ?? "This workspace is planned next.",
+    canDo: ["This workspace isn't built yet - see Planned features in the sidebar for what's coming."],
+  };
 
   return (
-    <div className="operations-shell">
-      <button type="button" className={`mobile-scrim ${mobileOpen ? "visible" : ""}`} aria-label="Close navigation" onClick={() => setMobileOpen(false)} />
-      <aside className={`operations-sidebar ${collapsed ? "collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`}>
-        <div className="sidebar-brand"><Brand inverse compact={collapsed} />{!collapsed && <button type="button" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X /></button>}</div>
-        {!collapsed && <div className="group-switcher"><span>{orgInitials}</span><div><strong>{organization?.name ?? "Your company"}</strong><small>{overview ? `${overview.activeServiceJobs} active jobs - ${overview.openLeads} open leads` : "Loading operations"}</small></div></div>}
-        <nav className="operations-nav" aria-label="Operations navigation">
-          {navSections.map((section) => (
-            <div key={section.label}>
-              {!collapsed && <span className="nav-section-label">{section.label}</span>}
-              {section.items.map((item) => {
-                const Icon = viewIcons[item.id];
-                return <button title={item.label} aria-current={view === item.id ? "page" : undefined} type="button" key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon size={17} /><span>{item.label}</span>{view === item.id && !collapsed && <i />}</button>;
-              })}
-            </div>
-          ))}
-        </nav>
-        {!collapsed && (
-          <div className="sidebar-footer">
-            <span className={`db-status db-status-${health}`} title={health === "connected" ? "Database connected" : health === "not-configured" ? "Database not configured" : health === "checking" ? "Checking connection" : "Database unavailable"} aria-label="Database connection status" />
-          </div>
-        )}
-        <button type="button" className="collapse-button" aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} title={collapsed ? "Expand navigation" : "Collapse navigation"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}</button>
-      </aside>
-
-      <div className="operations-main">
-        <header className="operations-topbar">
-          <div className="topbar-left">
-            <button type="button" className="mobile-nav-trigger" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu /></button>
-            <span className="mobile-topbar-brand"><Brand compact /></span>
-            <span className="topbar-divider" />
-            <button type="button" className="workspace-switcher" aria-expanded={workspaceMenuOpen} onClick={() => setWorkspaceMenuOpen((value) => !value)}><span className="workspace-switcher-icon"><CurrentViewIcon /></span><span><small>Workspace</small><strong>{currentLabel}</strong></span><ChevronDown /></button>
-          </div>
-          <div className="topbar-actions">
-            <button type="button" className="global-search" onClick={() => setCommandOpen(true)}><Search size={16} /><span>Search customer, VIN...</span><kbd>Ctrl K</kbd></button>
-            <button type="button" aria-label="Notifications" className="icon-button" onClick={() => setNoticeOpen((value) => !value)}><Bell size={17} />{overview && (overview.activeServiceJobs > 0 || overview.lowStockParts > 0) && <i />}</button>
-            <button type="button" className="user-menu" aria-expanded={profileOpen} onClick={() => setProfileOpen((value) => !value)}><span>{userInitials}</span><div><strong>{user?.name ?? "Loading"}</strong><small>{user ? roleLabel(user.role) : ""}</small></div><ChevronDown size={14} /></button>
-          </div>
-          {noticeOpen && (
-            <div className="notification-popover">
-              <span>Operations notifications</span>
-              {overview ? (
-                <>
-                  <button type="button" onClick={() => navigate("service")}><b>{overview.activeServiceJobs} active service jobs</b><small>Open in Service workshop</small></button>
-                  <button type="button" onClick={() => navigate("parts")}><b>{overview.lowStockParts} parts at or below reorder point</b><small>Open in Parts control</small></button>
-                  <button type="button" onClick={() => navigate("sales")}><b>{overview.openLeads} open leads</b><small>Open in Sales and CRM</small></button>
-                </>
-              ) : <span className="notification-empty">Connect the database to see live counts.</span>}
+    <SidebarActionsProvider value={{ setActions: setPageActions }}>
+      <div className="operations-shell">
+        <button type="button" className={`mobile-scrim ${mobileOpen ? "visible" : ""}`} aria-label="Close navigation" onClick={() => setMobileOpen(false)} />
+        <aside className={`operations-sidebar ${collapsed ? "collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`}>
+          <div className="sidebar-brand"><Brand inverse compact={collapsed} />{!collapsed && <button type="button" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X /></button>}</div>
+          {!collapsed && <div className="group-switcher"><span>{orgInitials}</span><div><strong>{organization?.name ?? "Your company"}</strong><small>{overview ? `${overview.activeServiceJobs} active jobs - ${overview.openLeads} open leads` : "Loading operations"}</small></div></div>}
+          <button type="button" className="all-workspaces-link" title="All workspaces" onClick={() => setWorkspaceMenuOpen((value) => !value)}><LayoutGrid size={15} />{!collapsed && <span>All workspaces</span>}</button>
+          <nav className="operations-nav" aria-label={`${currentLabel} actions`}>
+            {renderContextualSidebar()}
+          </nav>
+          {!collapsed && (
+            <div className="sidebar-footer">
+              <span className={`db-status db-status-${health}`} title={health === "connected" ? "Database connected" : health === "not-configured" ? "Database not configured" : health === "checking" ? "Checking connection" : "Database unavailable"} aria-label="Database connection status" />
             </div>
           )}
-          {profileOpen && (
-            <div className="profile-popover">
-              <div><span>{userInitials}</span><p><strong>{user?.name}</strong><small>{user?.email}</small></p></div>
-              <div className="profile-meta"><span className="role-badge">{user ? roleLabel(user.role) : ""}</span><span>{organization?.name}</span></div>
-              <button type="button" onClick={onLogout}><LogOut size={15} />Sign out</button>
-              <a href="mailto:support@prakashinfotech.com"><UserRound size={15} />Prakash support</a>
-              <footer>Workspace by <strong>Prakash Software Solutions</strong></footer>
+          <button type="button" className="collapse-button" aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} title={collapsed ? "Expand navigation" : "Collapse navigation"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}</button>
+        </aside>
+  
+        <div className="operations-main">
+          <header className="operations-topbar">
+            <div className="topbar-left">
+              <button type="button" className="mobile-nav-trigger" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu /></button>
+              <span className="mobile-topbar-brand"><Brand compact /></span>
+              <span className="topbar-divider" />
+              <button type="button" className="workspace-switcher" aria-expanded={workspaceMenuOpen} onClick={() => setWorkspaceMenuOpen((value) => !value)}><span className="workspace-switcher-icon"><CurrentViewIcon /></span><span><small>Workspace</small><strong>{currentLabel}</strong></span><ChevronDown /></button>
+              <button type="button" aria-label="What is this page?" aria-expanded={helpOpen} className="icon-button page-help-trigger" onClick={() => setHelpOpen((value) => !value)}><HelpCircle size={17} /></button>
             </div>
+            <div className="topbar-actions">
+              <button type="button" className="global-search" onClick={() => setCommandOpen(true)}><Search size={16} /><span>Search customer, VIN...</span><kbd>Ctrl K</kbd></button>
+              <button type="button" aria-label="Notifications" className="icon-button" onClick={() => setNoticeOpen((value) => !value)}><Bell size={17} />{overview && (overview.activeServiceJobs > 0 || overview.lowStockParts > 0) && <i />}</button>
+              <button type="button" className="user-menu" aria-expanded={profileOpen} onClick={() => setProfileOpen((value) => !value)}><span>{userInitials}</span><div><strong>{user?.name ?? "Loading"}</strong><small>{user ? roleLabel(user.role) : ""}</small></div><ChevronDown size={14} /></button>
+            </div>
+            {helpOpen && (
+              <div className="page-help-popover" role="dialog" aria-label={`About ${currentLabel}`}>
+                <span>{currentLabel}</span>
+                <p>{pageHelp.summary}</p>
+                <ul>{pageHelp.canDo.map((item) => <li key={item}>{item}</li>)}</ul>
+              </div>
+            )}
+            {noticeOpen && (
+              <div className="notification-popover">
+                <span>Operations notifications</span>
+                {overview ? (
+                  <>
+                    <button type="button" onClick={() => navigate("service")}><b>{overview.activeServiceJobs} active service jobs</b><small>Open in Service workshop</small></button>
+                    <button type="button" onClick={() => navigate("parts")}><b>{overview.lowStockParts} parts at or below reorder point</b><small>Open in Parts control</small></button>
+                    <button type="button" onClick={() => navigate("sales")}><b>{overview.openLeads} open leads</b><small>Open in Sales and CRM</small></button>
+                  </>
+                ) : <span className="notification-empty">Connect the database to see live counts.</span>}
+              </div>
+            )}
+            {profileOpen && (
+              <div className="profile-popover">
+                <div><span>{userInitials}</span><p><strong>{user?.name}</strong><small>{user?.email}</small></p></div>
+                <div className="profile-meta"><span className="role-badge">{user ? roleLabel(user.role) : ""}</span><span>{organization?.name}</span></div>
+                <button type="button" onClick={onLogout}><LogOut size={15} />Sign out</button>
+                <a href="mailto:support@prakashinfotech.com"><UserRound size={15} />Prakash support</a>
+                <footer>Workspace by <strong>Prakash Software Solutions</strong></footer>
+              </div>
+            )}
+          </header>
+          {workspaceMenuOpen && (
+            <section className="workspace-menu" aria-label="Choose a workspace">
+              <header><div><span>Workspace navigator</span><strong>Move to the work, not another app.</strong></div><button type="button" onClick={() => setWorkspaceMenuOpen(false)} aria-label="Close workspace navigator"><X /></button></header>
+              <div className="workspace-menu-groups">
+                {navSections.map((section) => (
+                  <div key={section.label}>
+                    <span>{section.label}</span>
+                    {section.items.map((item) => {
+                      const Icon = viewIcons[item.id];
+                      return <button type="button" key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><i><Icon /></i><span><strong>{item.label}</strong><small>{item.id === "customers" ? "Relationship, consent and value" : item.id === "vehicles" ? "VIN lifecycle and condition" : item.id === "overview" ? "Decisions and exceptions" : "Open connected operations"}</small></span><ArrowRight /></button>;
+                    })}
+                  </div>
+                ))}
+              </div>
+            </section>
           )}
-        </header>
-        {workspaceMenuOpen && (
-          <section className="workspace-menu" aria-label="Choose a workspace">
-            <header><div><span>Workspace navigator</span><strong>Move to the work, not another app.</strong></div><button type="button" onClick={() => setWorkspaceMenuOpen(false)} aria-label="Close workspace navigator"><X /></button></header>
-            <div className="workspace-menu-groups">
-              {navSections.map((section) => (
-                <div key={section.label}>
-                  <span>{section.label}</span>
-                  {section.items.map((item) => {
-                    const Icon = viewIcons[item.id];
-                    return <button type="button" key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><i><Icon /></i><span><strong>{item.label}</strong><small>{item.id === "customers" ? "Relationship, consent and value" : item.id === "vehicles" ? "VIN lifecycle and condition" : item.id === "overview" ? "Decisions and exceptions" : "Open connected operations"}</small></span><ArrowRight /></button>;
-                  })}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-        <main className="operations-content">{renderView()}</main>
-      </div>
-      {commandOpen && (
-        <div className="command-scrim" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && setCommandOpen(false)}>
-          <section className="command-palette" role="dialog" aria-modal="true" aria-label="Global record search">
-            <header><Search /><input autoFocus value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} placeholder="Search customer, mobile, VIN, registration, make or model" /><kbd>ESC</kbd></header>
-            <span>{commandLoading ? "Searching..." : commandQuery.trim().length < 2 ? "Type at least two characters to search connected records." : `${commandResults.length} matching records`}</span>
-            {commandResults.map((record) => <button type="button" key={`${record.view}-${record.title}`} onClick={() => { navigate(record.view); setCommandOpen(false); setCommandQuery(""); }}><CircleUserRound /><div><strong>{record.title}</strong><small>{record.detail}</small></div><ArrowRight /></button>)}
-            {!commandLoading && commandQuery.trim().length >= 2 && !commandResults.length && <div className="command-empty"><Search /><strong>No matching records</strong><span>Try a customer name, mobile, VIN, registration, or model.</span></div>}
-          </section>
+          <main className="operations-content">{renderView()}</main>
         </div>
-      )}
-    </div>
+        {commandOpen && (
+          <div className="command-scrim" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && setCommandOpen(false)}>
+            <section className="command-palette" role="dialog" aria-modal="true" aria-label="Global record search">
+              <header><Search /><input autoFocus value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} placeholder="Search customer, mobile, VIN, registration, make or model" /><kbd>ESC</kbd></header>
+              <span>{commandLoading ? "Searching..." : commandQuery.trim().length < 2 ? "Type at least two characters to search connected records." : `${commandResults.length} matching records`}</span>
+              {commandResults.map((record) => <button type="button" key={`${record.view}-${record.title}`} onClick={() => { navigate(record.view); setCommandOpen(false); setCommandQuery(""); }}><CircleUserRound /><div><strong>{record.title}</strong><small>{record.detail}</small></div><ArrowRight /></button>)}
+              {!commandLoading && commandQuery.trim().length >= 2 && !commandResults.length && <div className="command-empty"><Search /><strong>No matching records</strong><span>Try a customer name, mobile, VIN, registration, or model.</span></div>}
+            </section>
+          </div>
+        )}
+      </div>
+    </SidebarActionsProvider>
   );
 }

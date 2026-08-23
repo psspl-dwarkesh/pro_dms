@@ -1,9 +1,10 @@
-import { AlertTriangle, BadgeCheck, CalendarClock, Download, Filter, Package, Plus, Users, Wrench } from "lucide-react";
+import { AlertTriangle, BadgeCheck, CalendarClock, Download, FileText, Filter, Package, Plus, ShieldCheck, Users, Wrench } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiGet, apiPatch, apiPost, ApiError } from "../../lib/api";
 import type { DashView, FinanceContract, InsurancePolicy, Lead, Overview, Part, SalesOrder, ServiceJob } from "../types";
 import { CustomerPicker, VehiclePicker } from "./Pickers";
 import { Toast, WorkflowModal, WorkspacePage } from "./RecordViews";
+import { useContextualActions } from "./SidebarActions";
 
 const money = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 });
 const dateFormatter = new Intl.DateTimeFormat("en-AU", { day: "2-digit", month: "short", year: "numeric" });
@@ -126,8 +127,13 @@ function SalesView() {
     notify("Leads exported.");
   }
 
+  useContextualActions(() => [
+    { id: "create-lead", label: "Create lead", icon: Plus, onClick: () => setModal("create") },
+    { id: "export-leads", label: "Export leads", icon: Download, onClick: exportQueue },
+  ], [leads]);
+
   return (
-    <WorkspacePage action={<button type="button" className="workspace-button workspace-button--dark" onClick={() => setModal("create")}><Plus size={15} /> Create lead</button>}>
+    <WorkspacePage>
       {error && <p className="inline-error"><AlertTriangle size={14} />{error.message}</p>}
       <div className="executive-metrics">
         <MetricCard label="Open leads" value={String(openLeads.length)} meta={`${leads.length} total leads`} tone="neutral" />
@@ -140,7 +146,6 @@ function SalesView() {
           <div><span>Lead pipeline</span><strong>{loading ? "Loading..." : `${leads.length} leads`}</strong></div>
           <div className="queue-tools">
             <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value)}><option value="">All stages</option>{LEAD_STAGES.map((stage) => <option key={stage} value={stage}>{stage}</option>)}</select>
-            <button type="button" onClick={exportQueue}><Download />Export</button>
           </div>
         </div>
         <div className="work-queue">
@@ -224,8 +229,12 @@ function ServiceView() {
     }
   }
 
+  useContextualActions(() => [
+    { id: "new-booking", label: "New booking", icon: Plus, onClick: () => setModal(true) },
+  ], []);
+
   return (
-    <WorkspacePage action={<button type="button" className="workspace-button workspace-button--dark" onClick={() => setModal(true)}><Plus size={15} /> New booking</button>}>
+    <WorkspacePage>
       {error && <p className="inline-error"><AlertTriangle size={14} />{error.message}</p>}
       <div className="executive-metrics">
         <MetricCard label="Active jobs" value={String(active.length)} meta={`${jobs.length} total repair orders`} tone="neutral" />
@@ -317,8 +326,13 @@ function PartsView() {
     }
   }
 
+  useContextualActions(() => [
+    { id: "add-part", label: "Add part", icon: Plus, onClick: () => setModal(true) },
+    { id: "toggle-low-stock", label: lowStockOnly ? "Show all parts" : "Show low stock only", icon: Filter, onClick: () => setLowStockOnly((value) => !value) },
+  ], [lowStockOnly]);
+
   return (
-    <WorkspacePage action={<button type="button" className="workspace-button workspace-button--dark" onClick={() => setModal(true)}><Plus size={15} /> Add part</button>}>
+    <WorkspacePage>
       {error && <p className="inline-error"><AlertTriangle size={14} />{error.message}</p>}
       <div className="executive-metrics">
         <MetricCard label="Parts on file" value={String(parts.length)} meta="Total SKUs" tone="neutral" />
@@ -326,7 +340,7 @@ function PartsView() {
         <MetricCard label="At or below reorder point" value={String(lowStockCount)} meta="Needs replenishment" tone={lowStockCount > 0 ? "bad" : "good"} />
       </div>
       <section className="workspace-card queue-card">
-        <div className="card-heading"><div><span>Parts inventory</span><strong>{loading ? "Loading..." : `${parts.length} parts`}</strong></div><div className="queue-tools"><button type="button" className={lowStockOnly ? "active" : ""} onClick={() => setLowStockOnly((value) => !value)}><Filter />Low stock only</button></div></div>
+        <div className="card-heading"><div><span>Parts inventory</span><strong>{loading ? "Loading..." : `${parts.length} parts`}</strong></div></div>
         <div className="work-queue">
           {parts.map((part) => (
             <div className="work-queue-row" key={part.id}>
@@ -416,8 +430,13 @@ function FinanceView() {
     }
   }
 
+  useContextualActions(() => [
+    { id: "new-contract", label: "New contract", icon: FileText, onClick: () => setModal("contract") },
+    { id: "new-policy", label: "New policy", icon: ShieldCheck, onClick: () => setModal("policy") },
+  ], []);
+
   return (
-    <WorkspacePage action={<button type="button" className="workspace-button workspace-button--dark" onClick={() => setModal(tab === "contracts" ? "contract" : "policy")}><Plus size={15} /> {tab === "contracts" ? "New contract" : "New policy"}</button>}>
+    <WorkspacePage>
       {error && <p className="inline-error"><AlertTriangle size={14} />{error.message}</p>}
       <div className="executive-metrics">
         <MetricCard label="Finance contracts" value={String(contracts.length)} meta="Total contracts on file" tone="neutral" />

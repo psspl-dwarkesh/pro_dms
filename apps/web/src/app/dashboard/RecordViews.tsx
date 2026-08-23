@@ -8,6 +8,8 @@ import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from "../../lib/api";
 import type {
   Communication, Customer, Customer360, DashView, SalesOrder, ServiceJob, Vehicle, Vehicle360,
 } from "../types";
+import { useContextualActions } from "./SidebarActions";
+import type { SidebarAction } from "./SidebarActions";
 
 type RecordViewProps = { onNavigate: (view: DashView) => void };
 
@@ -23,10 +25,6 @@ function SearchState({ loading, error }: { loading: boolean; error: ApiError | n
 function Timeline({ items }: { items: Array<{ occurredAt: string; type: string; summary: string }> }) {
   if (!items.length) return <div className="timeline-empty">No activity recorded yet.</div>;
   return <div className="record-timeline">{items.map((item, index) => <div key={`${item.occurredAt}-${index}`} className="timeline-event"><i /><div><span>{dateFormatter.format(new Date(item.occurredAt))} - {item.type}</span><strong>{item.summary}</strong></div></div>)}</div>;
-}
-
-function ActionBar({ children }: { children: ReactNode }) {
-  return <div className="record-action-bar">{children}</div>;
 }
 
 function OperationalTable({ columns, rows }: { columns: string[]; rows: Array<Array<string | number>> }) {
@@ -217,6 +215,23 @@ export function CustomerView({ onNavigate }: RecordViewProps) {
     }
   }
 
+  useContextualActions(() => {
+    if (!customer) return [];
+    const list: SidebarAction[] = [
+      { id: "create-lead", label: "Create opportunity", detail: "Start a connected sales path", icon: UserPlus, onClick: () => setModal("create-lead") },
+      { id: "book-service", label: "Book service", detail: "Vehicle and workshop context", icon: CalendarDays, onClick: () => setModal("book-service") },
+    ];
+    if (customer.mobile) list.push({ id: "whatsapp", label: "WhatsApp customer", detail: "Open a conversation", icon: MessageCircle, href: `https://wa.me/${customer.mobile.replace(/\D/g, "")}` });
+    list.push({ id: "log-communication", label: "Log communication", detail: "Record a call, email or message", icon: Mail, onClick: () => setModal("log-communication") });
+    list.push({ id: "edit-profile", label: "Edit profile", icon: Edit3, onClick: () => setModal("edit-customer") });
+    if (customer.mobile) list.push({ id: "call", label: "Call", icon: Phone, href: `tel:${customer.mobile}` });
+    if (customer.email) list.push({ id: "email", label: "Email", icon: Mail, href: `mailto:${customer.email}` });
+    list.push({ id: "share", label: "Share", icon: Share2, onClick: () => shareRecord(customer.displayName).then(() => notify("Summary shared.")) });
+    list.push({ id: "export", label: "Export", icon: Download, onClick: () => { exportCsv(customer.displayName); notify("CSV exported."); } });
+    list.push({ id: "delete", label: "Delete", icon: Trash2, tone: "danger", onClick: deleteCustomer });
+    return list;
+  }, [customer]);
+
   return <WorkspacePage>
     <div className="record-workbench">
       <aside className="record-directory-panel">
@@ -232,20 +247,6 @@ export function CustomerView({ onNavigate }: RecordViewProps) {
         {detailLoading && <div className="empty-state"><Search /><strong>Loading customer</strong></div>}
         {!detailLoading && !customer && <div className="empty-state"><Search /><strong>No customer selected</strong><p>Search or create a customer to see their connected record.</p></div>}
         {!detailLoading && customer && <>
-          <div className="record-primary-actions">
-            <button type="button" onClick={() => setModal("create-lead")}><span><UserPlus /></span><div><strong>Create opportunity</strong><small>Start a connected sales path</small></div><ArrowRight /></button>
-            <button type="button" onClick={() => setModal("book-service")}><span><CalendarDays /></span><div><strong>Book service</strong><small>Vehicle and workshop context</small></div><ArrowRight /></button>
-            {customer.mobile && <a href={`https://wa.me/${customer.mobile.replace(/\D/g, "")}`} target="_blank" rel="noreferrer"><span><MessageCircle /></span><div><strong>WhatsApp customer</strong><small>Open a conversation</small></div><ArrowRight /></a>}
-            <button type="button" onClick={() => setModal("log-communication")}><span><Mail /></span><div><strong>Log communication</strong><small>Record a call, email or message</small></div><ArrowRight /></button>
-          </div>
-          <ActionBar>
-            <button type="button" onClick={() => setModal("edit-customer")}><Edit3 />Edit profile</button>
-            {customer.mobile && <a href={`tel:${customer.mobile}`}><Phone />Call</a>}
-            {customer.email && <a href={`mailto:${customer.email}`}><Mail />Email</a>}
-            <button type="button" onClick={() => shareRecord(customer.displayName).then(() => notify("Summary shared."))}><Share2 />Share</button>
-            <button type="button" onClick={() => { exportCsv(customer.displayName); notify("CSV exported."); }}><Download />Export</button>
-            <button type="button" onClick={deleteCustomer} className="danger-action"><Trash2 />Delete</button>
-          </ActionBar>
           <div className="record-layout">
             <section className="record-main-card">
               <div className="record-identity"><div className="record-avatar">{customer.displayName.split(" ").map((p) => p[0]).slice(0, 2).join("")}</div><div><span>{customer.customerType} - customer since {new Date(customer.customerSince).getFullYear()}</span><h3>{customer.displayName}</h3><p>{customer.mobile && <><Phone size={14} />{customer.mobile}</>}{customer.email && <><Mail size={14} />{customer.email}</>}</p></div><button type="button" onClick={() => navigator.clipboard?.writeText(customer.id)} aria-label="Copy customer ID"><Copy /></button></div>
@@ -455,6 +456,19 @@ export function VehicleView({ onNavigate }: RecordViewProps) {
     }
   }
 
+  useContextualActions(() => {
+    if (!vehicle) return [];
+    const list: SidebarAction[] = [
+      { id: "add-to-stock", label: "Add to stock", detail: "Create a VIN master record", icon: Plus, onClick: () => setModal("create-vehicle") },
+      { id: "update-valuation", label: "Update valuation", detail: "Odometer, colour and market value", icon: Gauge, onClick: () => setModal("edit-vehicle") },
+    ];
+    if (vehicle.ownerId) list.push({ id: "book-workshop", label: "Book workshop", detail: "Service or inspection", icon: Wrench, onClick: () => setModal("book-service") });
+    list.push({ id: "share", label: "Share", icon: Share2, onClick: () => shareRecord(`${vehicle.make} ${vehicle.model}`).then(() => notify("Summary shared.")) });
+    list.push({ id: "export", label: "Export", icon: Download, onClick: () => { exportCsv(`${vehicle.make} ${vehicle.model}`); notify("CSV exported."); } });
+    list.push({ id: "delete", label: "Delete", icon: Trash2, tone: "danger", onClick: deleteVehicle });
+    return list;
+  }, [vehicle]);
+
   const estimatedTrade = useMemo(() => (vehicle?.marketValue ? vehicle.marketValue * 0.93 : null), [vehicle]);
   const wholesaleFloor = useMemo(() => (vehicle?.marketValue ? vehicle.marketValue * 0.89 : null), [vehicle]);
 
@@ -473,16 +487,6 @@ export function VehicleView({ onNavigate }: RecordViewProps) {
         {detailLoading && <div className="empty-state"><Search /><strong>Loading vehicle</strong></div>}
         {!detailLoading && !vehicle && <div className="empty-state"><Search /><strong>No vehicle selected</strong><p>Search or add a vehicle to see its connected record.</p></div>}
         {!detailLoading && vehicle && <>
-          <div className="record-primary-actions">
-            <button type="button" onClick={() => setModal("create-vehicle")}><span><Plus /></span><div><strong>Add to stock</strong><small>Create a VIN master record</small></div><ArrowRight /></button>
-            <button type="button" onClick={() => setModal("edit-vehicle")}><span><Gauge /></span><div><strong>Update valuation</strong><small>Odometer, colour and market value</small></div><ArrowRight /></button>
-            {vehicle.ownerId && <button type="button" onClick={() => setModal("book-service")}><span><Wrench /></span><div><strong>Book workshop</strong><small>Service or inspection</small></div><ArrowRight /></button>}
-          </div>
-          <ActionBar>
-            <button type="button" onClick={() => shareRecord(`${vehicle.make} ${vehicle.model}`).then(() => notify("Summary shared."))}><Share2 />Share</button>
-            <button type="button" onClick={() => { exportCsv(`${vehicle.make} ${vehicle.model}`); notify("CSV exported."); }}><Download />Export</button>
-            <button type="button" onClick={deleteVehicle} className="danger-action"><Trash2 />Delete</button>
-          </ActionBar>
           <div className="record-layout">
             <section className="record-main-card">
               <div className="vehicle-hero"><div className="vehicle-silhouette"><CarFront /></div><div><span>{vehicle.modelYear ?? "Year unknown"} - {vehicle.status.replaceAll("-", " ")}</span><h3>{vehicle.make} {vehicle.model}</h3><p>{vehicle.variant ?? ""} {vehicle.colour ?? ""}</p></div><div><span>Registration</span><strong>{vehicle.registration ?? "Unregistered"}</strong></div></div>
