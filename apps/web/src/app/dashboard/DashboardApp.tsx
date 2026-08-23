@@ -20,14 +20,13 @@ import {
   PackageSearch,
   Search,
   ShieldCheck,
-  Sparkles,
   UserRound,
   Users,
   Warehouse,
   Wrench,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { apiGet } from "../../lib/api";
 import { roleLabel, useAuth } from "../auth/AuthContext";
 import { Brand } from "../components/Brand";
@@ -87,6 +86,8 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
   const [profileOpen, setProfileOpen] = useState(false);
   const [pageActions, setPageActions] = useState<SidebarAction[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
+  const topbarRef = useRef<HTMLElement>(null);
+  const workspaceMenuRef = useRef<HTMLElement>(null);
 
   const allowedViews = useMemo(() => new Set(user ? ROLE_NAV[user.role] : []), [user]);
   const navSections = useMemo(
@@ -121,6 +122,16 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
     window.addEventListener("keydown", handleKey); return () => window.removeEventListener("keydown", handleKey);
   }, []);
   useEffect(() => {
+    if (!helpOpen && !noticeOpen && !profileOpen && !workspaceMenuOpen) return;
+    function handleOutsideClick(event: MouseEvent) {
+      const target = event.target as Node;
+      if (topbarRef.current?.contains(target) || workspaceMenuRef.current?.contains(target)) return;
+      setHelpOpen(false); setNoticeOpen(false); setProfileOpen(false); setWorkspaceMenuOpen(false);
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [helpOpen, noticeOpen, profileOpen, workspaceMenuOpen]);
+  useEffect(() => {
     const query = commandQuery.trim();
     if (query.length < 2) { setCommandResults([]); setCommandLoading(false); return; }
     const controller = new AbortController();
@@ -151,45 +162,49 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
     setHelpOpen(false);
   }
 
+  function renderActionSection(label: string, actions: SidebarAction[]) {
+    if (!actions.length) return null;
+    return (
+      <div key={label}>
+        {!collapsed && <span className="nav-section-label">{label}</span>}
+        {actions.map((action) => {
+          const Icon = action.icon;
+          const content = <><Icon size={17} />{!collapsed && <span>{action.label}</span>}</>;
+          return action.href ? (
+            <a key={action.id} title={action.label} href={action.href} target={action.href.startsWith("http") ? "_blank" : undefined} rel={action.href.startsWith("http") ? "noreferrer" : undefined} className={action.tone === "danger" ? "danger-action" : ""}>{content}</a>
+          ) : (
+            <button key={action.id} type="button" title={action.label} className={action.tone === "danger" ? "danger-action" : ""} onClick={action.onClick}>{content}</button>
+          );
+        })}
+      </div>
+    );
+  }
+
   function renderContextualSidebar() {
-    if (COMING_SOON_VIEWS.has(view)) {
-      const planned = COMING_SOON_COPY[view]?.planned ?? [];
-      if (!planned.length) return null;
-      return (
-        <div>
-          {!collapsed && <span className="nav-section-label">Planned features</span>}
-          <div className="planned-list">
-            {planned.map((item) => <div key={item} className="planned-item" title={item}><Sparkles size={13} />{!collapsed && <span>{item}</span>}</div>)}
-          </div>
-        </div>
-      );
-    }
     const related = (PAGE_RELATED[view] ?? []).filter((id) => allowedViews.has(id));
+    const relatedSection = related.length > 0 && (
+      <div key="related">
+        {!collapsed && <span className="nav-section-label">Related</span>}
+        {related.map((id) => {
+          const Icon = viewIcons[id];
+          return <button title={viewLabels[id]} type="button" key={id} onClick={() => navigate(id)}><Icon size={17} />{!collapsed && <span>{viewLabels[id]}</span>}</button>;
+        })}
+      </div>
+    );
+
+    if (COMING_SOON_VIEWS.has(view)) {
+      // The page body already lists planned features in full, so the sidebar only offers a way
+      // onward (related workspaces) instead of repeating that same list a second time.
+      return relatedSection || null;
+    }
+
+    const quickActions = pageActions.filter((action) => (action.group ?? "Quick actions") === "Quick actions");
+    const recordActions = pageActions.filter((action) => action.group === "This record");
     return (
       <>
-        {pageActions.length > 0 && (
-          <div>
-            {!collapsed && <span className="nav-section-label">Quick actions</span>}
-            {pageActions.map((action) => {
-              const Icon = action.icon;
-              const content = <><Icon size={17} />{!collapsed && <span>{action.label}</span>}</>;
-              return action.href ? (
-                <a key={action.id} title={action.label} href={action.href} target={action.href.startsWith("http") ? "_blank" : undefined} rel={action.href.startsWith("http") ? "noreferrer" : undefined} className={action.tone === "danger" ? "danger-action" : ""}>{content}</a>
-              ) : (
-                <button key={action.id} type="button" title={action.label} className={action.tone === "danger" ? "danger-action" : ""} onClick={action.onClick}>{content}</button>
-              );
-            })}
-          </div>
-        )}
-        {related.length > 0 && (
-          <div>
-            {!collapsed && <span className="nav-section-label">Related</span>}
-            {related.map((id) => {
-              const Icon = viewIcons[id];
-              return <button title={viewLabels[id]} type="button" key={id} onClick={() => navigate(id)}><Icon size={17} />{!collapsed && <span>{viewLabels[id]}</span>}</button>;
-            })}
-          </div>
-        )}
+        {renderActionSection("Quick actions", quickActions)}
+        {renderActionSection("This record", recordActions)}
+        {relatedSection}
       </>
     );
   }
@@ -212,8 +227,9 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
   const userInitials = (user?.name ?? "?").split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase();
   const pageHelp = PAGE_HELP[view] ?? {
     summary: COMING_SOON_COPY[view]?.description ?? "This workspace is planned next.",
-    canDo: ["This workspace isn't built yet - see Planned features in the sidebar for what's coming."],
+    canDo: (COMING_SOON_COPY[view]?.planned ?? []).map((item) => `Planned: ${item}`),
   };
+  const healthLabel = health === "connected" ? "Database connected" : health === "not-configured" ? "Database not configured" : health === "checking" ? "Checking connection..." : "Database unavailable";
 
   return (
     <SidebarActionsProvider value={{ setActions: setPageActions }}>
@@ -226,16 +242,11 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
           <nav className="operations-nav" aria-label={`${currentLabel} actions`}>
             {renderContextualSidebar()}
           </nav>
-          {!collapsed && (
-            <div className="sidebar-footer">
-              <span className={`db-status db-status-${health}`} title={health === "connected" ? "Database connected" : health === "not-configured" ? "Database not configured" : health === "checking" ? "Checking connection" : "Database unavailable"} aria-label="Database connection status" />
-            </div>
-          )}
           <button type="button" className="collapse-button" aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} title={collapsed ? "Expand navigation" : "Collapse navigation"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}</button>
         </aside>
   
         <div className="operations-main">
-          <header className="operations-topbar">
+          <header className="operations-topbar" ref={topbarRef}>
             <div className="topbar-left">
               <button type="button" className="mobile-nav-trigger" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu /></button>
               <span className="mobile-topbar-brand"><Brand compact /></span>
@@ -271,6 +282,7 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
               <div className="profile-popover">
                 <div><span>{userInitials}</span><p><strong>{user?.name}</strong><small>{user?.email}</small></p></div>
                 <div className="profile-meta"><span className="role-badge">{user ? roleLabel(user.role) : ""}</span><span>{organization?.name}</span></div>
+                <div className="profile-status"><span className={`db-status db-status-${health}`} aria-hidden="true" />{healthLabel}</div>
                 <button type="button" onClick={onLogout}><LogOut size={15} />Sign out</button>
                 <a href="mailto:support@prakashinfotech.com"><UserRound size={15} />Prakash support</a>
                 <footer>Workspace by <strong>Prakash Software Solutions</strong></footer>
@@ -278,7 +290,7 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
             )}
           </header>
           {workspaceMenuOpen && (
-            <section className="workspace-menu" aria-label="Choose a workspace">
+            <section className="workspace-menu" aria-label="Choose a workspace" ref={workspaceMenuRef}>
               <header><div><span>Workspace navigator</span><strong>Move to the work, not another app.</strong></div><button type="button" onClick={() => setWorkspaceMenuOpen(false)} aria-label="Close workspace navigator"><X /></button></header>
               <div className="workspace-menu-groups">
                 {navSections.map((section) => (

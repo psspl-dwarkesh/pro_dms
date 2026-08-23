@@ -87,13 +87,15 @@ export function CompanyAdmin() {
 
         <div className="admin-table-card">
           <header><div><Building2 size={16} /><strong> Branches</strong></div><span>{branches?.length ?? 0} branches</span></header>
-          <table className="admin-table">
-            <thead><tr><th>Code</th><th>Name</th><th>City</th></tr></thead>
-            <tbody>
-              {branches?.map((branch) => <tr key={branch.id}><td>{branch.code}</td><td>{branch.name}</td><td>{branch.city ?? "-"}</td></tr>)}
-              {branches && branches.length === 0 && <tr><td colSpan={3}>No branches yet.</td></tr>}
-            </tbody>
-          </table>
+          <div className="admin-table-scroll">
+            <table className="admin-table">
+              <thead><tr><th>Code</th><th>Name</th><th>City</th></tr></thead>
+              <tbody>
+                {branches?.map((branch) => <tr key={branch.id}><td>{branch.code}</td><td>{branch.name}</td><td>{branch.city ?? "-"}</td></tr>)}
+                {branches && branches.length === 0 && <tr><td colSpan={3}>No branches yet.</td></tr>}
+              </tbody>
+            </table>
+          </div>
           <form className="admin-inline-form" onSubmit={createBranch}>
             <input ref={branchCodeRef} required placeholder="Code (e.g. SYD)" value={branchForm.code} onChange={(event) => setBranchForm({ ...branchForm, code: event.target.value.toUpperCase() })} maxLength={12} />
             <input required placeholder="Branch name" value={branchForm.name} onChange={(event) => setBranchForm({ ...branchForm, name: event.target.value })} />
@@ -104,21 +106,23 @@ export function CompanyAdmin() {
 
         <div className="admin-table-card">
           <header><div><Users size={16} /><strong> Team accounts</strong></div><span>{users?.length ?? 0} accounts</span></header>
-          <table className="admin-table">
-            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Branch</th><th>Status</th></tr></thead>
-            <tbody>
-              {users?.map((user) => (
-                <tr key={user.id}>
-                  <td>{user.name}</td>
-                  <td>{user.email}</td>
-                  <td><span className="role-badge">{ROLE_LABELS[user.role]}</span></td>
-                  <td>{user.branchName ?? "All branches"}</td>
-                  <td><button type="button" className="role-badge" onClick={() => toggleActive(user)}>{user.isActive ? "Active" : "Disabled"}</button></td>
-                </tr>
-              ))}
-              {users && users.length === 0 && <tr><td colSpan={5}>No team accounts yet.</td></tr>}
-            </tbody>
-          </table>
+          <div className="admin-table-scroll">
+            <table className="admin-table">
+              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Branch</th><th>Status</th></tr></thead>
+              <tbody>
+                {users?.map((user) => (
+                  <tr key={user.id}>
+                    <td>{user.name}</td>
+                    <td>{user.email}</td>
+                    <td><span className="role-badge">{ROLE_LABELS[user.role]}</span></td>
+                    <td>{user.branchName ?? "All branches"}</td>
+                    <td><button type="button" className="role-badge" onClick={() => toggleActive(user)}>{user.isActive ? "Active" : "Disabled"}</button></td>
+                  </tr>
+                ))}
+                {users && users.length === 0 && <tr><td colSpan={5}>No team accounts yet.</td></tr>}
+              </tbody>
+            </table>
+          </div>
           <form className="admin-inline-form" onSubmit={createUser}>
             <input ref={userNameRef} required placeholder="Full name" value={userForm.name} onChange={(event) => setUserForm({ ...userForm, name: event.target.value })} />
             <input required type="email" placeholder="Work email" value={userForm.email} onChange={(event) => setUserForm({ ...userForm, email: event.target.value })} />

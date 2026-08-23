@@ -27,6 +27,14 @@ export const PAGE_RELATED: Partial<Record<DashView, DashView[]>> = {
   service: ["customers", "vehicles", "parts"],
   parts: ["service"],
   finance: ["sales", "customers"],
+  // Coming-soon placeholders: the page body already lists what's planned, so point the sidebar
+  // at the closest workspace that exists today instead of repeating that list.
+  marketing: ["customers", "sales"],
+  usedcars: ["vehicles", "sales"],
+  inventory: ["vehicles", "parts"],
+  branch: ["group", "workforce"],
+  group: ["branch"],
+  workforce: ["company"],
 };
 
 // Short "what is this page / how do I use it" copy shown from the topbar help affordance.
