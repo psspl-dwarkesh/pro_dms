@@ -67,7 +67,7 @@ export function CompanyAdmin() {
   }
 
   return (
-    <WorkspacePage title="Company and users" eyebrow="Administration" description="Manage branches and team accounts for your dealership company.">
+    <WorkspacePage>
       <div className="admin-panel">
         {error && <p className="inline-error"><AlertCircle size={14} />{error}</p>}
 

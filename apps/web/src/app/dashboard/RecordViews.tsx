@@ -217,7 +217,7 @@ export function CustomerView({ onNavigate }: RecordViewProps) {
     }
   }
 
-  return <WorkspacePage title="Customer 360" eyebrow="Relationship intelligence" description="Search a name, mobile or email. See vehicles, value, and every connected interaction from your database.">
+  return <WorkspacePage>
     <div className="record-workbench">
       <aside className="record-directory-panel">
         <header className="directory-panel-heading"><div><span>Customer directory</span><strong>{customers.length} connected records</strong></div><button type="button" onClick={() => setModal("create-customer")} aria-label="Create customer"><Plus /></button></header>
@@ -458,7 +458,7 @@ export function VehicleView({ onNavigate }: RecordViewProps) {
   const estimatedTrade = useMemo(() => (vehicle?.marketValue ? vehicle.marketValue * 0.93 : null), [vehicle]);
   const wholesaleFloor = useMemo(() => (vehicle?.marketValue ? vehicle.marketValue * 0.89 : null), [vehicle]);
 
-  return <WorkspacePage title="Vehicle 360" eyebrow="VIN lifecycle intelligence" description="Search a VIN, registration, make or model. See ownership, service history and valuation from your database.">
+  return <WorkspacePage>
     <div className="record-workbench">
       <aside className="record-directory-panel">
         <header className="directory-panel-heading"><div><span>Vehicle directory</span><strong>{vehicles.length} connected assets</strong></div><button type="button" onClick={() => setModal("create-vehicle")} aria-label="Add vehicle"><Plus /></button></header>
@@ -547,6 +547,6 @@ function InfoGrid({ items }: { items: string[][] }) {
   return <div className="info-grid">{items.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>;
 }
 
-export function WorkspacePage({ title, eyebrow, description, action, children }: { title: string; eyebrow: string; description: string; action?: ReactNode; children: ReactNode }) {
-  return <div className="workspace-page"><header className="workspace-page-header"><div><span>{eyebrow}</span><h1>{title}</h1><p>{description}</p></div>{action && <div className="workspace-page-action">{action}</div>}</header>{children}</div>;
+export function WorkspacePage({ action, children }: { action?: ReactNode; children: ReactNode }) {
+  return <div className="workspace-page">{action && <div className="workspace-page-toolbar">{action}</div>}{children}</div>;
 }
