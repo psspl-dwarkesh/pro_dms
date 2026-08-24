@@ -48,7 +48,8 @@ import {
 import type { Customer, DashView, Overview, PortalId, Vehicle } from "../types";
 import { CompanyAdmin } from "./CompanyAdmin";
 import { DomainView, OverviewView } from "./DashboardViews";
-import { FinanceView, ServiceView } from "./Hubs";
+import { ServiceView } from "./Hubs";
+import { Finance360 } from "./Finance360";
 import { MarketingComingSoonBadge, MarketingView } from "./MarketingView";
 import { PAGE_WORKFLOW, WorkflowDiagram } from "./PageWorkflows";
 import { PortalTabShell } from "./PortalShell";
@@ -299,7 +300,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
     if (area === "service") return <ServiceView onNavigate={navigate} />;
     if (area === "parts") return <DomainView view="parts" />;
     if (area === "sales") return <Sales360 onNavigate={navigate} />;
-    if (area === "finance") return <FinanceView />;
+    if (area === "finance") return <Finance360 />;
     if (area === "marketing") return <MarketingView />;
     if (area === "analytics") return <OverviewView onNavigate={navigate} />;
     if (area === ADMIN_VIEW) return <CompanyAdmin />;
