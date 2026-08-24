@@ -39,7 +39,7 @@ function exportCsv(recordName: string) {
 const LEAD_STAGES = ["new", "qualified", "test-drive", "quoted", "won", "lost"];
 
 type SalesModal = null | "create-lead" | "log-test-drive" | "convert-to-sale";
-type SalesViewProps = { onNavigate: (view: DashView) => void };
+type SalesViewProps = { onNavigate: (view: DashView, recordId?: string) => void };
 
 export function SalesView({ onNavigate }: SalesViewProps) {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -235,7 +235,7 @@ function ConvertToSaleModal({ customerName, onClose, onSubmit, saving }: { custo
 
 const JOB_STATUSES = ["booked", "checked-in", "diagnosing", "awaiting-approval", "in-progress", "quality-check", "closed"];
 
-export function ServiceView({ onNavigate }: { onNavigate: (view: DashView) => void }) {
+export function ServiceView({ onNavigate }: { onNavigate: (view: DashView, recordId?: string) => void }) {
   const [jobs, setJobs] = useState<ServiceJob[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<ApiError | null>(null);
@@ -305,7 +305,7 @@ export function ServiceView({ onNavigate }: { onNavigate: (view: DashView) => vo
     const list: SidebarAction[] = [
       { id: "new-booking", label: "New booking", icon: Plus, onClick: () => setModal(true) },
     ];
-    if (job.customerId) list.push({ id: "open-customer", label: "Open customer", detail: "View Customer 360", icon: CircleUserRound, onClick: () => onNavigate("customers") });
+    if (job.customerId) list.push({ id: "open-customer", label: "Open customer", detail: "View Customer 360", icon: CircleUserRound, onClick: () => onNavigate("customers", job.customerId) });
     list.push({ id: "export", label: "Export", icon: Download, onClick: () => { exportCsv(job.repairOrderNumber); notify("CSV exported."); }, group: "This record" });
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps

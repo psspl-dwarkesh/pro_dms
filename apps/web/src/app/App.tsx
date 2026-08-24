@@ -10,10 +10,12 @@ const DashboardApp = lazy(() => import("./dashboard/DashboardApp"));
 
 const DASH_VIEWS: DashView[] = ["overview", "sales", "service", "parts", "finance", "vehicles", "customers", "marketing", "usedcars", "inventory", "branch", "group", "workforce", "company"];
 
-function readRoute(): { appView: AppView; dashView: DashView } {
-  const candidate = new URLSearchParams(window.location.search).get("workspace") as DashView | null;
+function readRoute(): { appView: AppView; dashView: DashView; recordId?: string } {
+  const params = new URLSearchParams(window.location.search);
+  const candidate = params.get("workspace") as DashView | null;
+  const recordId = params.get("record") ?? undefined;
   return candidate && DASH_VIEWS.includes(candidate)
-    ? { appView: "dashboard", dashView: candidate }
+    ? { appView: "dashboard", dashView: candidate, recordId }
     : { appView: "landing", dashView: "overview" };
 }
 
@@ -31,40 +33,50 @@ function AppShell() {
   const initialRoute = readRoute();
   const [appView, setAppView] = useState<AppView>(initialRoute.appView);
   const [dashView, setDashView] = useState<DashView>(initialRoute.dashView);
+  const [recordId, setRecordId] = useState<string | undefined>(initialRoute.recordId);
 
   useEffect(() => {
     function handlePopState() {
       const route = readRoute();
       setAppView(route.appView);
       setDashView(route.dashView);
+      setRecordId(route.recordId);
       window.scrollTo({ top: 0, behavior: "auto" });
     }
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  function writeRoute(view?: DashView) {
+  // recordId makes a search result or a customer<->vehicle cross-link a real, shareable,
+  // refresh-safe URL (?workspace=customers&record=<id>) instead of only switching the workspace
+  // and landing on whichever record happened to load first.
+  function writeRoute(view?: DashView, targetRecordId?: string) {
     const url = new URL(window.location.href);
     if (view) url.searchParams.set("workspace", view);
     else url.searchParams.delete("workspace");
-    window.history.pushState({ autoAxis: view ? "workspace" : "product", view }, "", `${url.pathname}${url.search}${url.hash}`);
+    if (targetRecordId) url.searchParams.set("record", targetRecordId);
+    else url.searchParams.delete("record");
+    window.history.pushState({ autoAxis: view ? "workspace" : "product", view, recordId: targetRecordId }, "", `${url.pathname}${url.search}${url.hash}`);
   }
 
   function openWorkspace(view: DashView = "overview") {
     writeRoute(view);
     setDashView(view);
+    setRecordId(undefined);
     setAppView("dashboard");
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
-  function changeWorkspace(view: DashView) {
-    if (view !== dashView) writeRoute(view);
+  function changeWorkspace(view: DashView, targetRecordId?: string) {
+    if (view !== dashView || targetRecordId !== recordId) writeRoute(view, targetRecordId);
     setDashView(view);
+    setRecordId(targetRecordId);
   }
 
   function openProductSite() {
     writeRoute();
     setAppView("landing");
+    setRecordId(undefined);
     window.scrollTo({ top: 0, behavior: "auto" });
   }
 
@@ -110,7 +122,7 @@ function AppShell() {
         )}
       >
         <Suspense fallback={<WorkspaceLoader />}>
-          <DashboardApp initialView={dashView} onNavigate={changeWorkspace} onLogout={handleLogout} />
+          <DashboardApp initialView={dashView} initialRecordId={recordId} onNavigate={changeWorkspace} onLogout={handleLogout} />
         </Suspense>
       </ErrorBoundary>
     );
