@@ -49,6 +49,7 @@ import type { Customer, DashView, Overview, PortalId, Vehicle } from "../types";
 import { CompanyAdmin } from "./CompanyAdmin";
 import { DomainView, OverviewView } from "./DashboardViews";
 import { FinanceView, ServiceView } from "./Hubs";
+import { MarketingComingSoonBadge, MarketingView } from "./MarketingView";
 import { PAGE_WORKFLOW, WorkflowDiagram } from "./PageWorkflows";
 import { PortalTabShell } from "./PortalShell";
 import { CustomerView, useDialogFocusTrap, VehicleView } from "./RecordViews";
@@ -82,7 +83,6 @@ const viewIcons: Record<DashView, LucideIcon> = {
 };
 
 const COMING_SOON_COPY: Partial<Record<DashView, { description: string; planned: string[] }>> = {
-  marketing: { description: "Consent-aware audiences, journeys, and attribution reporting are planned for this portal once the campaign data model ships.", planned: ["Audience builder from ownership and service signals", "Email, SMS, and WhatsApp journeys", "Attribution against pipeline and retention"] },
   usedcars: { description: "Vehicle 360's disposition page. Dedicated acquisition, reconditioning, and auction workflows are planned beyond the shared vehicle record.", planned: ["Trade-in and appraisal workflow", "Reconditioning cost tracking", "Marketplace publishing and auction"] },
   branch: { description: "A branch-level performance rollup across sales, service, and parts is planned once target data is modeled.", planned: ["Branch scorecards", "Department drill-down", "Local risk and action tracking"] },
   group: { description: "Multi-branch comparisons and group reporting are planned once more than one branch has active operating data.", planned: ["Cross-branch comparisons", "Consolidated forecasting", "OEM scorecards"] },
@@ -268,7 +268,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
         {!collapsed && <span className="nav-section-label">Related</span>}
         {related.map((id) => {
           const Icon = viewIcons[id];
-          return <button title={viewLabel(id)} type="button" key={id} onClick={() => navigate(id)}><Icon size={17} />{!collapsed && <span>{viewLabel(id)}</span>}</button>;
+          return <button title={viewLabel(id)} type="button" key={id} onClick={() => navigate(id)}><Icon size={17} />{!collapsed && <span>{viewLabel(id)}</span>}{!collapsed && id === "marketing" && <MarketingComingSoonBadge />}</button>;
         })}
       </div>
     );
@@ -300,6 +300,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
     if (area === "parts") return <DomainView view="parts" />;
     if (area === "sales") return <Sales360 onNavigate={navigate} />;
     if (area === "finance") return <FinanceView />;
+    if (area === "marketing") return <MarketingView />;
     if (area === "analytics") return <OverviewView onNavigate={navigate} />;
     if (area === ADMIN_VIEW) return <CompanyAdmin />;
     const copy = COMING_SOON_COPY[area];
@@ -352,7 +353,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                   const Icon = viewIcons[item.id];
                   return (
                     <button type="button" key={item.id} title={item.label} aria-current={activePortal === item.id ? "page" : undefined} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}>
-                      <Icon size={17} /><span>{item.label}</span>
+                      <Icon size={17} /><span>{item.label}</span>{item.id === "marketing" && <MarketingComingSoonBadge />}
                     </button>
                   );
                 })}
@@ -370,7 +371,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                 {!collapsed && <span className="nav-section-label">{section.label}</span>}
                 {section.items.map((item) => {
                   const Icon = viewIcons[item.id];
-                  return <button type="button" key={item.id} title={item.label} aria-current={activePortal === item.id ? "page" : undefined} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}><Icon size={17} />{!collapsed && <span>{item.label}</span>}</button>;
+                  return <button type="button" key={item.id} title={item.label} aria-current={activePortal === item.id ? "page" : undefined} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}><Icon size={17} />{!collapsed && <span>{item.label}</span>}{!collapsed && item.id === "marketing" && <MarketingComingSoonBadge />}</button>;
                 })}
               </div>
             ))}
@@ -387,7 +388,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
               <button type="button" className="mobile-nav-trigger" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu /></button>
               <span className="mobile-topbar-brand"><Brand compact /></span>
               <span className="topbar-divider" />
-              <button type="button" className="workspace-switcher" aria-expanded={workspaceMenuOpen} onClick={() => setWorkspaceMenuOpen((value) => !value)}><span className="workspace-switcher-icon"><CurrentViewIcon /></span><span><small>Portal</small><strong>{currentLabel}</strong></span><ChevronDown /></button>
+              <button type="button" className="workspace-switcher" aria-expanded={workspaceMenuOpen} onClick={() => setWorkspaceMenuOpen((value) => !value)}><span className="workspace-switcher-icon"><CurrentViewIcon /></span><span><small>Portal</small><strong>{currentLabel}</strong>{activePortal === "marketing" && <MarketingComingSoonBadge />}</span><ChevronDown /></button>
               <button type="button" aria-label="What is this page?" aria-expanded={helpOpen} className="icon-button page-help-trigger" onClick={() => setHelpOpen((value) => !value)}><HelpCircle size={17} /></button>
             </div>
             <div className="topbar-actions">
@@ -445,7 +446,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                     <span>{section.label}</span>
                     {section.items.map((item) => {
                       const Icon = viewIcons[item.id];
-                      return <button type="button" key={item.id} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}><i><Icon /></i><span><strong>{item.label}</strong><small>{PORTAL_BLURBS[item.id]}</small></span><ArrowRight /></button>;
+                      return <button type="button" key={item.id} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}><i><Icon /></i><span><strong>{item.label}{item.id === "marketing" && <MarketingComingSoonBadge />}</strong><small>{PORTAL_BLURBS[item.id]}</small></span><ArrowRight /></button>;
                     })}
                   </div>
                 ))}
