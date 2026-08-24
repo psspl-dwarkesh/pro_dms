@@ -46,7 +46,7 @@ import {
   viewLabel,
 } from "../data";
 import type { Customer, DashView, Overview, PortalId, Vehicle } from "../types";
-import { CompanyAdmin } from "./CompanyAdmin";
+import { Administration } from "./Administration";
 import { DomainView, OverviewView } from "./DashboardViews";
 import { FinanceView, SalesView, ServiceView } from "./Hubs";
 import { PAGE_WORKFLOW, WorkflowDiagram } from "./PageWorkflows";
@@ -300,7 +300,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
     if (area === "sales") return <SalesView onNavigate={navigate} />;
     if (area === "finance") return <FinanceView />;
     if (area === "analytics") return <OverviewView onNavigate={navigate} />;
-    if (area === ADMIN_VIEW) return <CompanyAdmin />;
+    if (area === ADMIN_VIEW) return <Administration />;
     const copy = COMING_SOON_COPY[area];
     return (
       <ComingSoon
