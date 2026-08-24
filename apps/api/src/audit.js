@@ -1,4 +1,4 @@
-import { pool } from "./db.js";
+import { pool } from "./persistence.js";
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -51,15 +51,17 @@ function deriveAction(path) {
 // delays the response, and only for state-changing methods -- reads are not audited here.
 export function auditRequests(request, response, next) {
   if (!MUTATING_METHODS.has(request.method)) return next();
+  const path = String(request.originalUrl ?? request.path).split("?", 1)[0];
+  const action = deriveAction(path);
   response.on("finish", () => {
     void recordAuditEvent({
       organizationId: request.auth?.organizationId,
       branchId: request.auth?.branchId ?? null,
       actorUserId: request.auth?.userId ?? null,
       actorRole: request.auth?.role ?? null,
-      action: deriveAction(request.path),
+      action,
       method: request.method,
-      path: request.path,
+      path,
       statusCode: response.statusCode,
       targetId: request.params?.id ?? null,
       requestId: request.requestId ?? null,

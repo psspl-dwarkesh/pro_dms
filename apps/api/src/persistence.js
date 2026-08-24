@@ -268,7 +268,8 @@ export async function listCustomers(organizationId, { search, limit, offset }) {
 // Bare digits only, so "04 1234 5678", "+61 4 1234 5678", and "0412345678" compare equal when
 // checking for duplicates.
 function normalizedDigits(value) {
-  return value ? value.replace(/\D/g, "") : "";
+  const digits = value ? value.replace(/\D/g, "") : "";
+  return digits.startsWith("61") && digits.length === 11 ? `0${digits.slice(2)}` : digits;
 }
 
 // Surfaces existing customers that look like the same person or company before a create/edit
@@ -286,7 +287,11 @@ export async function findPotentialDuplicateCustomers(organizationId, { mobile, 
   const conditions = [];
   if (mobileDigits) {
     values.push(mobileDigits);
-    conditions.push(`regexp_replace(coalesce(mobile, ''), '\\D', '', 'g') = $${values.length}`);
+    conditions.push(`case
+      when regexp_replace(coalesce(mobile, ''), '\\D', '', 'g') like '61_________'
+      then '0' || substring(regexp_replace(mobile, '\\D', '', 'g') from 3)
+      else regexp_replace(coalesce(mobile, ''), '\\D', '', 'g')
+    end = $${values.length}`);
   }
   if (trimmedEmail) {
     values.push(trimmedEmail);
@@ -769,20 +774,26 @@ export async function listParts(organizationId, { search, lowStock, limit, offse
   return result.rows;
 }
 
-export async function createPart(organizationId, { sku, name, quantityOnHand, reorderPoint, unitCost, retailPrice }) {
-  const result = await query(
-    `insert into parts (organization_id, sku, name, quantity_on_hand, reorder_point, unit_cost, retail_price)
-     values ($1, $2, $3, $4, $5, $6, $7)
-     returning id, sku, name, quantity_on_hand as "quantityOnHand", reorder_point as "reorderPoint",
-               unit_cost::float as "unitCost", retail_price::float as "retailPrice"`,
-    [organizationId, sku, name, quantityOnHand ?? 0, reorderPoint ?? 0, unitCost ?? 0, retailPrice ?? 0],
-  ).catch((cause) => {
-    if (cause?.cause?.code === "23505") {
-      throw Object.assign(new Error("A part with that SKU already exists."), { status: 409, code: "PART_SKU_IN_USE", expose: true });
-    }
-    throw cause;
-  });
-  return result.rows[0];
+export async function createPart(organizationId, branchId, { sku, name, quantityOnHand, reorderPoint, unitCost, retailPrice }) {
+  if (!pool) throw new DatabaseUnavailableError();
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const result = await client.query(
+      `insert into parts (organization_id, sku, name, quantity_on_hand, reorder_point, unit_cost, retail_price)
+       values ($1, $2, $3, $4, $5, $6, $7)
+       returning id, sku, name, quantity_on_hand as "quantityOnHand", reorder_point as "reorderPoint",
+                 unit_cost::float as "unitCost", retail_price::float as "retailPrice"`,
+      [organizationId, sku, name, quantityOnHand ?? 0, reorderPoint ?? 0, unitCost ?? 0, retailPrice ?? 0],
+    );
+    if (branchId) await client.query("insert into part_branch_stock (organization_id,branch_id,part_id,quantity_on_hand) values ($1,$2,$3,$4)", [organizationId, branchId, result.rows[0].id, quantityOnHand ?? 0]);
+    await client.query("commit");
+    return result.rows[0];
+  } catch (cause) {
+    await client.query("rollback");
+    if (cause?.code === "23505") throw Object.assign(new Error("A part with that SKU already exists."), { status: 409, code: "PART_SKU_IN_USE", expose: true });
+    throw new DatabaseUnavailableError({ cause });
+  } finally { client.release(); }
 }
 
 export async function updatePart(organizationId, id, { quantityOnHand, reorderPoint, unitCost, retailPrice }) {

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { hashPassword, signSessionToken, slugifyCompanyName, verifyPassword } from "../auth.js";
-import { createOrganizationWithAdmin, findUserByEmail, getOrganization, getUserById } from "../db.js";
+import { createOrganizationWithAdmin, findUserByEmail, getOrganization, getUserById } from "../persistence.js";
 import { asyncRoute, HttpError } from "../errors.js";
 import { authenticate } from "../middleware.js";
 import { optionalString, requireString } from "../validate.js";

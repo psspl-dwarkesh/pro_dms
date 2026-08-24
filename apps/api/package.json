@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "check": "node --check src/server.js && node --check src/app.js && node --check src/db.js && node --check src/errors.js && node --check src/auth.js && node --check src/middleware.js && node --check src/audit.js && node --check src/permissions.js && node --check src/authzGuards.js && node scripts/check-routes.js",
+    "check": "node --check src/server.js && node --check src/app.js && node --check src/persistence.js && node --check src/errors.js && node --check src/auth.js && node --check src/middleware.js && node --check src/audit.js && node --check src/permissions.js && node --check src/authzGuards.js && node scripts/check-routes.js",
     "test": "node --test test/*.test.js",
     "db:create": "node scripts/create-database.js",
     "db:check": "node scripts/check-database.js",

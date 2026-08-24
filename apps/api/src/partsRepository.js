@@ -1,4 +1,4 @@
-import { DatabaseUnavailableError, pool } from "./db.js";
+import { DatabaseUnavailableError, pool } from "./persistence.js";
 
 async function run(text, values) {
   if (!pool) throw new DatabaseUnavailableError();
@@ -20,22 +20,22 @@ export async function getPartsWorkspace(organizationId, branchId, { search, lowS
                 p.received_at as "receivedAt", greatest(0, extract(day from now() - p.received_at))::int as "ageDays"
            from parts p
            left join part_branch_stock bs on bs.part_id=p.id and bs.organization_id=p.organization_id and bs.branch_id=$2
-           left join (select part_id, sum(quantity)::int reserved from part_reservations where organization_id=$1 and status='reserved' and (branch_id=$2 or $2 is null) group by part_id) r on r.part_id=p.id
+           left join (select part_id, sum(quantity)::int reserved from part_reservations where organization_id=$1 and status='reserved' and (branch_id=$2 or $2::uuid is null) group by part_id) r on r.part_id=p.id
           where ${filter} order by p.name limit $${values.length - 1} offset $${values.length}`, values),
     run(`select r.id, r.part_id as "partId", p.sku, p.name as "partName", r.vehicle_id as "vehicleId", v.registration,
                 r.service_job_id as "serviceJobId", sj.repair_order_number as "repairOrderNumber", r.quantity, r.status, r.notes, r.reserved_at as "reservedAt"
            from part_reservations r join parts p on p.id=r.part_id left join vehicles v on v.id=r.vehicle_id
            left join service_jobs sj on sj.id=r.service_job_id
-          where r.organization_id=$1 and (r.branch_id=$2 or $2 is null) and r.status in ('reserved','allocated') order by r.reserved_at desc limit 50`, [organizationId, branchId]),
+          where r.organization_id=$1 and (r.branch_id=$2 or $2::uuid is null) and r.status in ('reserved','allocated') order by r.reserved_at desc limit 50`, [organizationId, branchId]),
     run(`select po.id, po.order_number as "orderNumber", po.supplier_name as "supplierName", po.status, po.expected_at as "expectedAt", po.created_at as "createdAt",
                 coalesce(sum(i.quantity_ordered),0)::int as "quantityOrdered", coalesce(sum(i.quantity_received),0)::int as "quantityReceived",
                 coalesce(sum(i.quantity_ordered*i.unit_cost),0)::float as total
            from part_purchase_orders po left join part_purchase_order_items i on i.purchase_order_id=po.id
-          where po.organization_id=$1 and (po.branch_id=$2 or $2 is null) group by po.id order by po.created_at desc limit 25`, [organizationId, branchId]),
+          where po.organization_id=$1 and (po.branch_id=$2 or $2::uuid is null) group by po.id order by po.created_at desc limit 25`, [organizationId, branchId]),
     run(`select t.id, t.part_id as "partId", p.sku, p.name as "partName", fb.name as "fromBranchName", tb.name as "toBranchName",
                 t.quantity, t.status, t.requested_at as "requestedAt", t.received_at as "receivedAt"
            from part_transfers t join parts p on p.id=t.part_id join branches fb on fb.id=t.from_branch_id join branches tb on tb.id=t.to_branch_id
-          where t.organization_id=$1 and ($2 is null or t.from_branch_id=$2 or t.to_branch_id=$2) order by t.requested_at desc limit 25`, [organizationId, branchId]),
+          where t.organization_id=$1 and ($2::uuid is null or t.from_branch_id=$2 or t.to_branch_id=$2) order by t.requested_at desc limit 25`, [organizationId, branchId]),
   ]);
   return { parts: parts.rows, reservations: reservations.rows, purchaseOrders: purchaseOrders.rows, transfers: transfers.rows };
 }
@@ -95,7 +95,7 @@ export async function createReservation(organizationId, branchId, actorUserId, i
 export async function updateReservation(organizationId, branchId, id, status, actorUserId) {
   return transaction(async (client) => {
     const found = await client.query(`select r.*, p.quantity_on_hand, p.retail_price from part_reservations r join parts p on p.id=r.part_id
-      where r.id=$1 and r.organization_id=$2 and (r.branch_id=$3 or $3 is null) for update`, [id, organizationId, branchId]);
+      where r.id=$1 and r.organization_id=$2 and (r.branch_id=$3 or $3::uuid is null) for update`, [id, organizationId, branchId]);
     if (!found.rowCount) return undefined;
     const row = found.rows[0];
     if (status === "allocated" && row.status !== "reserved") throw Object.assign(new Error("Only reserved stock can be allocated."), { status: 409, code: "INVALID_RESERVATION_STATE", expose: true });
@@ -109,7 +109,7 @@ export async function updateReservation(organizationId, branchId, id, status, ac
         values ($1,$2,$3,$4,'reservation-allocation','reservation',$5,$6)`, [organizationId, row.branch_id, row.part_id, -row.quantity, id, actorUserId]);
       if (row.service_job_id) await client.query("update service_jobs set parts_total=parts_total+$3 where id=$1 and organization_id=$2", [row.service_job_id, organizationId, Number(row.retail_price) * row.quantity]);
     }
-    const result = await client.query("update part_reservations set status=$4,updated_at=now() where id=$1 and organization_id=$2 and (branch_id=$3 or $3 is null) returning id,part_id as \"partId\",quantity,status", [id, organizationId, branchId, status]);
+    const result = await client.query("update part_reservations set status=$4,updated_at=now() where id=$1 and organization_id=$2 and (branch_id=$3 or $3::uuid is null) returning id,part_id as \"partId\",quantity,status", [id, organizationId, branchId, status]);
     return result.rows[0];
   });
 }
@@ -127,7 +127,7 @@ export async function createPurchaseOrder(organizationId, branchId, actorUserId,
 
 export async function receivePurchaseOrder(organizationId, branchId, id, actorUserId) {
   return transaction(async (client) => {
-    const order = await client.query("select * from part_purchase_orders where id=$1 and organization_id=$2 and (branch_id=$3 or $3 is null) for update", [id, organizationId, branchId]);
+    const order = await client.query("select * from part_purchase_orders where id=$1 and organization_id=$2 and (branch_id=$3 or $3::uuid is null) for update", [id, organizationId, branchId]);
     if (!order.rowCount) return undefined;
     if (!["ordered", "part-received"].includes(order.rows[0].status)) throw Object.assign(new Error("This purchase order cannot be received."), { status: 409, code: "INVALID_PURCHASE_ORDER_STATE", expose: true });
     const items = await client.query("select * from part_purchase_order_items where purchase_order_id=$1", [id]);
@@ -164,7 +164,7 @@ export async function createTransfer(organizationId, actorUserId, input) {
 
 export async function receiveTransfer(organizationId, branchId, id, actorUserId) {
   return transaction(async (client) => {
-    const transfer = await client.query("select * from part_transfers where id=$1 and organization_id=$2 and ($3 is null or to_branch_id=$3) for update", [id, organizationId, branchId]);
+    const transfer = await client.query("select * from part_transfers where id=$1 and organization_id=$2 and ($3::uuid is null or to_branch_id=$3) for update", [id, organizationId, branchId]);
     if (!transfer.rowCount) return undefined;
     const row = transfer.rows[0];
     if (!["requested", "in-transit"].includes(row.status)) throw Object.assign(new Error("This transfer cannot be received."), { status: 409, code: "INVALID_TRANSFER_STATE", expose: true });

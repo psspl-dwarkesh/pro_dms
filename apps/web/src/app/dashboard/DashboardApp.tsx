@@ -51,7 +51,7 @@ import { Analytics360 } from "./Analytics360";
 import { DomainView } from "./DashboardViews";
 import { ServiceView } from "./Hubs";
 import { Finance360 } from "./Finance360";
-import { MarketingComingSoonBadge, MarketingView } from "./MarketingView";
+import { MarketingStatusBadge, MarketingView } from "./MarketingView";
 import { PAGE_WORKFLOW, WorkflowDiagram } from "./PageWorkflows";
 import { PortalTabShell } from "./PortalShell";
 import { CustomerView } from "./CustomerViews";
@@ -273,7 +273,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
         {!collapsed && <span className="nav-section-label">Related</span>}
         {related.map((id) => {
           const Icon = viewIcons[id];
-          return <button title={viewLabel(id)} type="button" key={id} onClick={() => navigate(id)}><Icon size={17} />{!collapsed && <span>{viewLabel(id)}</span>}{!collapsed && id === "marketing" && <MarketingComingSoonBadge />}</button>;
+          return <button title={viewLabel(id)} type="button" key={id} onClick={() => navigate(id)}><Icon size={17} />{!collapsed && <span>{viewLabel(id)}</span>}{!collapsed && id === "marketing" && <MarketingStatusBadge />}</button>;
         })}
       </div>
     );
@@ -359,7 +359,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                   const Icon = viewIcons[item.id];
                   return (
                     <button type="button" key={item.id} title={item.label} aria-current={activePortal === item.id ? "page" : undefined} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}>
-                      <Icon size={17} /><span>{item.label}</span>{item.id === "marketing" && <MarketingComingSoonBadge />}
+                      <Icon size={17} /><span>{item.label}</span>{item.id === "marketing" && <MarketingStatusBadge />}
                     </button>
                   );
                 })}
@@ -377,7 +377,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                 {!collapsed && <span className="nav-section-label">{section.label}</span>}
                 {section.items.map((item) => {
                   const Icon = viewIcons[item.id];
-                  return <button type="button" key={item.id} title={item.label} aria-current={activePortal === item.id ? "page" : undefined} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}><Icon size={17} />{!collapsed && <span>{item.label}</span>}{!collapsed && item.id === "marketing" && <MarketingComingSoonBadge />}</button>;
+                  return <button type="button" key={item.id} title={item.label} aria-current={activePortal === item.id ? "page" : undefined} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}><Icon size={17} />{!collapsed && <span>{item.label}</span>}{!collapsed && item.id === "marketing" && <MarketingStatusBadge />}</button>;
                 })}
               </div>
             ))}
@@ -394,7 +394,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
               <button type="button" className="mobile-nav-trigger" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu /></button>
               <span className="mobile-topbar-brand"><Brand compact /></span>
               <span className="topbar-divider" />
-              <button type="button" className="workspace-switcher" aria-expanded={workspaceMenuOpen} onClick={() => setWorkspaceMenuOpen((value) => !value)}><span className="workspace-switcher-icon"><CurrentViewIcon /></span><span><small>Portal</small><strong>{currentLabel}</strong>{activePortal === "marketing" && <MarketingComingSoonBadge />}</span><ChevronDown /></button>
+              <button type="button" className="workspace-switcher" aria-expanded={workspaceMenuOpen} onClick={() => setWorkspaceMenuOpen((value) => !value)}><span className="workspace-switcher-icon"><CurrentViewIcon /></span><span><small>Portal</small><strong>{currentLabel}</strong>{activePortal === "marketing" && <MarketingStatusBadge />}</span><ChevronDown /></button>
               <button type="button" aria-label="What is this page?" aria-expanded={helpOpen} className="icon-button page-help-trigger" onClick={() => setHelpOpen((value) => !value)}><HelpCircle size={17} /></button>
             </div>
             <div className="topbar-actions">
@@ -452,7 +452,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                     <span>{section.label}</span>
                     {section.items.map((item) => {
                       const Icon = viewIcons[item.id];
-                      return <button type="button" key={item.id} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}><i><Icon /></i><span><strong>{item.label}{item.id === "marketing" && <MarketingComingSoonBadge />}</strong><small>{PORTAL_BLURBS[item.id]}</small></span><ArrowRight /></button>;
+                      return <button type="button" key={item.id} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}><i><Icon /></i><span><strong>{item.label}{item.id === "marketing" && <MarketingStatusBadge />}</strong><small>{PORTAL_BLURBS[item.id]}</small></span><ArrowRight /></button>;
                     })}
                   </div>
                 ))}

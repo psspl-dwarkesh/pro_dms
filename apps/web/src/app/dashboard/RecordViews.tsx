@@ -29,7 +29,7 @@ export function useOpenIdSelection(openId: string | undefined, setSelectedId: (i
 
 const dateFormatter = new Intl.DateTimeFormat("en-AU", { day: "2-digit", month: "short", year: "numeric" });
 
-// `fields` names exactly what the underlying API query matches (see db.js#listCustomers /
+// `fields` names exactly what the underlying API query matches (see persistence#listCustomers /
 // #listVehicles) so this line never claims coverage the search doesn't have. Views that reuse
 // this component for a stage/status filter rather than free-text search can omit it.
 export function SearchState({ loading, error, fields }: { loading: boolean; error: ApiError | null; fields?: string }) {

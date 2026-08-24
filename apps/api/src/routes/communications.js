@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createCommunication, listCommunications } from "../db.js";
+import { createCommunication, listCommunications } from "../persistence.js";
 import { asyncRoute } from "../errors.js";
 import { authorizePermission, CAPABILITIES } from "../permissions.js";
 import { optionalString, requireEnum, requireString, requireUuid, paginationParams } from "../validate.js";

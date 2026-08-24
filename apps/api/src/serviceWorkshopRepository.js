@@ -1,4 +1,4 @@
-import { pool } from "./db.js";
+import { pool } from "./persistence.js";
 import { HttpError } from "./errors.js";
 
 function query(text, values) {
@@ -63,4 +63,3 @@ export async function issueInvoice(organizationId, branchId, id, input) {
   const result = await query(`update service_jobs set invoice_status='issued', invoice_number=$3, invoice_total=labour_total+parts_total, invoiced_at=now() where organization_id=$1 and id=$2 and invoice_status='not-ready' returning invoice_status as "invoiceStatus", invoice_number as "invoiceNumber", invoice_total::float as "invoiceTotal", invoiced_at as "invoicedAt"`, [organizationId, id, input.invoiceNumber]);
   return result.rows[0];
 }
-

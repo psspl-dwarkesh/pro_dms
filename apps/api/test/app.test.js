@@ -19,12 +19,12 @@ after(async () => {
   await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
 });
 
-test("health reports a safe database mode without a configured database", async () => {
+test("health reports the configured database mode safely", async () => {
   const response = await fetch(`${baseUrl}/api/health`);
   const body = await response.json();
   assert.equal(response.status, 200);
   assert.equal(body.service, "autoaxis-api");
-  assert.equal(body.database.status, "not-configured");
+  assert.equal(body.database.status, process.env.DATABASE_URL ? "connected" : "not-configured");
   assert.ok(response.headers.get("x-request-id"));
 });
 
