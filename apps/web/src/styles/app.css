@@ -1518,3 +1518,69 @@
   .vehicle-hero { grid-template-columns: auto 1fr; }
   .vehicle-hero > div:last-child { grid-column: 2; align-items: flex-start; }
 }
+
+/* 2026 light enterprise refinement: keep navigation calm, legible and reachable. */
+.operations-shell { background: #f6f7f9; }
+.operations-sidebar { border-right: 1px solid var(--line); background: #ffffff; color: var(--ink-600); }
+.sidebar-brand { border-bottom-color: var(--line); }
+.operations-sidebar .brand-lockup { color: var(--ink-950); }
+.operations-sidebar .brand-lockup--inverse .brand-word { color: var(--ink-950); }
+.operations-sidebar .brand-lockup--inverse .brand-product { color: var(--ink-500); }
+.group-switcher { border-color: var(--line); background: var(--paper-subtle); color: var(--ink-950); }
+.group-switcher:hover { border-color: rgba(20,99,255,.28); background: var(--blue-wash); }
+.group-switcher span { background: var(--blue); color: white; }
+.group-switcher small, .nav-section-label { color: var(--ink-500); }
+.operations-nav { scrollbar-color: rgba(0,7,20,.16) transparent; }
+.operations-nav button { color: var(--ink-600); }
+.operations-nav button:hover { background: var(--paper-2); color: var(--ink-950); }
+.operations-nav button.active { background: var(--blue-soft); color: var(--blue); font-weight: 720; }
+.operations-nav button.active svg { color: var(--blue); }
+.operations-nav button.active i { width: 3px; height: 20px; right: 0; border-radius: 3px 0 0 3px; background: var(--blue); }
+.sidebar-footer { border-top-color: var(--line); }
+.collapse-button { color: var(--ink-500); }
+.collapse-button:hover { background: var(--paper-2); color: var(--ink-950); }
+.health-indicator { background: var(--paper-subtle); }
+.health-indicator strong { color: var(--ink-800); }
+
+.operations-topbar { border-bottom-color: var(--line); background: rgba(255,255,255,.94); color: var(--ink-950); box-shadow: 0 1px 0 rgba(0,7,20,.02); }
+.operations-topbar .back-to-site { color: var(--ink-600); }
+.operations-topbar .back-to-site:hover { color: var(--blue); }
+.operations-topbar .topbar-divider { background: var(--line-strong); }
+.operations-topbar .mobile-nav-trigger { color: var(--ink-950); }
+.operations-topbar .global-search { border-color: var(--line-strong); background: var(--paper-subtle); color: var(--ink-500); }
+.operations-topbar .global-search:hover { border-color: rgba(20,99,255,.35); background: var(--blue-wash); color: var(--ink-800); }
+.operations-topbar .global-search kbd { border-color: var(--line); background: white; color: var(--ink-500); }
+.operations-topbar .icon-button { border-color: var(--line); background: white; color: var(--ink-600); }
+.operations-topbar .icon-button:hover { border-color: rgba(20,99,255,.3); background: var(--blue-soft); color: var(--blue); }
+.operations-topbar .user-menu { color: var(--ink-950); }
+.operations-topbar .user-menu > span { background: var(--blue); color: white; }
+.operations-topbar .user-menu small { color: var(--ink-500); }
+
+.workspace-page { padding-top: 40px; }
+.workspace-page-header h1 { font-size: clamp(32px,3vw,46px); font-weight: 620; letter-spacing: -.05em; }
+.workspace-page-header p { max-width: 780px; font-size: 14px; line-height: 1.6; }
+.workspace-card, .record-main-card, .side-panel, .metric-card { border-color: var(--line); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,7,20,.035); }
+.record-primary-actions > button, .record-primary-actions > a { min-height: 106px; padding: 16px; }
+.record-primary-actions strong { font-size: 12px; }
+.record-primary-actions small { font-size: 10px; line-height: 1.45; }
+
+.command-palette > header { grid-template-columns: auto minmax(0,1fr) auto auto; }
+.command-clear { width: 30px !important; height: 30px !important; display: grid !important; place-items: center; border-radius: 50% !important; padding: 0 !important; background: var(--paper-2) !important; color: var(--ink-500) !important; }
+.command-clear:hover { background: var(--blue-soft) !important; color: var(--blue) !important; }
+.command-clear svg { width: 14px !important; }
+
+@media (max-width: 900px) {
+  .operations-topbar .user-menu { display: flex; }
+  .operations-topbar .user-menu > span { width: 34px; height: 34px; }
+}
+
+@media (max-width: 520px) {
+  .operations-topbar { height: 62px; }
+  .operations-topbar .icon-button { display: none; }
+  .operations-topbar .user-menu { display: flex; }
+  .workspace-page { padding-top: 24px; }
+  .workspace-page-header h1 { font-size: 30px; }
+  .record-directory-panel { height: auto; max-height: none; }
+  .record-directory-panel .customer-directory,
+  .record-directory-panel .vehicle-directory { max-height: 360px; }
+}
