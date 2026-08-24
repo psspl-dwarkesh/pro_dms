@@ -4,7 +4,7 @@ import {
   Trash2, UserPlus, WalletCards, Wrench, X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from "../../lib/api";
 import { GmailIcon, WhatsAppIcon } from "../components/BrandIcons";
 import type {
@@ -13,15 +13,36 @@ import type {
 import { useContextualActions } from "./SidebarActions";
 import type { SidebarAction } from "./SidebarActions";
 
-type RecordViewProps = { onNavigate: (view: DashView) => void };
+// openId: when a global search result or a cross-record link (e.g. "Current owner", a vehicle
+// inside a customer's Vehicles tab) hands this view a specific record id, it opens that exact
+// record instead of defaulting to the first row in the directory. recordId on onNavigate is the
+// matching half of that contract for outbound links.
+type RecordViewProps = { onNavigate: (view: DashView, recordId?: string) => void; openId?: string };
+
+// Applies `openId` to `setSelectedId` once per distinct value, so repeat renders (list reloads,
+// tab switches) do not stomp on a selection the user already made by clicking around the
+// directory. A new distinct openId (a fresh search selection while already on this page) still
+// takes effect.
+function useOpenIdSelection(openId: string | undefined, setSelectedId: (id: string) => void) {
+  const appliedOpenId = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (openId && openId !== appliedOpenId.current) {
+      appliedOpenId.current = openId;
+      setSelectedId(openId);
+    }
+  }, [openId, setSelectedId]);
+}
 
 const money = new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 });
 const dateFormatter = new Intl.DateTimeFormat("en-AU", { day: "2-digit", month: "short", year: "numeric" });
 
-export function SearchState({ loading, error }: { loading: boolean; error: ApiError | null }) {
+// `fields` names exactly what the underlying API query matches (see db.js#listCustomers /
+// #listVehicles) so this line never claims coverage the search doesn't have. Views that reuse
+// this component for a stage/status filter rather than free-text search can omit it.
+export function SearchState({ loading, error, fields }: { loading: boolean; error: ApiError | null; fields?: string }) {
   if (loading) return <span className="record-search-state"><i className="loading-dot" />Searching connected records...</span>;
   if (error) return <span className="record-search-state record-search-state--error">{error.message}{error.requestId ? ` - ${error.requestId}` : ""}</span>;
-  return <span className="record-search-state">Connected search - name, mobile, email, VIN, registration, make or model.</span>;
+  return <span className="record-search-state">{fields ? `Connected search - ${fields}.` : "Showing connected records."}</span>;
 }
 
 export function Timeline({ items }: { items: Array<{ occurredAt: string; type: string; summary: string }> }) {
@@ -43,8 +64,52 @@ export function Toast({ message }: { message: string }) {
   return <div className="workspace-toast" role="status"><BadgeCheck />{message}</div>;
 }
 
+// Focus containment for every workflow dialog: focus moves inside on open, Tab/Shift+Tab stay
+// within the dialog, Escape closes it, the background is inert while it's open (body scroll
+// locked), and focus returns to whatever triggered the dialog when it closes.
+// `active` distinguishes an unmount-on-close dialog (default true -- the component only ever
+// renders while open, e.g. WorkflowModal) from one that stays mounted with its visibility toggled
+// by a boolean prop (e.g. a command palette rendered from a parent that never unmounts): pass the
+// open/closed flag as `active` there so the trap engages and releases with it instead of firing
+// once at the parent's own mount.
+export function useDialogFocusTrap(dialogRef: { current: HTMLElement | null }, onClose: () => void, active = true) {
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (!active) return;
+    const triggerElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const dialog = dialogRef.current;
+    const focusable = () =>
+      Array.from(dialog?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [])
+        .filter((element) => !element.hidden);
+    window.setTimeout(() => (focusable()[0] ?? dialog)?.focus(), 0);
+
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onCloseRef.current(); return; }
+      if (event.key !== "Tab") return;
+      const items = focusable();
+      if (!items.length) { event.preventDefault(); dialog?.focus(); return; }
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    }
+    document.addEventListener("keydown", handleKey, true);
+    return () => {
+      document.removeEventListener("keydown", handleKey, true);
+      document.body.style.overflow = previousOverflow;
+      triggerElement?.focus();
+    };
+  }, [active, dialogRef]);
+}
+
 export function WorkflowModal({ title, eyebrow, onClose, onComplete, children, completeLabel = "Save", busy = false }: { title: string; eyebrow: string; onClose: () => void; onComplete: () => void; children: ReactNode; completeLabel?: string; busy?: boolean }) {
-  return <div className="modal-scrim" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && onClose()}><section className="workflow-modal" role="dialog" aria-modal="true" aria-labelledby="workflow-title"><header><div><span>{eyebrow}</span><h2 id="workflow-title">{title}</h2></div><button type="button" onClick={onClose} aria-label="Close dialog"><X /></button></header><div className="workflow-modal-body">{children}</div><footer><span><i /> Saved to your connected database</span><div><button type="button" onClick={onClose}>Cancel</button><button type="button" className="workspace-button workspace-button--dark" onClick={onComplete} disabled={busy}>{busy ? "Saving..." : completeLabel} <ArrowRight size={14} /></button></div></footer></section></div>;
+  const dialogRef = useRef<HTMLElement>(null);
+  useDialogFocusTrap(dialogRef, onClose);
+  return <div className="modal-scrim" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && onClose()}><section ref={dialogRef} tabIndex={-1} className="workflow-modal" role="dialog" aria-modal="true" aria-labelledby="workflow-title"><header><div><span>{eyebrow}</span><h2 id="workflow-title">{title}</h2></div><button type="button" onClick={onClose} aria-label="Close dialog"><X /></button></header><div className="workflow-modal-body">{children}</div><footer><span><i /> Saved to your connected database</span><div><button type="button" onClick={onClose}>Cancel</button><button type="button" className="workspace-button workspace-button--dark" onClick={onComplete} disabled={busy}>{busy ? "Saving..." : completeLabel} <ArrowRight size={14} /></button></div></footer></section></div>;
 }
 
 function useToast() {
@@ -75,13 +140,14 @@ function exportCsv(recordName: string) {
 
 type CustomerModal = null | "create-customer" | "edit-customer" | "create-lead" | "book-service" | "log-communication";
 
-export function CustomerView({ onNavigate }: RecordViewProps) {
+export function CustomerView({ onNavigate, openId }: RecordViewProps) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<ApiError | null>(null);
   const [query, setQuery] = useState("");
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(openId ?? null);
+  useOpenIdSelection(openId, setSelectedId);
   const [customer, setCustomer] = useState<Customer360 | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
@@ -239,7 +305,7 @@ export function CustomerView({ onNavigate }: RecordViewProps) {
       <aside className="record-directory-panel">
         <header className="directory-panel-heading"><div><span>Customer directory</span><strong>{customers.length} connected records</strong></div><button type="button" onClick={() => setModal("create-customer")} aria-label="Create customer"><Plus /></button></header>
         <form className="record-search" onSubmit={searchCustomers}><Search size={18} /><input aria-label="Search customers" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Name, mobile, or email" />{query && <button className="search-clear" type="button" aria-label="Clear customer search" onClick={() => { setQuery(""); loadList(""); }}><X /></button>}<button className="search-submit" type="submit" disabled={listLoading}>Search</button></form>
-        <SearchState loading={listLoading} error={listError} />
+        <SearchState loading={listLoading} error={listError} fields="name, mobile, or email" />
         <section className="customer-directory"><div className="customer-list-head"><span>Customer</span><span>Contact</span><span>Lifetime value</span></div>
           {customers.map((entry) => <button type="button" className={selectedId === entry.id ? "selected" : ""} key={entry.id} onClick={() => setSelectedId(entry.id)}><span className="customer-list-avatar">{entry.displayName.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span><div><strong>{entry.displayName}</strong><small>{entry.mobile ?? entry.email ?? "No contact on file"}</small></div><span>{entry.preferredChannel ?? "-"}</span><b>{money.format(entry.lifetimeValue)}</b><ArrowRight /></button>)}
           {!listLoading && !customers.length && <div className="customer-list-empty"><Search />No matching customers. Create one to get started.</div>}
@@ -255,7 +321,7 @@ export function CustomerView({ onNavigate }: RecordViewProps) {
               <div className="record-tabs" role="tablist">{["Overview", "Activity", "Vehicles", "Sales & finance", "Service & care", "Communications"].map((item) => <button role="tab" aria-selected={tab === item} className={tab === item ? "active" : ""} type="button" key={item} onClick={() => setTab(item)}>{item}</button>)}</div>
               {tab === "Overview" && <div className="record-facts"><div><WalletCards /><span>Lifetime value</span><strong>{money.format(customer.lifetimeValue)}</strong></div><div><CarFront /><span>Vehicles</span><strong>{customer.vehicles.length}</strong></div><div><Wrench /><span>Service visits</span><strong>{customer.serviceVisitCount}</strong></div><div><ShieldCheck /><span>Preferred channel</span><strong>{customer.preferredChannel ?? "Not set"}</strong></div></div>}
               {tab === "Activity" && <Timeline items={customer.timeline} />}
-              {tab === "Vehicles" && <div className="linked-records">{customer.vehicles.map((vehicle) => <button type="button" key={vehicle.vin} onClick={() => onNavigate("vehicles")}><CarFront /><div><strong>{vehicle.make} {vehicle.model}</strong><span>{vehicle.variant ?? ""} {vehicle.registration ?? vehicle.vin}</span></div><ArrowRight /></button>)}{!customer.vehicles.length && <div className="timeline-empty">No vehicles linked to this customer yet.</div>}</div>}
+              {tab === "Vehicles" && <div className="linked-records">{customer.vehicles.map((vehicle) => <button type="button" key={vehicle.vin} onClick={() => onNavigate("vehicles", vehicle.id)}><CarFront /><div><strong>{vehicle.make} {vehicle.model}</strong><span>{vehicle.variant ?? ""} {vehicle.registration ?? vehicle.vin}</span></div><ArrowRight /></button>)}{!customer.vehicles.length && <div className="timeline-empty">No vehicles linked to this customer yet.</div>}</div>}
               {tab === "Sales & finance" && <><SectionToolbar title="Deals and opportunities" detail="Sales orders linked to this customer" action="New opportunity" onAction={() => setModal("create-lead")} /><OperationalTable columns={["Vehicle", "Value", "Status", "Ordered"]} rows={sales.map((order) => [`${order.make} ${order.model}`, money.format(order.totalAmount), order.status, dateFormatter.format(new Date(order.orderedAt))])} /></>}
               {tab === "Service & care" && <><SectionToolbar title="Service relationship" detail={`${jobs.length} repair orders on file`} action="Book service" onAction={() => setModal("book-service")} /><OperationalTable columns={["Repair order", "Vehicle", "Status", "Opened"]} rows={jobs.map((job) => [job.repairOrderNumber, `${job.make} ${job.model}`, job.status, dateFormatter.format(new Date(job.openedAt))])} /></>}
               {tab === "Communications" && <><SectionToolbar title="Communication log" detail={`${comms.length} recorded interactions`} action="Log communication" onAction={() => setModal("log-communication")} /><OperationalTable columns={["Channel", "Direction", "Summary", "Date"]} rows={comms.map((comm) => [comm.channel, comm.direction, comm.summary, dateFormatter.format(new Date(comm.occurredAt))])} /></>}
@@ -350,13 +416,14 @@ function LogCommunicationModal({ onClose, onSubmit, saving }: { saving: boolean;
 
 type VehicleModal = null | "create-vehicle" | "edit-vehicle" | "book-service";
 
-export function VehicleView({ onNavigate }: RecordViewProps) {
+export function VehicleView({ onNavigate, openId }: RecordViewProps) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<ApiError | null>(null);
   const [query, setQuery] = useState("");
 
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(openId ?? null);
+  useOpenIdSelection(openId, setSelectedId);
   const [vehicle, setVehicle] = useState<Vehicle360 | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
@@ -479,7 +546,7 @@ export function VehicleView({ onNavigate }: RecordViewProps) {
       <aside className="record-directory-panel">
         <header className="directory-panel-heading"><div><span>Vehicle directory</span><strong>{vehicles.length} connected assets</strong></div><button type="button" onClick={() => setModal("create-vehicle")} aria-label="Add vehicle"><Plus /></button></header>
         <form className="record-search" onSubmit={searchVehicles}><Search /><input aria-label="Search vehicles" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="VIN, registration, make or model" />{query && <button className="search-clear" type="button" aria-label="Clear vehicle search" onClick={() => { setQuery(""); loadList(""); }}><X /></button>}<button className="search-submit" type="submit" disabled={listLoading}>Search</button></form>
-        <SearchState loading={listLoading} error={listError} />
+        <SearchState loading={listLoading} error={listError} fields="VIN, registration, make, or model" />
         <section className="vehicle-directory"><div className="vehicle-list-head"><span>Vehicle</span><span>Status</span><span>Value</span></div>
           {vehicles.map((entry) => <button type="button" className={selectedId === entry.id ? "selected" : ""} key={entry.id} onClick={() => setSelectedId(entry.id)}><span className="vehicle-list-icon"><CarFront /></span><div><strong>{entry.modelYear ?? ""} {entry.make} {entry.model}</strong><small>{entry.registration ?? entry.vin.slice(-8)}</small></div><span>{entry.status}</span><b>{entry.marketValue ? money.format(entry.marketValue) : "-"}</b><ArrowRight /></button>)}
           {!listLoading && !vehicles.length && <div className="customer-list-empty"><Search />No matching vehicles. Add one to get started.</div>}
@@ -493,7 +560,7 @@ export function VehicleView({ onNavigate }: RecordViewProps) {
             <section className="record-main-card">
               <div className="vehicle-hero"><div className="vehicle-silhouette"><CarFront /></div><div><span>{vehicle.modelYear ?? "Year unknown"} - {vehicle.status.replaceAll("-", " ")}</span><h3>{vehicle.make} {vehicle.model}</h3><p>{vehicle.variant ?? ""} {vehicle.colour ?? ""}</p></div><div><span>Registration</span><strong>{vehicle.registration ?? "Unregistered"}</strong></div></div>
               <div className="record-tabs" role="tablist">{["Overview", "Lifecycle", "Work orders", "Valuation", "Ownership"].map((item) => <button role="tab" aria-selected={tab === item} className={tab === item ? "active" : ""} type="button" key={item} onClick={() => setTab(item)}>{item}</button>)}</div>
-              {tab === "Overview" && <div className="record-facts"><div><CarFront /><span>VIN</span><strong className="fact-small">{vehicle.vin}</strong></div><div><Gauge /><span>Odometer</span><strong>{vehicle.odometerKm ? `${new Intl.NumberFormat("en-AU").format(vehicle.odometerKm)} km` : "Not recorded"}</strong></div><div><WalletCards /><span>Market value</span><strong>{vehicle.marketValue ? money.format(vehicle.marketValue) : "Not set"}</strong></div><div><CircleUserRound /><span>Current owner</span>{vehicle.ownerId ? <button type="button" onClick={() => onNavigate("customers")}>{vehicle.ownerName}</button> : <strong>Unowned</strong>}</div></div>}
+              {tab === "Overview" && <div className="record-facts"><div><CarFront /><span>VIN</span><strong className="fact-small">{vehicle.vin}</strong></div><div><Gauge /><span>Odometer</span><strong>{vehicle.odometerKm ? `${new Intl.NumberFormat("en-AU").format(vehicle.odometerKm)} km` : "Not recorded"}</strong></div><div><WalletCards /><span>Market value</span><strong>{vehicle.marketValue ? money.format(vehicle.marketValue) : "Not set"}</strong></div><div><CircleUserRound /><span>Current owner</span>{vehicle.ownerId ? <button type="button" onClick={() => onNavigate("customers", vehicle.ownerId)}>{vehicle.ownerName}</button> : <strong>Unowned</strong>}</div></div>}
               {tab === "Lifecycle" && <Timeline items={vehicle.timeline} />}
               {tab === "Work orders" && <><SectionToolbar title="Workshop history" detail={`${jobs.length} repair orders on file`} action={vehicle.ownerId ? "Book workshop" : undefined} onAction={() => setModal("book-service")} /><OperationalTable columns={["Repair order", "Status", "Opened", "Labour"]} rows={jobs.map((job) => [job.repairOrderNumber, job.status, dateFormatter.format(new Date(job.openedAt)), money.format(job.labourTotal)])} /></>}
               {tab === "Valuation" && <div className="valuation-panel"><div><span>Retail market</span><strong>{vehicle.marketValue ? money.format(vehicle.marketValue) : "Not set"}</strong></div>{estimatedTrade && <div><span>Estimated trade value</span><strong>{money.format(estimatedTrade)}</strong><em>Estimated at 93% of market value</em></div>}{wholesaleFloor && <div><span>Estimated wholesale floor</span><strong>{money.format(wholesaleFloor)}</strong><em>Estimated at 89% of market value</em></div>}<button type="button" onClick={() => setModal("edit-vehicle")}>Update valuation <ArrowRight /></button></div>}

@@ -37,11 +37,16 @@ import { CompanyAdmin } from "./CompanyAdmin";
 import { DomainView, OverviewView } from "./DashboardViews";
 import { FinanceView, SalesView, ServiceView } from "./Hubs";
 import { PAGE_WORKFLOW, WorkflowDiagram } from "./PageWorkflows";
-import { CustomerView, VehicleView } from "./RecordViews";
+import { CustomerView, useDialogFocusTrap, VehicleView } from "./RecordViews";
 import { SidebarActionsProvider } from "./SidebarActions";
 import type { SidebarAction } from "./SidebarActions";
 
-type DashboardAppProps = { initialView: DashView; onNavigate: (view: DashView) => void; onLogout: () => void };
+type DashboardAppProps = {
+  initialView: DashView;
+  initialRecordId?: string;
+  onNavigate: (view: DashView, recordId?: string) => void;
+  onLogout: () => void;
+};
 
 const viewIcons: Record<DashView, typeof LayoutDashboard> = {
   overview: LayoutDashboard,
@@ -82,11 +87,12 @@ const WORKSPACE_BLURBS: Partial<Record<DashView, string>> = {
 };
 
 type Health = { service?: string; status?: string; database?: string | { status?: string } };
-type SearchHit = { title: string; detail: string; view: DashView };
+type SearchHit = { id: string; title: string; detail: string; view: DashView };
 
-export default function DashboardApp({ initialView, onNavigate, onLogout }: DashboardAppProps) {
+export default function DashboardApp({ initialView, initialRecordId, onNavigate, onLogout }: DashboardAppProps) {
   const { user, organization } = useAuth();
   const [view, setView] = useState<DashView>(initialView);
+  const [recordId, setRecordId] = useState<string | undefined>(initialRecordId);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [health, setHealth] = useState<"checking" | "connected" | "not-configured" | "unavailable">("checking");
@@ -102,6 +108,8 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
   const [helpOpen, setHelpOpen] = useState(false);
   const topbarRef = useRef<HTMLElement>(null);
   const workspaceMenuRef = useRef<HTMLElement>(null);
+  const commandPaletteRef = useRef<HTMLElement>(null);
+  useDialogFocusTrap(commandPaletteRef, () => setCommandOpen(false), commandOpen);
 
   const allowedViews = useMemo(() => new Set(user ? ROLE_NAV[user.role] : []), [user]);
   const navSections = useMemo(
@@ -111,6 +119,7 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
   const viewLabels = useMemo(() => Object.fromEntries(NAV_SECTIONS.flatMap((section) => section.items.map((item) => [item.id, item.label]))) as Record<DashView, string>, []);
 
   useEffect(() => setView(initialView), [initialView]);
+  useEffect(() => setRecordId(initialRecordId), [initialRecordId]);
   useEffect(() => {
     const controller = new AbortController();
     apiGet<Health>("/api/health", { signal: controller.signal, timeoutMs: 4000 })
@@ -156,8 +165,8 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
         apiGet<{ vehicles: Vehicle[] }>(`/api/v1/vehicles?q=${encodeURIComponent(query)}&limit=5`, { signal: controller.signal }).catch(() => ({ vehicles: [] })),
       ]).then(([customerResult, vehicleResult]) => {
         setCommandResults([
-          ...customerResult.customers.map((customer) => ({ title: customer.displayName, detail: `Customer - ${customer.mobile ?? customer.email ?? "no contact on file"}`, view: "customers" as DashView })),
-          ...vehicleResult.vehicles.map((vehicle) => ({ title: `${vehicle.make} ${vehicle.model}`, detail: `Vehicle - ${vehicle.registration ?? vehicle.vin}`, view: "vehicles" as DashView })),
+          ...customerResult.customers.map((customer) => ({ id: customer.id, title: customer.displayName, detail: `Customer - ${customer.mobile ?? customer.email ?? "no contact on file"}`, view: "customers" as DashView })),
+          ...vehicleResult.vehicles.map((vehicle) => ({ id: vehicle.id, title: `${vehicle.make} ${vehicle.model}`, detail: `Vehicle - ${vehicle.registration ?? vehicle.vin}`, view: "vehicles" as DashView })),
         ]);
         setCommandLoading(false);
       });
@@ -167,10 +176,11 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
 
   const currentLabel = useMemo(() => viewLabels[view] ?? "Executive pulse", [view, viewLabels]);
 
-  function navigate(next: DashView) {
+  function navigate(next: DashView, nextRecordId?: string) {
     if (next !== view) setPageActions([]);
     setView(next);
-    onNavigate(next);
+    setRecordId(nextRecordId);
+    onNavigate(next, nextRecordId);
     setMobileOpen(false);
     setWorkspaceMenuOpen(false);
     setHelpOpen(false);
@@ -226,8 +236,8 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
   function renderView() {
     if (!user || !allowedViews.has(view)) return <OverviewView onNavigate={navigate} />;
     if (view === "overview") return <OverviewView onNavigate={navigate} />;
-    if (view === "customers") return <CustomerView onNavigate={navigate} />;
-    if (view === "vehicles") return <VehicleView onNavigate={navigate} />;
+    if (view === "customers") return <CustomerView onNavigate={navigate} openId={recordId} />;
+    if (view === "vehicles") return <VehicleView onNavigate={navigate} openId={recordId} />;
     if (view === "company") return <CompanyAdmin />;
     if (view === "sales") return <SalesView onNavigate={navigate} />;
     if (view === "service") return <ServiceView onNavigate={navigate} />;
@@ -357,10 +367,10 @@ export default function DashboardApp({ initialView, onNavigate, onLogout }: Dash
         </div>
         {commandOpen && (
           <div className="command-scrim" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && setCommandOpen(false)}>
-            <section className="command-palette" role="dialog" aria-modal="true" aria-label="Global record search">
+            <section ref={commandPaletteRef} tabIndex={-1} className="command-palette" role="dialog" aria-modal="true" aria-label="Global record search">
               <header><Search /><input autoFocus value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} placeholder="Search customer, mobile, VIN, registration, make or model" /><kbd>ESC</kbd></header>
               <span>{commandLoading ? "Searching..." : commandQuery.trim().length < 2 ? "Type at least two characters to search connected records." : `${commandResults.length} matching records`}</span>
-              {commandResults.map((record) => <button type="button" key={`${record.view}-${record.title}`} onClick={() => { navigate(record.view); setCommandOpen(false); setCommandQuery(""); }}><CircleUserRound /><div><strong>{record.title}</strong><small>{record.detail}</small></div><ArrowRight /></button>)}
+              {commandResults.map((record) => <button type="button" key={`${record.view}-${record.id}`} onClick={() => { navigate(record.view, record.id); setCommandOpen(false); setCommandQuery(""); }}><CircleUserRound /><div><strong>{record.title}</strong><small>{record.detail}</small></div><ArrowRight /></button>)}
               {!commandLoading && commandQuery.trim().length >= 2 && !commandResults.length && <div className="command-empty"><Search /><strong>No matching records</strong><span>Try a customer name, mobile, VIN, registration, or model.</span></div>}
             </section>
           </div>

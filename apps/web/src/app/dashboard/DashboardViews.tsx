@@ -21,7 +21,7 @@ function useToast() {
 // Executive overview
 // ---------------------------------------------------------------------------
 
-export function OverviewView({ onNavigate }: { onNavigate: (view: DashView) => void }) {
+export function OverviewView({ onNavigate }: { onNavigate: (view: DashView, recordId?: string) => void }) {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
 
