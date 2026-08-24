@@ -12,8 +12,6 @@ import {
   CircleUserRound,
   Globe2,
   HelpCircle,
-  LayoutDashboard,
-  LayoutGrid,
   LogOut,
   Menu,
   Megaphone,
@@ -26,39 +24,56 @@ import {
   Wrench,
   X,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { apiGet } from "../../lib/api";
 import { roleLabel, useAuth } from "../auth/AuthContext";
 import { Brand } from "../components/Brand";
 import { ComingSoon } from "../components/ComingSoon";
-import { COMING_SOON_VIEWS, NAV_SECTIONS, PAGE_HELP, PAGE_RELATED, ROLE_NAV } from "../data";
-import type { Customer, DashView, Overview, Vehicle } from "../types";
+import {
+  ADMIN_LABEL,
+  ADMIN_VIEW,
+  COMING_SOON_VIEWS,
+  NAV_SECTIONS,
+  PAGE_HELP,
+  PAGE_RELATED,
+  PORTAL_AREAS,
+  PORTAL_BLURBS,
+  ROLE_NAV,
+  firstPermittedView,
+  portalForView,
+  portalLabel,
+  viewLabel,
+} from "../data";
+import type { Customer, DashView, Overview, PortalId, Vehicle } from "../types";
 import { CompanyAdmin } from "./CompanyAdmin";
 import { DomainView, OverviewView } from "./DashboardViews";
 import { FinanceView, SalesView, ServiceView } from "./Hubs";
 import { PAGE_WORKFLOW, WorkflowDiagram } from "./PageWorkflows";
+import { PortalTabShell } from "./PortalShell";
 import { CustomerView, useDialogFocusTrap, VehicleView } from "./RecordViews";
 import { SidebarActionsProvider } from "./SidebarActions";
 import type { SidebarAction } from "./SidebarActions";
 
 type DashboardAppProps = {
-  initialView: DashView;
+  // null when the URL carries no ?workspace=: sign-in then lands on the first portal this role
+  // permits rather than on a cross-portal home screen, which no longer exists.
+  initialView: DashView | null;
   initialRecordId?: string;
   onNavigate: (view: DashView, recordId?: string) => void;
   onLogout: () => void;
 };
 
-const viewIcons: Record<DashView, typeof LayoutDashboard> = {
-  overview: LayoutDashboard,
-  sales: BriefcaseBusiness,
+const viewIcons: Record<DashView, LucideIcon> = {
+  customers: CircleUserRound,
+  vehicles: CarFront,
   service: Wrench,
   parts: PackageSearch,
+  usedcars: Warehouse,
+  sales: BriefcaseBusiness,
   finance: CircleDollarSign,
-  vehicles: CarFront,
-  customers: CircleUserRound,
   marketing: Megaphone,
-  usedcars: BarChart3,
-  inventory: Warehouse,
+  analytics: BarChart3,
   branch: Building2,
   group: Globe2,
   workforce: Users,
@@ -66,24 +81,11 @@ const viewIcons: Record<DashView, typeof LayoutDashboard> = {
 };
 
 const COMING_SOON_COPY: Partial<Record<DashView, { description: string; planned: string[] }>> = {
-  marketing: { description: "Consent-aware audiences, journeys, and attribution reporting are planned for this workspace once the campaign data model ships.", planned: ["Audience builder from ownership and service signals", "Email, SMS, and WhatsApp journeys", "Attribution against pipeline and retention"] },
-  usedcars: { description: "Dedicated acquisition, reconditioning, and remarketing workflows for used stock are planned beyond the shared Vehicle 360 record.", planned: ["Trade-in and appraisal workflow", "Reconditioning cost tracking", "Marketplace publishing and auction"] },
-  inventory: { description: "Yard location, transfers, and delivery-readiness tracking beyond the Vehicle 360 record are planned next.", planned: ["Yard and bay location tracking", "Branch-to-branch transfers", "PDI and delivery checklists"] },
-  branch: { description: "A branch-level performance rollup across sales, service, and parts is planned once workforce and target data is modeled.", planned: ["Branch scorecards", "Department drill-down", "Local risk and action tracking"] },
+  marketing: { description: "Consent-aware audiences, journeys, and attribution reporting are planned for this portal once the campaign data model ships.", planned: ["Audience builder from ownership and service signals", "Email, SMS, and WhatsApp journeys", "Attribution against pipeline and retention"] },
+  usedcars: { description: "Vehicle 360's disposition page. Dedicated acquisition, reconditioning, and auction workflows are planned beyond the shared vehicle record.", planned: ["Trade-in and appraisal workflow", "Reconditioning cost tracking", "Marketplace publishing and auction"] },
+  branch: { description: "A branch-level performance rollup across sales, service, and parts is planned once target data is modeled.", planned: ["Branch scorecards", "Department drill-down", "Local risk and action tracking"] },
   group: { description: "Multi-branch comparisons and group reporting are planned once more than one branch has active operating data.", planned: ["Cross-branch comparisons", "Consolidated forecasting", "OEM scorecards"] },
-  workforce: { description: "Team, roster, and incentive tracking is planned once employee records are modeled.", planned: ["Team directory and roster", "Targets and incentives", "Skills and certification tracking"] },
-};
-
-// One-line blurb per workspace in the "All workspaces" flyout. Customer 360/Vehicle 360/Sales/
-// Service/Finance call out that they're connected directory+detail hubs, not flat lists, since
-// that's the thing a new user can't tell from the icon and label alone.
-const WORKSPACE_BLURBS: Partial<Record<DashView, string>> = {
-  overview: "Decisions and exceptions",
-  customers: "Relationship, consent and value",
-  vehicles: "VIN lifecycle and condition",
-  sales: "Lead-to-sale hub, connected to Customer 360 and Finance",
-  service: "Repair-order hub, connected to the customer and vehicle",
-  finance: "Deal-level hub - contract and insurance policies together",
+  workforce: { description: "Productivity and profitability analysis of workforce data is planned once employee records are modeled. Managing people - schedules, roles, roster - stays in Administration.", planned: ["Productivity by advisor and technician", "Contribution to department profitability", "Capacity and utilisation trends"] },
 };
 
 type Health = { service?: string; status?: string; database?: string | { status?: string } };
@@ -91,7 +93,8 @@ type SearchHit = { id: string; title: string; detail: string; view: DashView };
 
 export default function DashboardApp({ initialView, initialRecordId, onNavigate, onLogout }: DashboardAppProps) {
   const { user, organization } = useAuth();
-  const [view, setView] = useState<DashView>(initialView);
+  const landingView = useMemo(() => firstPermittedView(user?.role), [user]);
+  const [view, setView] = useState<DashView>(initialView ?? landingView);
   const [recordId, setRecordId] = useState<string | undefined>(initialRecordId);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -109,17 +112,33 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
   const topbarRef = useRef<HTMLElement>(null);
   const workspaceMenuRef = useRef<HTMLElement>(null);
   const commandPaletteRef = useRef<HTMLElement>(null);
+  const landedRef = useRef(false);
   useDialogFocusTrap(commandPaletteRef, () => setCommandOpen(false), commandOpen);
 
   const allowedViews = useMemo(() => new Set(user ? ROLE_NAV[user.role] : []), [user]);
+  // A portal earns its place in the primary sidebar when the role can reach at least one of its
+  // areas - so granting Vehicle 360's workshop page does not have to grant its auction page too.
   const navSections = useMemo(
-    () => NAV_SECTIONS.map((section) => ({ ...section, items: section.items.filter((item) => allowedViews.has(item.id)) })).filter((section) => section.items.length > 0),
+    () => NAV_SECTIONS
+      .map((section) => ({ ...section, items: section.items.filter((item) => PORTAL_AREAS[item.id].some((area) => allowedViews.has(area.id))) }))
+      .filter((section) => section.items.length > 0),
     [allowedViews],
   );
-  const viewLabels = useMemo(() => Object.fromEntries(NAV_SECTIONS.flatMap((section) => section.items.map((item) => [item.id, item.label]))) as Record<DashView, string>, []);
+  const activePortal = portalForView(view);
+  const portalPages = useMemo(
+    () => (activePortal ? PORTAL_AREAS[activePortal].filter((area) => allowedViews.has(area.id)) : []),
+    [activePortal, allowedViews],
+  );
 
-  useEffect(() => setView(initialView), [initialView]);
+  useEffect(() => { if (initialView) setView(initialView); }, [initialView]);
   useEffect(() => setRecordId(initialRecordId), [initialRecordId]);
+  // Sign-in with no ?workspace= in the URL: land on this role's first portal and write it into the
+  // URL straight away, so the very first screen is as shareable and refresh-safe as any other.
+  useEffect(() => {
+    if (initialView || landedRef.current) return;
+    landedRef.current = true;
+    onNavigate(landingView);
+  }, [initialView, landingView, onNavigate]);
   useEffect(() => {
     const controller = new AbortController();
     apiGet<Health>("/api/health", { signal: controller.signal, timeoutMs: 4000 })
@@ -173,8 +192,20 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
     }, 300);
     return () => { controller.abort(); window.clearTimeout(timeout); };
   }, [commandQuery]);
+  // A legacy or hand-edited ?workspace= this role cannot reach falls back to its landing portal
+  // instead of quietly rendering someone else's workspace at the wrong URL.
+  useEffect(() => {
+    if (!user || !allowedViews.size || allowedViews.has(view)) return;
+    navigate(landingView);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, view, allowedViews, landingView]);
 
-  const currentLabel = useMemo(() => viewLabels[view] ?? "Executive pulse", [view, viewLabels]);
+  // The topbar names the portal; the tab strip names the page inside it.
+  const currentLabel = activePortal ? portalLabel(activePortal) : viewLabel(view);
+  const currentPageLabel = viewLabel(view);
+  // A coming-soon page sends you back to its own portal's core page when that one is live (Group
+  // analytics returns to Analytics 360's Dealership), otherwise to this role's landing portal.
+  const backView = activePortal && activePortal !== view && !COMING_SOON_VIEWS.has(activePortal) && allowedViews.has(activePortal) ? activePortal : landingView;
 
   function navigate(next: DashView, nextRecordId?: string) {
     if (next !== view) setPageActions([]);
@@ -184,6 +215,11 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
     setMobileOpen(false);
     setWorkspaceMenuOpen(false);
     setHelpOpen(false);
+  }
+
+  function openPortal(portal: PortalId) {
+    const firstPage = PORTAL_AREAS[portal].find((area) => allowedViews.has(area.id));
+    if (firstPage) navigate(firstPage.id);
   }
 
   function renderActionSection(label: string, actions: SidebarAction[]) {
@@ -204,28 +240,49 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
     );
   }
 
+  // The active portal's own pages, mirroring the internal tab strip so the contextual sidebar and
+  // the tabs never disagree about where you are. Single-page portals show nothing here.
+  function renderPagesSection() {
+    if (portalPages.length < 2) return null;
+    return (
+      <div key="pages">
+        {!collapsed && <span className="nav-section-label">{currentLabel} pages</span>}
+        {portalPages.map((area) => {
+          const Icon = viewIcons[area.id];
+          return (
+            <button type="button" key={area.id} title={area.label} aria-current={view === area.id ? "page" : undefined} className={view === area.id ? "active" : ""} onClick={() => navigate(area.id)}>
+              <Icon size={17} />{!collapsed && <span>{area.label}</span>}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   function renderContextualSidebar() {
-    const related = (PAGE_RELATED[view] ?? []).filter((id) => allowedViews.has(id));
+    // Cross-portal only: this portal's own pages are already listed above and in the tab strip.
+    const related = (PAGE_RELATED[view] ?? []).filter((id) => allowedViews.has(id) && portalForView(id) !== activePortal);
     const relatedSection = related.length > 0 && (
       <div key="related">
         {!collapsed && <span className="nav-section-label">Related</span>}
         {related.map((id) => {
           const Icon = viewIcons[id];
-          return <button title={viewLabels[id]} type="button" key={id} onClick={() => navigate(id)}><Icon size={17} />{!collapsed && <span>{viewLabels[id]}</span>}</button>;
+          return <button title={viewLabel(id)} type="button" key={id} onClick={() => navigate(id)}><Icon size={17} />{!collapsed && <span>{viewLabel(id)}</span>}</button>;
         })}
       </div>
     );
 
     if (COMING_SOON_VIEWS.has(view)) {
       // The page body already lists planned features in full, so the sidebar only offers a way
-      // onward (related workspaces) instead of repeating that same list a second time.
-      return relatedSection || null;
+      // onward - this portal's live pages and related portals - instead of repeating that list.
+      return <>{renderPagesSection()}{relatedSection}</>;
     }
 
     const quickActions = pageActions.filter((action) => (action.group ?? "Quick actions") === "Quick actions");
     const recordActions = pageActions.filter((action) => action.group === "This record");
     return (
       <>
+        {renderPagesSection()}
         {renderActionSection("Quick actions", quickActions)}
         {renderActionSection("This record", recordActions)}
         {relatedSection}
@@ -233,27 +290,47 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
     );
   }
 
-  function renderView() {
-    if (!user || !allowedViews.has(view)) return <OverviewView onNavigate={navigate} />;
-    if (view === "overview") return <OverviewView onNavigate={navigate} />;
-    if (view === "customers") return <CustomerView onNavigate={navigate} openId={recordId} />;
-    if (view === "vehicles") return <VehicleView onNavigate={navigate} openId={recordId} />;
-    if (view === "company") return <CompanyAdmin />;
-    if (view === "sales") return <SalesView onNavigate={navigate} />;
-    if (view === "service") return <ServiceView onNavigate={navigate} />;
-    if (view === "finance") return <FinanceView />;
-    if (COMING_SOON_VIEWS.has(view)) {
-      const copy = COMING_SOON_COPY[view];
-      return <ComingSoon title={viewLabels[view]} description={copy?.description ?? "This workspace is planned next."} planned={copy?.planned ?? []} onNavigate={navigate} />;
-    }
-    return <DomainView view={view as "parts"} />;
+  // One slot per area. Every screen here is an existing component, re-parented unchanged: this
+  // phase moves where a page is reached from, never what it does.
+  function renderArea(area: DashView) {
+    if (area === "customers") return <CustomerView onNavigate={navigate} openId={recordId} />;
+    if (area === "vehicles") return <VehicleView onNavigate={navigate} openId={recordId} />;
+    if (area === "service") return <ServiceView onNavigate={navigate} />;
+    if (area === "parts") return <DomainView view="parts" />;
+    if (area === "sales") return <SalesView onNavigate={navigate} />;
+    if (area === "finance") return <FinanceView />;
+    if (area === "analytics") return <OverviewView onNavigate={navigate} />;
+    if (area === ADMIN_VIEW) return <CompanyAdmin />;
+    const copy = COMING_SOON_COPY[area];
+    return (
+      <ComingSoon
+        title={viewLabel(area)}
+        description={copy?.description ?? "This page is planned next."}
+        planned={copy?.planned ?? []}
+        backView={backView}
+        backLabel={`Back to ${viewLabel(backView)}`}
+        onNavigate={navigate}
+      />
+    );
   }
 
-  const CurrentViewIcon = viewIcons[view] ?? LayoutDashboard;
+  function renderView() {
+    if (!user) return null;
+    if (!allowedViews.size) return <div className="workspace-page"><p className="record-search-state">Your role has no workspaces assigned. Ask an administrator to grant access.</p></div>;
+    // The redirect effect above is already moving to the landing portal.
+    if (!allowedViews.has(view)) return <div className="workspace-page"><p className="record-search-state">Opening your workspace...</p></div>;
+    const body = renderArea(view);
+    if (activePortal && portalPages.length > 1) {
+      return <PortalTabShell label={currentLabel} areas={portalPages} activeView={view} onSelect={navigate}>{body}</PortalTabShell>;
+    }
+    return body;
+  }
+
+  const CurrentViewIcon = viewIcons[activePortal ?? view];
   const orgInitials = (organization?.name ?? "AX").split(" ").map((part) => part[0]).slice(0, 3).join("").toUpperCase();
   const userInitials = (user?.name ?? "?").split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase();
   const pageHelp = PAGE_HELP[view] ?? {
-    summary: COMING_SOON_COPY[view]?.description ?? "This workspace is planned next.",
+    summary: COMING_SOON_COPY[view]?.description ?? "This page is planned next.",
     canDo: (COMING_SOON_COPY[view]?.planned ?? []).map((item) => `Planned: ${item}`),
   };
   const workflowSteps = PAGE_WORKFLOW[view];
@@ -263,47 +340,53 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
     <SidebarActionsProvider value={{ setActions: setPageActions }}>
       <div className="operations-shell">
         <button type="button" className={`mobile-scrim ${mobileOpen ? "visible" : ""}`} aria-label="Close navigation" onClick={() => setMobileOpen(false)} />
-        <aside className="icon-rail" aria-label="Workspaces">
-          <div className="rail-brand"><Brand inverse compact /></div>
-          <nav className="rail-nav">
+        {/* Primary sidebar: the six portals, icon plus text label, never icon-only. */}
+        <aside className="portal-sidebar" aria-label="Portals">
+          <div className="portal-brand"><Brand inverse /></div>
+          <nav className="portal-nav">
             {navSections.map((section) => (
-              <div key={section.label} className="rail-group">
+              <div key={section.label}>
+                <span className="nav-section-label">{section.label}</span>
                 {section.items.map((item) => {
                   const Icon = viewIcons[item.id];
-                  return <button type="button" key={item.id} title={item.label} aria-current={view === item.id ? "page" : undefined} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon size={18} /></button>;
+                  return (
+                    <button type="button" key={item.id} title={item.label} aria-current={activePortal === item.id ? "page" : undefined} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}>
+                      <Icon size={17} /><span>{item.label}</span>
+                    </button>
+                  );
                 })}
               </div>
             ))}
           </nav>
-          <button type="button" className="rail-all-workspaces" title="All workspaces (with descriptions)" onClick={() => setWorkspaceMenuOpen((value) => !value)}><LayoutGrid size={18} /></button>
         </aside>
+        {/* Contextual secondary sidebar: the active portal's pages, its live actions, related portals. */}
         <aside className={`operations-sidebar ${collapsed ? "collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`}>
           <div className="sidebar-brand"><Brand inverse compact={collapsed} />{!collapsed && <button type="button" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X /></button>}</div>
           {!collapsed && <div className="group-switcher"><span>{orgInitials}</span><div><strong>{organization?.name ?? "Your company"}</strong><small>{overview ? `${overview.activeServiceJobs} active jobs - ${overview.openLeads} open leads` : "Loading operations"}</small></div></div>}
-          <nav className="operations-nav mobile-workspace-list" aria-label="Workspaces">
+          <nav className="operations-nav mobile-workspace-list" aria-label="Portals">
             {navSections.map((section) => (
               <div key={section.label}>
                 {!collapsed && <span className="nav-section-label">{section.label}</span>}
                 {section.items.map((item) => {
                   const Icon = viewIcons[item.id];
-                  return <button type="button" key={item.id} title={item.label} aria-current={view === item.id ? "page" : undefined} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><Icon size={17} />{!collapsed && <span>{item.label}</span>}</button>;
+                  return <button type="button" key={item.id} title={item.label} aria-current={activePortal === item.id ? "page" : undefined} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}><Icon size={17} />{!collapsed && <span>{item.label}</span>}</button>;
                 })}
               </div>
             ))}
           </nav>
-          <nav className="operations-nav" aria-label={`${currentLabel} actions`}>
+          <nav className="operations-nav" aria-label={`${currentPageLabel} pages and actions`}>
             {renderContextualSidebar()}
           </nav>
-          <button type="button" className="collapse-button" aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} title={collapsed ? "Expand navigation" : "Collapse navigation"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}</button>
+          <button type="button" className="collapse-button" aria-label={collapsed ? "Expand contextual sidebar" : "Collapse contextual sidebar"} title={collapsed ? "Expand contextual sidebar" : "Collapse contextual sidebar"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}</button>
         </aside>
-  
+
         <div className="operations-main">
           <header className="operations-topbar" ref={topbarRef}>
             <div className="topbar-left">
               <button type="button" className="mobile-nav-trigger" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu /></button>
               <span className="mobile-topbar-brand"><Brand compact /></span>
               <span className="topbar-divider" />
-              <button type="button" className="workspace-switcher" aria-expanded={workspaceMenuOpen} onClick={() => setWorkspaceMenuOpen((value) => !value)}><span className="workspace-switcher-icon"><CurrentViewIcon /></span><span><small>Workspace</small><strong>{currentLabel}</strong></span><ChevronDown /></button>
+              <button type="button" className="workspace-switcher" aria-expanded={workspaceMenuOpen} onClick={() => setWorkspaceMenuOpen((value) => !value)}><span className="workspace-switcher-icon"><CurrentViewIcon /></span><span><small>Portal</small><strong>{currentLabel}</strong></span><ChevronDown /></button>
               <button type="button" aria-label="What is this page?" aria-expanded={helpOpen} className="icon-button page-help-trigger" onClick={() => setHelpOpen((value) => !value)}><HelpCircle size={17} /></button>
             </div>
             <div className="topbar-actions">
@@ -312,8 +395,8 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
               <button type="button" className="user-menu" aria-expanded={profileOpen} onClick={() => setProfileOpen((value) => !value)}><span>{userInitials}</span><div><strong>{user?.name ?? "Loading"}</strong><small>{user ? roleLabel(user.role) : ""}</small></div><ChevronDown size={14} /></button>
             </div>
             {helpOpen && (
-              <div className="page-help-popover" role="dialog" aria-label={`About ${currentLabel}`}>
-                <span>{currentLabel}</span>
+              <div className="page-help-popover" role="dialog" aria-label={`About ${currentPageLabel}`}>
+                <span>{currentPageLabel}</span>
                 <p>{pageHelp.summary}</p>
                 <ul>{pageHelp.canDo.map((item) => <li key={item}>{item}</li>)}</ul>
                 {workflowSteps && (
@@ -329,9 +412,9 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                 <span>Operations notifications</span>
                 {overview ? (
                   <>
-                    <button type="button" onClick={() => navigate("service")}><b>{overview.activeServiceJobs} active service jobs</b><small>Open in Service workshop</small></button>
-                    <button type="button" onClick={() => navigate("parts")}><b>{overview.lowStockParts} parts at or below reorder point</b><small>Open in Parts control</small></button>
-                    <button type="button" onClick={() => navigate("sales")}><b>{overview.openLeads} open leads</b><small>Open in Sales and CRM</small></button>
+                    {allowedViews.has("service") && <button type="button" onClick={() => navigate("service")}><b>{overview.activeServiceJobs} active service jobs</b><small>Open in Vehicle 360 - Service and workshop</small></button>}
+                    {allowedViews.has("parts") && <button type="button" onClick={() => navigate("parts")}><b>{overview.lowStockParts} parts at or below reorder point</b><small>Open in Vehicle 360 - Parts</small></button>}
+                    {allowedViews.has("sales") && <button type="button" onClick={() => navigate("sales")}><b>{overview.openLeads} open leads</b><small>Open in Sales 360</small></button>}
                   </>
                 ) : <span className="notification-empty">Connect the database to see live counts.</span>}
               </div>
@@ -341,6 +424,11 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                 <div><span>{userInitials}</span><p><strong>{user?.name}</strong><small>{user?.email}</small></p></div>
                 <div className="profile-meta"><span className="role-badge">{user ? roleLabel(user.role) : ""}</span><span>{organization?.name}</span></div>
                 <div className="profile-status"><span className={`db-status db-status-${health}`} aria-hidden="true" />{healthLabel}</div>
+                {/* Administration is not a portal: employees, roles, branches, and audit history
+                    are account/settings concerns, reached from here rather than the sidebar. */}
+                {allowedViews.has(ADMIN_VIEW) && (
+                  <button type="button" aria-current={view === ADMIN_VIEW ? "page" : undefined} onClick={() => { setProfileOpen(false); navigate(ADMIN_VIEW); }}><ShieldCheck size={15} />{ADMIN_LABEL}</button>
+                )}
                 <button type="button" onClick={onLogout}><LogOut size={15} />Sign out</button>
                 <a href="mailto:support@prakashinfotech.com"><UserRound size={15} />Prakash support</a>
                 <footer>Workspace by <strong>Prakash Software Solutions</strong></footer>
@@ -348,15 +436,15 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
             )}
           </header>
           {workspaceMenuOpen && (
-            <section className="workspace-menu" aria-label="Choose a workspace" ref={workspaceMenuRef}>
-              <header><div><span>Workspace navigator</span><strong>Move to the work, not another app.</strong></div><button type="button" onClick={() => setWorkspaceMenuOpen(false)} aria-label="Close workspace navigator"><X /></button></header>
+            <section className="workspace-menu" aria-label="Choose a portal" ref={workspaceMenuRef}>
+              <header><div><span>Portal navigator</span><strong>Move to the work, not another app.</strong></div><button type="button" onClick={() => setWorkspaceMenuOpen(false)} aria-label="Close portal navigator"><X /></button></header>
               <div className="workspace-menu-groups">
                 {navSections.map((section) => (
                   <div key={section.label}>
                     <span>{section.label}</span>
                     {section.items.map((item) => {
                       const Icon = viewIcons[item.id];
-                      return <button type="button" key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id)}><i><Icon /></i><span><strong>{item.label}</strong><small>{WORKSPACE_BLURBS[item.id] ?? "Open connected operations"}</small></span><ArrowRight /></button>;
+                      return <button type="button" key={item.id} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}><i><Icon /></i><span><strong>{item.label}</strong><small>{PORTAL_BLURBS[item.id]}</small></span><ArrowRight /></button>;
                     })}
                   </div>
                 ))}

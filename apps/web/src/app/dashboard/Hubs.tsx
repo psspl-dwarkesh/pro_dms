@@ -132,7 +132,7 @@ export function SalesView({ onNavigate }: SalesViewProps) {
       await apiPost("/api/v1/sales-orders", { customerId: lead.customerId, vehicleId: form.vehicleId, leadId: lead.id, totalAmount: Number(form.totalAmount), status: "pending" });
       setModal(null);
       loadLead(lead.id);
-      notify("Converted to a sale - open Finance and insurance to attach a contract or policy.");
+      notify("Converted to a sale - open Finance 360 to attach a contract or policy.");
     } catch (cause) {
       notify(cause instanceof ApiError ? cause.message : "Could not convert this lead to a sale.");
     } finally {
@@ -493,12 +493,12 @@ export function FinanceView() {
         <SearchState loading={listLoading} error={listError} />
         <section className="entity-directory">
           {orders.map((entry) => <button type="button" className={selectedId === entry.id ? "selected" : ""} key={entry.id} onClick={() => setSelectedId(entry.id)}><span className="entity-list-icon"><ShieldCheck /></span><div><strong>{entry.customerName}</strong><small>{entry.make} {entry.model}</small></div><em>{entry.status}</em><b>{money.format(entry.totalAmount)}</b><ArrowRight /></button>)}
-          {!listLoading && !orders.length && <div className="customer-list-empty"><Search />No deals yet. Create one, or convert a won lead from Sales and CRM.</div>}
+          {!listLoading && !orders.length && <div className="customer-list-empty"><Search />No deals yet. Create one, or convert a won lead from Sales 360.</div>}
         </section>
       </aside>
       <section className="record-detail-panel">
         {detailLoading && <div className="empty-state"><Search /><strong>Loading deal</strong></div>}
-        {!detailLoading && !order && <div className="empty-state"><Search /><strong>No deal selected</strong><p>Create a deal, or convert a won lead from Sales and CRM.</p></div>}
+        {!detailLoading && !order && <div className="empty-state"><Search /><strong>No deal selected</strong><p>Create a deal, or convert a won lead from Sales 360.</p></div>}
         {!detailLoading && order && <div className="record-layout">
           <section className="record-main-card">
             <div className="record-identity">
@@ -541,7 +541,7 @@ export function FinanceView() {
 
 function CreateSalesOrderDialog({ onClose, onSubmit, saving }: { saving: boolean; onClose: () => void; onSubmit: (form: { customerId: string; vehicleId: string; totalAmount: string }) => void }) {
   const [form, setForm] = useState({ customerId: "", customerLabel: "", vehicleId: "", vehicleLabel: "", totalAmount: "" });
-  return <WorkflowModal title="Create deal" eyebrow="Finance and insurance" completeLabel="Create deal" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
+  return <WorkflowModal title="Create deal" eyebrow="Finance 360" completeLabel="Create deal" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
       <label className="workflow-form-full"><span>Customer</span><CustomerPicker value={form.customerLabel} onSelect={(customer) => setForm({ ...form, customerId: customer.id, customerLabel: customer.displayName })} /></label>
       <label className="workflow-form-full"><span>Vehicle</span><VehiclePicker value={form.vehicleLabel} onSelect={(vehicle) => setForm({ ...form, vehicleId: vehicle.id, vehicleLabel: `${vehicle.make} ${vehicle.model}` })} /></label>

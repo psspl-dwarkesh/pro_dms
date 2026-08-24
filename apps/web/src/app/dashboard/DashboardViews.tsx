@@ -18,8 +18,12 @@ function useToast() {
 }
 
 // ---------------------------------------------------------------------------
-// Executive overview
+// Analytics 360 - Dealership
 // ---------------------------------------------------------------------------
+// Unchanged screen, new home: this was the standalone "Executive pulse" nav item and is now
+// Analytics 360's core page, re-parented into that portal's tab shell. See
+// docs/six-portal-workspace-plan.md. The name is kept so the Analytics 360 chat can rename it
+// alongside the rest of that portal's build-out rather than in a shared-file commit.
 
 export function OverviewView({ onNavigate }: { onNavigate: (view: DashView, recordId?: string) => void }) {
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -47,9 +51,9 @@ export function OverviewView({ onNavigate }: { onNavigate: (view: DashView, reco
             <section className="workspace-card exception-card">
               <div className="card-heading"><div><span>Open work</span><strong>Where to focus next</strong></div></div>
               <div className="exception-list">
-                <button type="button" onClick={() => onNavigate("sales")}><span className="exception-icon warn"><Users /></span><div><strong>{overview.openLeads} open leads</strong><p>Sales and CRM pipeline</p></div><em>Open</em></button>
-                <button type="button" onClick={() => onNavigate("service")}><span className="exception-icon warn"><Wrench /></span><div><strong>{overview.activeServiceJobs} active service jobs</strong><p>Service workshop</p></div><em>Open</em></button>
-                <button type="button" onClick={() => onNavigate("parts")}><span className="exception-icon bad"><Package /></span><div><strong>{overview.lowStockParts} parts at or below reorder point</strong><p>Parts control</p></div><em>Reorder</em></button>
+                <button type="button" onClick={() => onNavigate("sales")}><span className="exception-icon warn"><Users /></span><div><strong>{overview.openLeads} open leads</strong><p>Sales 360 pipeline</p></div><em>Open</em></button>
+                <button type="button" onClick={() => onNavigate("service")}><span className="exception-icon warn"><Wrench /></span><div><strong>{overview.activeServiceJobs} active service jobs</strong><p>Vehicle 360 - Service and workshop</p></div><em>Open</em></button>
+                <button type="button" onClick={() => onNavigate("parts")}><span className="exception-icon bad"><Package /></span><div><strong>{overview.lowStockParts} parts at or below reorder point</strong><p>Vehicle 360 - Parts</p></div><em>Reorder</em></button>
                 <button type="button" onClick={() => onNavigate("customers")}><span className="exception-icon good"><BadgeCheck /></span><div><strong>Customer 360</strong><p>Search and manage customers</p></div><em>Open</em></button>
               </div>
             </section>
