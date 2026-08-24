@@ -21,7 +21,7 @@ The development server proxies `/api` to `http://localhost:4000`. Start `npm run
 ```text
 src/app/LandingPage.tsx       Public product experience
 src/app/auth                  AuthContext, LoginPage, SignupPage
-src/app/dashboard             Lazy operations workspace, including Pickers and CompanyAdmin
+src/app/dashboard             Lazy operations workspace, including Pickers and Administration
 src/app/components            Maintained brand primitives and the ComingSoon placeholder
 src/app/data.ts               Navigation structure, role-to-nav map, and public marketing copy
 src/app/types.ts              Shared frontend types

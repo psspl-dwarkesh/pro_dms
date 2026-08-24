@@ -7,6 +7,7 @@ import { databaseStatus } from "./db.js";
 import { asyncRoute, errorEnvelope, HttpError } from "./errors.js";
 import { authenticate } from "./middleware.js";
 import { auditRouter } from "./routes/audit.js";
+import { administrationRouter } from "./routes/administration.js";
 import { analyticsRouter } from "./routes/analytics.js";
 import { authRouter } from "./routes/auth.js";
 import { branchesRouter } from "./routes/branches.js";
@@ -71,6 +72,7 @@ app.use("/api/v1", authenticate);
 app.use("/api/v1", auditRequests);
 
 app.use("/api/v1/audit-events", auditRouter);
+app.use("/api/v1/administration", administrationRouter);
 app.use("/api/v1/analytics", analyticsRouter);
 app.use("/api/v1/organizations", organizationsRouter);
 app.use("/api/v1/branches", branchesRouter);

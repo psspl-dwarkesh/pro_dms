@@ -21,6 +21,9 @@ export const CAPABILITIES = Object.freeze({
   FINANCE_SENSITIVE_READ: "finance.sensitive.read",
   ANALYTICS_READ: "analytics.read",
   ADMIN_MEMBERS_MANAGE: "admin.members.manage",
+  ADMIN_ROLES_MANAGE: "admin.roles.manage",
+  ADMIN_WORKFORCE_MANAGE: "admin.workforce.manage",
+  ADMIN_SETTINGS_MANAGE: "admin.settings.manage",
   ADMIN_AUDIT_READ: "admin.audit.read",
 });
 
@@ -55,6 +58,10 @@ const ROLE_CAPABILITIES = {
 
 export function hasPermission(role, capability) {
   return Boolean(ROLE_CAPABILITIES[role]?.includes(capability));
+}
+
+export function roleCapabilities(role) {
+  return [...(ROLE_CAPABILITIES[role] ?? [])];
 }
 
 export function authorizePermission(capability) {

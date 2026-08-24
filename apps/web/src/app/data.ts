@@ -204,11 +204,11 @@ export const PAGE_HELP: Partial<Record<DashView, { summary: string; canDo: strin
     canDo: ["Review jobs, completion, and tracked service revenue by person.", "Change date and branch scope.", "Use disclosed definitions before drawing performance conclusions."],
   },
   company: {
-    summary: "Administration - branches and team accounts for your organisation. Reached from the account menu, not the primary sidebar.",
+    summary: "Administration - people, invitations, access, schedules, workloads, settings, and audit history. Reached from the account menu, not the primary sidebar.",
     canDo: [
-      "Add a branch or a team account from the sidebar, or use the forms at the bottom of each table.",
-      "Assign each team member a role and, optionally, a home branch.",
-      "Deactivate an account without deleting its history by toggling its status.",
+      "Invite members and assign role presets plus explicit branch access.",
+      "Plan schedules and accountable workloads without duplicating employee records.",
+      "Maintain organization and branch settings, and review append-only audit history.",
     ],
   },
 };

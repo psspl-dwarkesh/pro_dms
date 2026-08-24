@@ -48,6 +48,13 @@ test("protected routes require authentication", async () => {
   assert.equal(body.error.code, "AUTHENTICATION_REQUIRED");
 });
 
+test("administration routes use the existing authentication boundary", async () => {
+  const response = await fetch(`${baseUrl}/api/v1/administration`);
+  const body = await response.json();
+  assert.equal(response.status, 401);
+  assert.equal(body.error.code, "AUTHENTICATION_REQUIRED");
+});
+
 test("an invalid bearer token is rejected", async () => {
   const response = await fetch(`${baseUrl}/api/v1/customers`, {
     headers: { Authorization: "Bearer not-a-real-token" },
