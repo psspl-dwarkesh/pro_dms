@@ -19,7 +19,7 @@ Every row marked Implemented is backed by a real database table, authenticated a
 | Parts control | Implemented | Parts catalog with SKU, stock on hand, reorder point, unit cost and retail price; stock adjustment; low-stock filter. Kept as a flat queue, not a 360 hub: there is no line-item link between parts and repair orders (only an aggregate dollar total on the job), so there is no relational depth to hub around yet |
 | Finance and insurance | Implemented | 360-style directory of deals (sales orders); a deal's full record joins its customer, vehicle, finance contract, and every insurance policy on that customer/vehicle pair in one place; status tracking |
 | Company and users | Implemented, admin only | Branch directory and creation; team account directory, creation, and role/active-status management |
-| Used vehicles | Coming soon | Acquisition, appraisal, reconditioning, and marketplace publishing have no data model yet |
+| Used vehicles | Implemented | Shared-VIN acquisition context; condition inspection; reconditioning tasks and cost; retail pricing and projected margin; stock ageing; Vehicle 360 auction listings/bids; wholesale disposal |
 | Vehicle inventory | Coming soon | Yard location, branch transfer, and PDI/delivery tracking beyond the Vehicle 360 record have no data model yet |
 | Marketing | Coming soon | Audience, journey, and attribution features have no data model yet |
 | Branch performance | Coming soon | A branch-level rollup across sales, service, and parts is planned once more operating data exists |
