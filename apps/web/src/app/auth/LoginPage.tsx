@@ -1,6 +1,7 @@
 import { AlertCircle, ArrowLeft, ArrowRight } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { Brand } from "../components/Brand";
+import { InlineError, TextField } from "../components/forms";
 import { useAuth } from "./AuthContext";
 
 type LoginPageProps = { onSuccess: () => void; onBackToSite: () => void; onGoToSignup: () => void };
@@ -58,9 +59,9 @@ export default function LoginPage({ onSuccess, onBackToSite, onGoToSignup }: Log
         <h1>Sign in to your workspace</h1>
         <p className="auth-subtitle">Use your company email to access Customer 360, Vehicle 360, and your connected operations.</p>
         <form onSubmit={handleSubmit} className="auth-form">
-          <label><span>Work email</span><input type="email" required autoFocus value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@yourcompany.com" /></label>
-          <label><span>Password</span><input type="password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Your password" /></label>
-          {error && <p className="auth-error"><AlertCircle size={15} />{error}</p>}
+          <TextField label="Work email" type="email" required autoFocus value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@yourcompany.com" autoComplete="email" />
+          <TextField label="Password" type="password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Your password" autoComplete="current-password" />
+          {error && <div className="auth-error"><AlertCircle size={15} /><InlineError>{error}</InlineError></div>}
           <button type="submit" className="workspace-button workspace-button--dark auth-submit" disabled={loading}>
             {loading ? "Signing in…" : "Sign in"} <ArrowRight size={15} />
           </button>

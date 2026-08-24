@@ -957,7 +957,7 @@
 .record-more-menu-popover button:hover, .record-more-menu-popover a:hover { background: var(--paper); }
 .record-more-menu-popover .danger-action:hover { background: var(--red-soft); }
 
-/* Branded confirmation dialog - replaces window.confirm for destructive actions everywhere. */
+/* Shared branded confirmation dialog for destructive actions. */
 .confirm-dialog { width: min(100%, 420px); border-radius: 12px; padding: 24px; background: white; box-shadow: var(--shadow-lg); }
 .confirm-dialog h2 { margin: 0; font-family: var(--font-display); font-size: 18px; letter-spacing: -0.02em; }
 .confirm-dialog p { margin: 10px 0 0; color: var(--ink-600); font-size: 12px; line-height: 1.6; }
@@ -1722,7 +1722,7 @@
 .notification-empty { display: block; padding: 14px 16px; color: var(--ink-500); font-size: 11px; }
 .profile-meta { display: flex; align-items: center; justify-content: space-between; padding: 0 16px 10px; color: var(--ink-500); font-size: 11px; }
 
-/* Branded confirmation dialog - replaces window.confirm for destructive actions */
+/* Shared branded confirmation dialog for destructive actions */
 .confirm-dialog { width: min(100%, 420px); border-radius: 12px; padding: 24px; background: white; box-shadow: var(--shadow-lg); }
 .confirm-dialog h2 { margin: 0; font-family: var(--font-display); font-size: 18px; letter-spacing: -0.02em; }
 .confirm-dialog p { margin: 10px 0 0; color: var(--ink-600); font-size: 12px; line-height: 1.6; }

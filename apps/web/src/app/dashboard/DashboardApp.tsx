@@ -30,6 +30,7 @@ import { apiGet } from "../../lib/api";
 import { roleLabel, useAuth } from "../auth/AuthContext";
 import { Brand } from "../components/Brand";
 import { ComingSoon } from "../components/ComingSoon";
+import { Dialog, Popover } from "../components/overlays";
 import {
   ADMIN_LABEL,
   ADMIN_VIEW,
@@ -55,7 +56,6 @@ import { MarketingStatusBadge, MarketingView } from "./MarketingView";
 import { PAGE_WORKFLOW, WorkflowDiagram } from "./PageWorkflows";
 import { PortalTabShell } from "./PortalShell";
 import { CustomerView } from "./CustomerViews";
-import { useDialogFocusTrap } from "./RecordViews";
 import { SidebarActionsProvider } from "./SidebarActions";
 import type { SidebarAction } from "./SidebarActions";
 import { Sales360 } from "./Sales360";
@@ -116,10 +116,10 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
   const [pageActions, setPageActions] = useState<SidebarAction[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
   const topbarRef = useRef<HTMLElement>(null);
+  const helpTriggerRef = useRef<HTMLButtonElement>(null);
+  const helpPopoverRef = useRef<HTMLDivElement>(null);
   const workspaceMenuRef = useRef<HTMLElement>(null);
-  const commandPaletteRef = useRef<HTMLElement>(null);
   const landedRef = useRef(false);
-  useDialogFocusTrap(commandPaletteRef, () => setCommandOpen(false), commandOpen);
 
   const allowedViews = useMemo(() => new Set(user ? ROLE_NAV[user.role] : []), [user]);
   // A portal earns its place in the primary sidebar when the role can reach at least one of its
@@ -173,7 +173,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
     if (!helpOpen && !noticeOpen && !profileOpen && !workspaceMenuOpen) return;
     function handleOutsideClick(event: MouseEvent) {
       const target = event.target as Node;
-      if (topbarRef.current?.contains(target) || workspaceMenuRef.current?.contains(target)) return;
+      if (topbarRef.current?.contains(target) || workspaceMenuRef.current?.contains(target) || helpPopoverRef.current?.contains(target)) return;
       setHelpOpen(false); setNoticeOpen(false); setProfileOpen(false); setWorkspaceMenuOpen(false);
     }
     document.addEventListener("mousedown", handleOutsideClick);
@@ -395,7 +395,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
               <span className="mobile-topbar-brand"><Brand compact /></span>
               <span className="topbar-divider" />
               <button type="button" className="workspace-switcher" aria-expanded={workspaceMenuOpen} onClick={() => setWorkspaceMenuOpen((value) => !value)}><span className="workspace-switcher-icon"><CurrentViewIcon /></span><span><small>Portal</small><strong>{currentLabel}</strong>{activePortal === "marketing" && <MarketingStatusBadge />}</span><ChevronDown /></button>
-              <button type="button" aria-label="What is this page?" aria-expanded={helpOpen} className="icon-button page-help-trigger" onClick={() => setHelpOpen((value) => !value)}><HelpCircle size={17} /></button>
+              <button ref={helpTriggerRef} type="button" aria-label="What is this page?" aria-expanded={helpOpen} className="icon-button page-help-trigger" onClick={() => setHelpOpen((value) => !value)}><HelpCircle size={17} /></button>
             </div>
             <div className="topbar-actions">
               <button type="button" className="global-search" onClick={() => setCommandOpen(true)}><Search size={16} /><span>Search customer, VIN...</span><kbd>Ctrl K</kbd></button>
@@ -403,7 +403,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
               <button type="button" className="user-menu" aria-expanded={profileOpen} onClick={() => setProfileOpen((value) => !value)}><span>{userInitials}</span><div><strong>{user?.name ?? "Loading"}</strong><small>{user ? roleLabel(user.role) : ""}</small></div><ChevronDown size={14} /></button>
             </div>
             {helpOpen && (
-              <div className="page-help-popover" role="dialog" aria-label={`About ${currentPageLabel}`}>
+              <Popover ref={helpPopoverRef} isOpen triggerRef={helpTriggerRef} onOpenChange={setHelpOpen} placement="bottom start" className="page-help-popover" aria-label={`About ${currentPageLabel}`}>
                 <span>{currentPageLabel}</span>
                 <p>{pageHelp.summary}</p>
                 <ul>{pageHelp.canDo.map((item) => <li key={item}>{item}</li>)}</ul>
@@ -413,7 +413,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                     <WorkflowDiagram steps={workflowSteps} />
                   </details>
                 )}
-              </div>
+              </Popover>
             )}
             {noticeOpen && (
               <div className="notification-popover">
@@ -462,14 +462,14 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
           <main className="operations-content">{renderView()}</main>
         </div>
         {commandOpen && (
-          <div className="command-scrim" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && setCommandOpen(false)}>
-            <section ref={commandPaletteRef} tabIndex={-1} className="command-palette" role="dialog" aria-modal="true" aria-label="Global record search">
+          <Dialog title="Global record search" onClose={() => setCommandOpen(false)} className="command-palette">
+            <div className="command-palette-content">
               <header><Search /><input autoFocus value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} placeholder="Search customer, mobile, VIN, registration, make or model" /><kbd>ESC</kbd></header>
               <span>{commandLoading ? "Searching..." : commandQuery.trim().length < 2 ? "Type at least two characters to search connected records." : `${commandResults.length} matching records`}</span>
               {commandResults.map((record) => <button type="button" key={`${record.view}-${record.id}`} onClick={() => { navigate(record.view, record.id); setCommandOpen(false); setCommandQuery(""); }}><CircleUserRound /><div><strong>{record.title}</strong><small>{record.detail}</small></div><ArrowRight /></button>)}
               {!commandLoading && commandQuery.trim().length >= 2 && !commandResults.length && <div className="command-empty"><Search /><strong>No matching records</strong><span>Try a customer name, mobile, VIN, registration, or model.</span></div>}
-            </section>
-          </div>
+            </div>
+          </Dialog>
         )}
       </div>
     </SidebarActionsProvider>

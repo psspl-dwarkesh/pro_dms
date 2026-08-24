@@ -1,8 +1,9 @@
 import {
-  ArrowRight, BadgeCheck, Plus, X,
+  BadgeCheck, Plus,
 } from "lucide-react";
 import { ReactNode, useEffect, useRef } from "react";
 import { ApiError } from "../../lib/api";
+import { WorkflowDialog } from "../components/overlays";
 import type {
   DashView,
 } from "../types";
@@ -57,52 +58,8 @@ export function Toast({ message }: { message: string }) {
   return <div className="workspace-toast" role="status"><BadgeCheck />{message}</div>;
 }
 
-// Focus containment for every workflow dialog: focus moves inside on open, Tab/Shift+Tab stay
-// within the dialog, Escape closes it, the background is inert while it's open (body scroll
-// locked), and focus returns to whatever triggered the dialog when it closes.
-// `active` distinguishes an unmount-on-close dialog (default true -- the component only ever
-// renders while open, e.g. WorkflowModal) from one that stays mounted with its visibility toggled
-// by a boolean prop (e.g. a command palette rendered from a parent that never unmounts): pass the
-// open/closed flag as `active` there so the trap engages and releases with it instead of firing
-// once at the parent's own mount.
-export function useDialogFocusTrap(dialogRef: { current: HTMLElement | null }, onClose: () => void, active = true) {
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-
-  useEffect(() => {
-    if (!active) return;
-    const triggerElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const dialog = dialogRef.current;
-    const focusable = () =>
-      Array.from(dialog?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [])
-        .filter((element) => !element.hidden);
-    window.setTimeout(() => (focusable()[0] ?? dialog)?.focus(), 0);
-
-    function handleKey(event: KeyboardEvent) {
-      if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onCloseRef.current(); return; }
-      if (event.key !== "Tab") return;
-      const items = focusable();
-      if (!items.length) { event.preventDefault(); dialog?.focus(); return; }
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
-    }
-    document.addEventListener("keydown", handleKey, true);
-    return () => {
-      document.removeEventListener("keydown", handleKey, true);
-      document.body.style.overflow = previousOverflow;
-      triggerElement?.focus();
-    };
-  }, [active, dialogRef]);
-}
-
 export function WorkflowModal({ title, eyebrow, onClose, onComplete, children, completeLabel = "Save", busy = false }: { title: string; eyebrow: string; onClose: () => void; onComplete: () => void; children: ReactNode; completeLabel?: string; busy?: boolean }) {
-  const dialogRef = useRef<HTMLElement>(null);
-  useDialogFocusTrap(dialogRef, onClose);
-  return <div className="modal-scrim" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && onClose()}><section ref={dialogRef} tabIndex={-1} className="workflow-modal" role="dialog" aria-modal="true" aria-labelledby="workflow-title"><header><div><span>{eyebrow}</span><h2 id="workflow-title">{title}</h2></div><button type="button" onClick={onClose} aria-label="Close dialog"><X /></button></header><div className="workflow-modal-body">{children}</div><footer><span><i /> Saved to your connected database</span><div><button type="button" onClick={onClose}>Cancel</button><button type="button" className="workspace-button workspace-button--dark" onClick={onComplete} disabled={busy}>{busy ? "Saving..." : completeLabel} <ArrowRight size={14} /></button></div></footer></section></div>;
+  return <WorkflowDialog title={title} eyebrow={eyebrow} onClose={onClose} onComplete={onComplete} completeLabel={completeLabel} busy={busy}>{children}</WorkflowDialog>;
 }
 
 export function InfoGrid({ items }: { items: string[][] }) {
