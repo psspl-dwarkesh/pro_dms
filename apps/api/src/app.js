@@ -12,7 +12,7 @@ import { authRouter } from "./routes/auth.js";
 import { branchesRouter } from "./routes/branches.js";
 import { communicationsRouter } from "./routes/communications.js";
 import { customersRouter } from "./routes/customers.js";
-import { financeContractsRouter, insurancePoliciesRouter } from "./routes/finance.js";
+import { financeContractsRouter, financeWorkspaceRouter, insurancePoliciesRouter } from "./routes/finance.js";
 import { organizationsRouter } from "./routes/organizations.js";
 import { overviewRouter } from "./routes/overview.js";
 import { partsRouter } from "./routes/parts.js";
@@ -84,6 +84,7 @@ app.use("/api/v1/service-jobs", serviceJobsRouter);
 app.use("/api/v1/parts", partsRouter);
 app.use("/api/v1/finance-contracts", financeContractsRouter);
 app.use("/api/v1/insurance-policies", insurancePoliciesRouter);
+app.use("/api/v1/finance", financeWorkspaceRouter);
 app.use("/api/v1/communications", communicationsRouter);
 
 app.use((request, _response, next) => next(new HttpError(404, "ROUTE_NOT_FOUND", `Route ${request.method} ${request.path} was not found.`)));
