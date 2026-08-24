@@ -47,13 +47,17 @@ import {
 } from "../data";
 import type { Customer, DashView, Overview, PortalId, Vehicle } from "../types";
 import { Administration } from "./Administration";
-import { DomainView, OverviewView } from "./DashboardViews";
-import { FinanceView, SalesView, ServiceView } from "./Hubs";
+import { Analytics360 } from "./Analytics360";
+import { DomainView } from "./DashboardViews";
+import { ServiceView } from "./Hubs";
+import { Finance360 } from "./Finance360";
+import { MarketingComingSoonBadge, MarketingView } from "./MarketingView";
 import { PAGE_WORKFLOW, WorkflowDiagram } from "./PageWorkflows";
 import { PortalTabShell } from "./PortalShell";
 import { CustomerView, useDialogFocusTrap, VehicleView } from "./RecordViews";
 import { SidebarActionsProvider } from "./SidebarActions";
 import type { SidebarAction } from "./SidebarActions";
+import { Sales360 } from "./Sales360";
 
 type DashboardAppProps = {
   // null when the URL carries no ?workspace=: sign-in then lands on the first portal this role
@@ -81,7 +85,6 @@ const viewIcons: Record<DashView, LucideIcon> = {
 };
 
 const COMING_SOON_COPY: Partial<Record<DashView, { description: string; planned: string[] }>> = {
-  marketing: { description: "Consent-aware audiences, journeys, and attribution reporting are planned for this portal once the campaign data model ships.", planned: ["Audience builder from ownership and service signals", "Email, SMS, and WhatsApp journeys", "Attribution against pipeline and retention"] },
   usedcars: { description: "Vehicle 360's disposition page. Dedicated acquisition, reconditioning, and auction workflows are planned beyond the shared vehicle record.", planned: ["Trade-in and appraisal workflow", "Reconditioning cost tracking", "Marketplace publishing and auction"] },
   branch: { description: "A branch-level performance rollup across sales, service, and parts is planned once target data is modeled.", planned: ["Branch scorecards", "Department drill-down", "Local risk and action tracking"] },
   group: { description: "Multi-branch comparisons and group reporting are planned once more than one branch has active operating data.", planned: ["Cross-branch comparisons", "Consolidated forecasting", "OEM scorecards"] },
@@ -267,7 +270,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
         {!collapsed && <span className="nav-section-label">Related</span>}
         {related.map((id) => {
           const Icon = viewIcons[id];
-          return <button title={viewLabel(id)} type="button" key={id} onClick={() => navigate(id)}><Icon size={17} />{!collapsed && <span>{viewLabel(id)}</span>}</button>;
+          return <button title={viewLabel(id)} type="button" key={id} onClick={() => navigate(id)}><Icon size={17} />{!collapsed && <span>{viewLabel(id)}</span>}{!collapsed && id === "marketing" && <MarketingComingSoonBadge />}</button>;
         })}
       </div>
     );
@@ -297,9 +300,10 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
     if (area === "vehicles") return <VehicleView onNavigate={navigate} openId={recordId} />;
     if (area === "service") return <ServiceView onNavigate={navigate} />;
     if (area === "parts") return <DomainView view="parts" />;
-    if (area === "sales") return <SalesView onNavigate={navigate} />;
-    if (area === "finance") return <FinanceView />;
-    if (area === "analytics") return <OverviewView onNavigate={navigate} />;
+    if (area === "sales") return <Sales360 onNavigate={navigate} />;
+    if (area === "finance") return <Finance360 />;
+    if (area === "marketing") return <MarketingView />;
+    if (area === "analytics" || area === "branch" || area === "group" || area === "workforce") return <Analytics360 area={area} onNavigate={navigate} />;
     if (area === ADMIN_VIEW) return <Administration />;
     const copy = COMING_SOON_COPY[area];
     return (
@@ -351,7 +355,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                   const Icon = viewIcons[item.id];
                   return (
                     <button type="button" key={item.id} title={item.label} aria-current={activePortal === item.id ? "page" : undefined} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}>
-                      <Icon size={17} /><span>{item.label}</span>
+                      <Icon size={17} /><span>{item.label}</span>{item.id === "marketing" && <MarketingComingSoonBadge />}
                     </button>
                   );
                 })}
@@ -369,7 +373,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                 {!collapsed && <span className="nav-section-label">{section.label}</span>}
                 {section.items.map((item) => {
                   const Icon = viewIcons[item.id];
-                  return <button type="button" key={item.id} title={item.label} aria-current={activePortal === item.id ? "page" : undefined} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}><Icon size={17} />{!collapsed && <span>{item.label}</span>}</button>;
+                  return <button type="button" key={item.id} title={item.label} aria-current={activePortal === item.id ? "page" : undefined} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}><Icon size={17} />{!collapsed && <span>{item.label}</span>}{!collapsed && item.id === "marketing" && <MarketingComingSoonBadge />}</button>;
                 })}
               </div>
             ))}
@@ -386,7 +390,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
               <button type="button" className="mobile-nav-trigger" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu /></button>
               <span className="mobile-topbar-brand"><Brand compact /></span>
               <span className="topbar-divider" />
-              <button type="button" className="workspace-switcher" aria-expanded={workspaceMenuOpen} onClick={() => setWorkspaceMenuOpen((value) => !value)}><span className="workspace-switcher-icon"><CurrentViewIcon /></span><span><small>Portal</small><strong>{currentLabel}</strong></span><ChevronDown /></button>
+              <button type="button" className="workspace-switcher" aria-expanded={workspaceMenuOpen} onClick={() => setWorkspaceMenuOpen((value) => !value)}><span className="workspace-switcher-icon"><CurrentViewIcon /></span><span><small>Portal</small><strong>{currentLabel}</strong>{activePortal === "marketing" && <MarketingComingSoonBadge />}</span><ChevronDown /></button>
               <button type="button" aria-label="What is this page?" aria-expanded={helpOpen} className="icon-button page-help-trigger" onClick={() => setHelpOpen((value) => !value)}><HelpCircle size={17} /></button>
             </div>
             <div className="topbar-actions">
@@ -444,7 +448,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                     <span>{section.label}</span>
                     {section.items.map((item) => {
                       const Icon = viewIcons[item.id];
-                      return <button type="button" key={item.id} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}><i><Icon /></i><span><strong>{item.label}</strong><small>{PORTAL_BLURBS[item.id]}</small></span><ArrowRight /></button>;
+                      return <button type="button" key={item.id} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}><i><Icon /></i><span><strong>{item.label}{item.id === "marketing" && <MarketingComingSoonBadge />}</strong><small>{PORTAL_BLURBS[item.id]}</small></span><ArrowRight /></button>;
                     })}
                   </div>
                 ))}
