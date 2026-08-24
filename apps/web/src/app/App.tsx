@@ -6,7 +6,27 @@ const DashboardApp = lazy(() => import("./dashboard/DashboardApp"));
 
 const DASH_VIEWS: DashView[] = ["overview", "sales", "service", "parts", "finance", "vehicles", "customers", "marketing", "usedcars", "inventory", "branch", "group", "workforce"];
 
+const VIEW_PATHS: Record<DashView, string> = {
+  overview: "/app/home",
+  customers: "/app/customers",
+  vehicles: "/app/vehicles",
+  sales: "/app/sales",
+  finance: "/app/sales/finance",
+  service: "/app/fixed-operations",
+  parts: "/app/fixed-operations/parts",
+  inventory: "/app/inventory-used",
+  usedcars: "/app/inventory-used/used",
+  marketing: "/app/growth",
+  group: "/app/insights/group",
+  branch: "/app/insights/branch",
+  workforce: "/app/workforce-admin",
+};
+
+const PATH_VIEWS = Object.fromEntries(Object.entries(VIEW_PATHS).map(([view, path]) => [path, view])) as Record<string, DashView>;
+
 function readRoute(): { appView: AppView; dashView: DashView } {
+  const pathView = PATH_VIEWS[window.location.pathname.replace(/\/$/, "") || "/"];
+  if (pathView) return { appView: "dashboard", dashView: pathView };
   const candidate = new URLSearchParams(window.location.search).get("workspace") as DashView | null;
   return candidate && DASH_VIEWS.includes(candidate)
     ? { appView: "dashboard", dashView: candidate }
@@ -40,9 +60,9 @@ export default function App() {
 
   function writeRoute(view?: DashView) {
     const url = new URL(window.location.href);
-    if (view) url.searchParams.set("workspace", view);
-    else url.searchParams.delete("workspace");
-    window.history.pushState({ autoAxis: view ? "workspace" : "product", view }, "", `${url.pathname}${url.search}${url.hash}`);
+    url.searchParams.delete("workspace");
+    const pathname = view ? VIEW_PATHS[view] : "/";
+    window.history.pushState({ autoAxis: view ? "workspace" : "product", view }, "", `${pathname}${url.search}${url.hash}`);
   }
 
   function openWorkspace(view: DashView = "overview") {

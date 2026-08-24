@@ -1,5 +1,5 @@
 import {
-  ArrowRight, BadgeCheck, CalendarDays, CarFront, CircleUserRound, Copy, Download, FileText, Gauge,
+  ArrowRight, CalendarDays, CarFront, CircleUserRound, Copy, Download, FileText, Gauge,
   Mail, MapPin, MessageCircle, Phone, Plus, Search, Share2, ShieldCheck, WalletCards,
   StickyNote, UserPlus, Wrench, X, ClipboardCheck, CreditCard, Edit3, ListChecks,
 } from "lucide-react";
@@ -8,6 +8,7 @@ import { apiGet, ApiError } from "../../lib/api";
 import { Brand } from "../components/Brand";
 import { CLIENT_DEMO_CUSTOMER, CLIENT_DEMO_VEHICLE } from "../data";
 import type { Customer360, DashView, Vehicle360 } from "../types";
+import { Toast, WorkflowModal, WorkspacePage } from "./WorkspacePrimitives";
 
 type RecordViewProps = { onNavigate: (view: DashView) => void };
 type ModalState = null | "opportunity" | "portal" | "customer" | "note" | "vehicle" | "appraisal" | "auction" | "rental" | "documents" | "edit-customer" | "task" | "booking" | "payment";
@@ -80,13 +81,6 @@ function SectionToolbar({ title, detail, action, onAction }: { title: string; de
   return <div className="section-toolbar"><div><span>{title}</span><strong>{detail}</strong></div>{action && <button type="button" onClick={onAction}><Plus />{action}</button>}</div>;
 }
 
-export function Toast({ message }: { message: string }) {
-  return <div className="workspace-toast" role="status"><BadgeCheck />{message}</div>;
-}
-
-export function WorkflowModal({ title, eyebrow, onClose, onComplete, children, completeLabel = "Save demonstration" }: { title: string; eyebrow: string; onClose: () => void; onComplete: () => void; children: React.ReactNode; completeLabel?: string }) {
-  return <div className="modal-scrim" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && onClose()}><section className="workflow-modal" role="dialog" aria-modal="true" aria-labelledby="workflow-title"><header><div><span>{eyebrow}</span><h2 id="workflow-title">{title}</h2></div><button type="button" onClick={onClose} aria-label="Close dialog"><X /></button></header><div className="workflow-modal-body">{children}</div><footer><span><i /> Demonstration workflow · resets on refresh</span><div><button type="button" onClick={onClose}>Cancel</button><button type="button" className="workspace-button workspace-button--dark" onClick={onComplete}>{completeLabel} <ArrowRight size={14} /></button></div></footer></section></div>;
-}
 
 function DemoFields({ kind }: { kind: "opportunity" | "vehicle" | "appraisal" | "auction" | "rental" }) {
   const definitions = {
@@ -127,6 +121,7 @@ export function CustomerView({ onNavigate }: RecordViewProps) {
   const [filter, setFilter] = useState("All");
   const [modal, setModal] = useState<ModalState>(null);
   const [segment, setSegment] = useState("All");
+  const [directoryOpen, setDirectoryOpen] = useState(false);
   const actions = useRecordActions(customer.displayName);
   const visibleCustomers = CUSTOMER_DIRECTORY.filter((entry) => {
     const matchesSegment = segment === "All" || entry.segment === segment;
@@ -137,7 +132,7 @@ export function CustomerView({ onNavigate }: RecordViewProps) {
   function selectCustomer(entry: typeof CUSTOMER_DIRECTORY[number]) {
     setCustomer({ ...CLIENT_DEMO_CUSTOMER, displayName: entry.name, mobile: entry.mobile, email: entry.email, lifetimeValue: entry.value, preferredChannel: entry.segment === "Service due" ? "SMS" : "Email" });
     setSource(entry.name === "James Hartley" ? "demonstration" : "directory");
-    setEmpty(false);
+    setEmpty(false); setDirectoryOpen(false);
   }
 
   async function searchCustomer(event: FormEvent) {
@@ -148,15 +143,16 @@ export function CustomerView({ onNavigate }: RecordViewProps) {
       const search = await apiGet<{ dataSource: string; customers: Array<{ id: string }> }>(`/api/v1/customers/search?q=${encodeURIComponent(query.trim())}`);
       if (!search.customers.length) { setEmpty(true); return; }
       const detail = await apiGet<{ dataSource: string; customer: Customer360 }>(`/api/v1/customers/${search.customers[0].id}/360`);
-      setCustomer(detail.customer); setSource(detail.dataSource);
+      setCustomer(detail.customer); setSource(detail.dataSource); setDirectoryOpen(false);
     } catch (cause) { setError(cause instanceof ApiError ? cause : new ApiError("Customer search failed.", { status: 500 })); }
     finally { setLoading(false); }
   }
 
   return <WorkspacePage title="Customer 360" eyebrow="Relationship intelligence" description="Search a mobile number. See the household, vehicles, value, consent and every connected interaction." action={<DataSourceBadge source={source} />}>
+    <button type="button" className="mobile-directory-trigger" aria-expanded={directoryOpen} onClick={() => setDirectoryOpen((value) => !value)}><CircleUserRound /><span><strong>Browse customer directory</strong><small>{visibleCustomers.length} relationships · search or change record</small></span><ArrowRight /></button>
     <div className="record-workbench">
-      <aside className="record-directory-panel">
-        <header className="directory-panel-heading"><div><span>Customer directory</span><strong>{visibleCustomers.length} connected records</strong></div><button type="button" onClick={() => setModal("customer")} aria-label="Create customer"><Plus /></button></header>
+      <aside className={`record-directory-panel ${directoryOpen ? "mobile-visible" : ""}`}>
+        <header className="directory-panel-heading"><div><span>Customer directory</span><strong>{visibleCustomers.length} connected records</strong></div><div className="directory-heading-actions"><button className="record-directory-close" type="button" onClick={() => setDirectoryOpen(false)} aria-label="Close customer directory"><X /></button><button type="button" onClick={() => setModal("customer")} aria-label="Create customer"><Plus /></button></div></header>
         <form className="record-search" onSubmit={searchCustomer}><Search size={18} /><input aria-label="Search customers" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Name, mobile, or email" />{query && <button className="search-clear" type="button" aria-label="Clear customer search" onClick={() => { setQuery(""); setError(null); setEmpty(false); }}><X /></button>}<button className="search-submit" type="submit" disabled={loading}>Search</button></form>
         <SearchState loading={loading} error={error} />
         <div className="directory-filter-scroll"><div className="filter-chips">{["All","VIP","Service due","Prospect"].map((item) => <button type="button" className={segment === item ? "active" : ""} onClick={() => setSegment(item)} key={item}>{item}</button>)}</div></div>
@@ -202,6 +198,7 @@ export function VehicleView({ onNavigate }: RecordViewProps) {
   const [filter, setFilter] = useState("All");
   const [modal, setModal] = useState<ModalState>(null);
   const [stockFilter, setStockFilter] = useState("All");
+  const [directoryOpen, setDirectoryOpen] = useState(false);
   const actions = useRecordActions(`${vehicle.make} ${vehicle.model}`);
   const value = useMemo(() => new Intl.NumberFormat("en-AU",{style:"currency",currency:"AUD",maximumFractionDigits:0}),[]);
   const visibleVehicles = VEHICLE_DIRECTORY.filter((entry) => {
@@ -211,20 +208,21 @@ export function VehicleView({ onNavigate }: RecordViewProps) {
 
   function selectVehicle(entry: typeof VEHICLE_DIRECTORY[number]) {
     setVehicle({ ...CLIENT_DEMO_VEHICLE, vin: entry.vin, registration: entry.registration, make: entry.make, model: entry.model, modelYear: entry.year, ownerName: entry.owner, marketValue: entry.value, status: entry.status.toLowerCase().replaceAll(" ", "-") });
-    setSource(entry.registration === "DMS-360" ? "demonstration" : "directory"); setEmpty(false);
+    setSource(entry.registration === "DMS-360" ? "demonstration" : "directory"); setEmpty(false); setDirectoryOpen(false);
   }
 
   async function searchVehicle(event: FormEvent) {
     event.preventDefault(); if (query.trim().length < 2) { setError(new ApiError("Enter at least two characters.", { status: 400 })); return; }
     setLoading(true); setError(null); setEmpty(false);
-    try { const search = await apiGet<{dataSource:string;vehicles:Array<{id:string}>}>(`/api/v1/vehicles/search?q=${encodeURIComponent(query.trim())}`); if(!search.vehicles.length){setEmpty(true);return;} const detail=await apiGet<{dataSource:string;vehicle:Vehicle360}>(`/api/v1/vehicles/${search.vehicles[0].id}/360`); setVehicle(detail.vehicle); setSource(detail.dataSource); }
+    try { const search = await apiGet<{dataSource:string;vehicles:Array<{id:string}>}>(`/api/v1/vehicles/search?q=${encodeURIComponent(query.trim())}`); if(!search.vehicles.length){setEmpty(true);return;} const detail=await apiGet<{dataSource:string;vehicle:Vehicle360}>(`/api/v1/vehicles/${search.vehicles[0].id}/360`); setVehicle(detail.vehicle); setSource(detail.dataSource); setDirectoryOpen(false); }
     catch(cause){setError(cause instanceof ApiError?cause:new ApiError("Vehicle search failed.",{status:500}));} finally{setLoading(false);}
   }
   const complete = (message: string) => { setModal(null); actions.notify(message); };
   return <WorkspacePage title="Vehicle 360" eyebrow="VIN lifecycle intelligence" description="One trusted history from OEM order and ownership through service, condition, valuation and resale." action={<DataSourceBadge source={source} />}>
+    <button type="button" className="mobile-directory-trigger" aria-expanded={directoryOpen} onClick={() => setDirectoryOpen((value) => !value)}><CarFront /><span><strong>Browse vehicle directory</strong><small>{visibleVehicles.length} assets · search or change record</small></span><ArrowRight /></button>
     <div className="record-workbench">
-      <aside className="record-directory-panel">
-        <header className="directory-panel-heading"><div><span>Vehicle directory</span><strong>{visibleVehicles.length} connected assets</strong></div><button type="button" onClick={() => setModal("vehicle")} aria-label="Add vehicle"><Plus /></button></header>
+      <aside className={`record-directory-panel ${directoryOpen ? "mobile-visible" : ""}`}>
+        <header className="directory-panel-heading"><div><span>Vehicle directory</span><strong>{visibleVehicles.length} connected assets</strong></div><div className="directory-heading-actions"><button className="record-directory-close" type="button" onClick={() => setDirectoryOpen(false)} aria-label="Close vehicle directory"><X /></button><button type="button" onClick={() => setModal("vehicle")} aria-label="Add vehicle"><Plus /></button></div></header>
         <form className="record-search" onSubmit={searchVehicle}><Search /><input aria-label="Search vehicles" value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="VIN, registration, make or model" />{query && <button className="search-clear" type="button" aria-label="Clear vehicle search" onClick={() => { setQuery(""); setError(null); setEmpty(false); }}><X /></button>}<button className="search-submit" type="submit" disabled={loading}>Search</button></form><SearchState loading={loading} error={error} />
         <div className="directory-filter-scroll"><div className="filter-chips">{["All","Customer owned","In stock","Demo","Reserved"].map((item) => <button type="button" className={stockFilter === item ? "active" : ""} onClick={() => setStockFilter(item)} key={item}>{item}</button>)}</div></div>
         <section className="vehicle-directory"><div className="vehicle-list-head"><span>Vehicle</span><span>Owner / status</span><span>Location</span><span>Value</span><span>Next action</span></div>{visibleVehicles.map((entry) => <button type="button" className={vehicle.registration === entry.registration ? "selected" : ""} key={entry.vin} onClick={() => selectVehicle(entry)}><span className="vehicle-list-icon"><CarFront /></span><div><strong>{entry.year} {entry.make} {entry.model}</strong><small>{entry.registration} · {entry.vin.slice(-8)}</small></div><span><b>{entry.owner}</b><small>{entry.status}</small></span><span>{entry.location}</span><b>{value.format(entry.value)}</b><em>{entry.next}</em><ArrowRight /></button>)}{!visibleVehicles.length && <div className="customer-list-empty"><Search />No matching assets.</div>}</section>
@@ -251,7 +249,3 @@ export function VehicleView({ onNavigate }: RecordViewProps) {
 }
 
 function InfoGrid({ items }: { items: string[][] }) { return <div className="info-grid">{items.map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>; }
-
-export function WorkspacePage({ title, eyebrow, description, action, children }: { title:string;eyebrow:string;description:string;action?:React.ReactNode;children:React.ReactNode }) {
-  return <div className="workspace-page"><header className="workspace-page-header"><div><span>{eyebrow}</span><h1>{title}</h1><p>{description}</p></div>{action&&<div className="workspace-page-action">{action}</div>}</header>{children}</div>;
-}

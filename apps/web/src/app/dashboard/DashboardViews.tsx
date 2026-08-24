@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DOMAIN_CONFIG, REVENUE_TREND } from "../data";
 import type { DashView, DomainConfig } from "../types";
-import { Toast, WorkflowModal, WorkspacePage } from "./RecordViews";
+import { Toast, WorkflowModal, WorkspacePage } from "./WorkspacePrimitives";
 
 function MetricCard({ metric }: { metric: DomainConfig["metrics"][number] }) {
   return (

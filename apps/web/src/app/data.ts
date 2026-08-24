@@ -52,6 +52,26 @@ export const NAV_SECTIONS: Array<{ label: string; items: Array<{ id: DashView; l
   { label: "Intelligence", items: [{ id: "workforce", label: "Workforce" }, { id: "branch", label: "Branch performance" }, { id: "group", label: "Group analytics" }] },
 ];
 
+export type WorkspaceHub = {
+  id: string;
+  label: string;
+  shortLabel: string;
+  summary: string;
+  items: Array<{ id: DashView; label: string; detail: string }>;
+};
+
+export const WORKSPACE_HUBS: WorkspaceHub[] = [
+  { id: "home", label: "Home", shortLabel: "Home", summary: "Priorities, alerts and recent work", items: [{ id: "overview", label: "Executive pulse", detail: "Decisions and exceptions" }] },
+  { id: "customer", label: "Customer 360", shortLabel: "Customers", summary: "Relationship, ownership and consent", items: [{ id: "customers", label: "Customer 360", detail: "Directory and shared relationship record" }] },
+  { id: "vehicle", label: "Vehicle 360", shortLabel: "Vehicles", summary: "VIN lifecycle, condition and value", items: [{ id: "vehicles", label: "Vehicle 360", detail: "Directory and shared VIN record" }] },
+  { id: "sales", label: "Sales & F&I", shortLabel: "Sales & F&I", summary: "Lead through delivery and settlement", items: [{ id: "sales", label: "Sales & CRM", detail: "Enquiries, pipeline and delivery" }, { id: "finance", label: "Finance & insurance", detail: "KYC, offers and settlement" }] },
+  { id: "fixed-ops", label: "Fixed Operations", shortLabel: "Fixed Ops", summary: "Workshop, parts and handover", items: [{ id: "service", label: "Service workshop", detail: "Bookings, repair orders and bays" }, { id: "parts", label: "Parts control", detail: "Fitment, reservations and supply" }] },
+  { id: "inventory", label: "Inventory & Used", shortLabel: "Inventory", summary: "Stock, appraisal and disposition", items: [{ id: "inventory", label: "New inventory", detail: "Orders, allocation and PDI" }, { id: "usedcars", label: "Used vehicles", detail: "Appraise, recondition and publish" }] },
+  { id: "growth", label: "Growth", shortLabel: "Growth", summary: "Audiences, journeys and retention", items: [{ id: "marketing", label: "Marketing journeys", detail: "Consent-aware customer growth" }] },
+  { id: "insights", label: "Insights", shortLabel: "Insights", summary: "Group, branch and operating analysis", items: [{ id: "group", label: "Group analytics", detail: "Executive and group comparison" }, { id: "branch", label: "Branch performance", detail: "Branch drill-down and recovery" }] },
+  { id: "admin", label: "Workforce & Admin", shortLabel: "Workforce", summary: "People, access and accountability", items: [{ id: "workforce", label: "Workforce & Admin", detail: "Teams, roles and productivity" }] },
+];
+
 export const REVENUE_TREND = [
   { month: "Mar", actual: 6.2, plan: 6.0 },
   { month: "Apr", actual: 6.5, plan: 6.3 },
