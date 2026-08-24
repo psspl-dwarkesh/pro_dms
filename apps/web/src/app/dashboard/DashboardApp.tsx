@@ -48,12 +48,13 @@ import {
 import type { Customer, DashView, Overview, PortalId, Vehicle } from "../types";
 import { CompanyAdmin } from "./CompanyAdmin";
 import { DomainView, OverviewView } from "./DashboardViews";
-import { FinanceView, SalesView, ServiceView } from "./Hubs";
+import { FinanceView, ServiceView } from "./Hubs";
 import { PAGE_WORKFLOW, WorkflowDiagram } from "./PageWorkflows";
 import { PortalTabShell } from "./PortalShell";
 import { CustomerView, useDialogFocusTrap, VehicleView } from "./RecordViews";
 import { SidebarActionsProvider } from "./SidebarActions";
 import type { SidebarAction } from "./SidebarActions";
+import { Sales360 } from "./Sales360";
 
 type DashboardAppProps = {
   // null when the URL carries no ?workspace=: sign-in then lands on the first portal this role
@@ -297,7 +298,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
     if (area === "vehicles") return <VehicleView onNavigate={navigate} openId={recordId} />;
     if (area === "service") return <ServiceView onNavigate={navigate} />;
     if (area === "parts") return <DomainView view="parts" />;
-    if (area === "sales") return <SalesView onNavigate={navigate} />;
+    if (area === "sales") return <Sales360 onNavigate={navigate} />;
     if (area === "finance") return <FinanceView />;
     if (area === "analytics") return <OverviewView onNavigate={navigate} />;
     if (area === ADMIN_VIEW) return <CompanyAdmin />;
