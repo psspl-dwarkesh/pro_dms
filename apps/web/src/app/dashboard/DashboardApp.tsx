@@ -51,7 +51,8 @@ import { DomainView, OverviewView } from "./DashboardViews";
 import { FinanceView, SalesView, ServiceView } from "./Hubs";
 import { PAGE_WORKFLOW, WorkflowDiagram } from "./PageWorkflows";
 import { PortalTabShell } from "./PortalShell";
-import { CustomerView, useDialogFocusTrap, VehicleView } from "./RecordViews";
+import { CustomerView } from "./CustomerViews";
+import { useDialogFocusTrap, VehicleView } from "./RecordViews";
 import { SidebarActionsProvider } from "./SidebarActions";
 import type { SidebarAction } from "./SidebarActions";
 

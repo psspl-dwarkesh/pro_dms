@@ -136,11 +136,11 @@ export const PAGE_RELATED: Partial<Record<DashView, DashView[]>> = {
 // Coming-soon areas fall back to their planned-feature copy in DashboardApp, so they are omitted.
 export const PAGE_HELP: Partial<Record<DashView, { summary: string; canDo: string[] }>> = {
   customers: {
-    summary: "Every customer's connected record - contact details, vehicles, sales, service history, and communications in one place.",
+    summary: "Every customer's connected record - contact details, vehicles, sales, service history, communications, notes, tasks, consent, and documents in one place.",
     canDo: [
-      "Search or create a customer on the left; select one to open their full record.",
-      "Use Quick actions in the sidebar to create an opportunity, book service, log a call, or edit the profile.",
-      "Switch tabs (Overview, Activity, Vehicles, Sales & finance, Service & care, Communications) to see everything linked to that customer.",
+      "Search or create a customer on the left; select one to open their full record. Creating or editing checks for likely duplicates first.",
+      "Use Edit, Share, Call, Email, and More on the profile card, or Quick actions in the sidebar to create an opportunity, book service, or log a call.",
+      "Switch tabs - Overview, Activity, Vehicles, Sales & finance, Service & care, Communications, Notes, Tasks, Consent, and Documents - to see everything linked to that customer.",
     ],
   },
   vehicles: {

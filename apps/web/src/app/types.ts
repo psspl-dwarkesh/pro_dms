@@ -258,6 +258,58 @@ export type Communication = {
   occurredAt: string;
 };
 
+// Customer 360 relationship records: notes, tasks, consent, and documents. See
+// database/013_customer_relationship_records.sql and apps/api/src/routes/customers.js.
+export type CustomerNote = {
+  id: string;
+  customerId: string;
+  body: string;
+  createdAt: string;
+  authorUserId: string | null;
+  authorName?: string | null;
+};
+
+export type TaskStatus = "open" | "done" | "cancelled";
+
+export type CustomerTask = {
+  id: string;
+  customerId: string;
+  title: string;
+  assignedTo: string | null;
+  dueAt: string | null;
+  status: TaskStatus;
+  createdAt: string;
+  completedAt: string | null;
+};
+
+export type ConsentChannel = "call" | "whatsapp" | "email" | "sms";
+export type ConsentStatus = "opted_in" | "opted_out" | "unknown";
+
+// The current state for one channel. `unknown` means no decision has ever been recorded - never
+// treat that as either opted in or opted out.
+export type CustomerConsentEntry = {
+  channel: ConsentChannel;
+  status: ConsentStatus;
+  source: string | null;
+  recordedAt: string | null;
+  recordedBy?: string | null;
+};
+
+export type DocumentStatus = "requested" | "received" | "verified" | "rejected";
+
+// Metadata and a storage reference only - no file bytes travel through this type. See
+// database/013_customer_relationship_records.sql.
+export type CustomerDocument = {
+  id: string;
+  customerId: string;
+  documentType: string;
+  label: string;
+  status: DocumentStatus;
+  storageReference: string | null;
+  uploadedBy: string | null;
+  createdAt: string;
+};
+
 export type Overview = {
   openLeads: number;
   unitsSoldMtd: number;
