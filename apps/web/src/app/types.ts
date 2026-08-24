@@ -210,6 +210,20 @@ export type VehicleAuctionListing = {
   bids: VehicleAuctionBid[];
 };
 
+export type UsedVehicleStock = {
+  vehicleId: string; vin: string; registration: string | null; make: string; model: string; variant: string | null;
+  vehicleStatus: string; acquisitionChannel: AcquisitionChannel | null; acquisitionCost: number | null; intakeAt: string;
+  lotLocation: string | null; branchName: string | null; inspectionStatus: string | null; inspectionGrade: ConditionGrade | null;
+  inspectionNotes: string | null; inspectedAt: string | null; reconStatus: string; askingPrice: number | null;
+  disposalChannel: string | null; wholesaleBuyer: string | null; wholesalePrice: number | null; stockAgeDays: number;
+  reconCost: number; openReconTasks: number;
+};
+
+export type ReconTask = {
+  id: string; vehicleId: string; category: string; description: string; supplier: string | null;
+  estimatedCost: number; actualCost: number | null; status: string; dueAt: string | null; completedAt?: string | null; createdAt: string;
+};
+
 export type DispositionType = "rental" | "demo";
 export type DispositionStatus = "active" | "completed" | "cancelled";
 

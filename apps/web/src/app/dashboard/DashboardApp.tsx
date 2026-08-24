@@ -60,6 +60,7 @@ import { SidebarActionsProvider } from "./SidebarActions";
 import type { SidebarAction } from "./SidebarActions";
 import { Sales360 } from "./Sales360";
 import { VehicleView } from "./VehicleViews";
+import { UsedRecon } from "./UsedRecon";
 
 type DashboardAppProps = {
   // null when the URL carries no ?workspace=: sign-in then lands on the first portal this role
@@ -302,12 +303,13 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
     if (area === "vehicles") return <VehicleView onNavigate={navigate} openId={recordId} />;
     if (area === "service") return <ServiceView onNavigate={navigate} />;
     if (area === "parts") return <DomainView view="parts" />;
+    if (area === "usedcars") return <UsedRecon />;
     if (area === "sales") return <Sales360 onNavigate={navigate} />;
     if (area === "finance") return <Finance360 />;
     if (area === "marketing") return <MarketingView />;
     if (area === "analytics" || area === "branch" || area === "group" || area === "workforce") return <Analytics360 area={area} onNavigate={navigate} />;
     if (area === ADMIN_VIEW) return <Administration />;
-    const copy = COMING_SOON_COPY[area];
+    const copy = COMING_SOON_COPY[area as DashView];
     return (
       <ComingSoon
         title={viewLabel(area)}

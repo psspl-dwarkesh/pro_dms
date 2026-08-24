@@ -24,7 +24,7 @@ This journey is the product spine. Department views add context to the same cust
 - Finance, insurance, parts and communications appear inside connected workflows as well as their role views.
 - Third-party names on the product site are shown as integration-ready categories. They do not claim an active production connection.
 - Every workflow mutation is persisted to the database, scoped to the signed-in user's organization and branch. Nothing in the authenticated workspace is session-only or reset on refresh.
-- Marketing, Group analytics, Workforce, Branch performance, Inventory, and Used-vehicle remarketing have no data model yet and are shown as a labelled "coming soon" placeholder rather than an invented workflow.
+- Marketing, Group analytics, Workforce, Branch performance, and the broader inventory-transfer workflow have no data model yet and are shown as a labelled "coming soon" placeholder rather than an invented workflow. Used-vehicle operations are persisted against the shared Vehicle 360 VIN.
 - No new top-level module is added unless it has a meaningful workflow, a real record context, and a visible, persisted result.
 
 ## Integration priorities

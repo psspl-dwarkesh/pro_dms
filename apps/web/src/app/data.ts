@@ -111,7 +111,7 @@ export const LEGACY_VIEW_ALIASES: Record<string, DashView> = {
 
 // Modules with no dedicated data model yet render a "coming soon" placeholder instead of invented
 // numbers. Each is a sub-area of a live portal now, so the portal around it still works.
-export const COMING_SOON_VIEWS: ReadonlySet<DashView> = new Set(["marketing", "usedcars"]);
+export const COMING_SOON_VIEWS: ReadonlySet<DashView> = new Set(["marketing"]);
 
 // Connected portals surfaced in each page's contextual sidebar, alongside its live quick actions.
 // Cross-portal only: a portal's own sub-areas are already in the tab strip and the Pages section,
@@ -166,6 +166,14 @@ export const PAGE_HELP: Partial<Record<DashView, { summary: string; canDo: strin
       "Add a part from the sidebar.",
       "Toggle to see only parts at or below their reorder point.",
       "Adjust quantity on hand directly from the list with the +/- controls.",
+    ],
+  },
+  usedcars: {
+    summary: "Vehicle 360's used operations page - acquisition context, condition inspection, reconditioning cost, retail pricing, stock ageing, auction and wholesale disposal against the shared VIN.",
+    canDo: [
+      "Search current intake stock by VIN, registration, make, or model and see ageing and projected margin.",
+      "Record an inspection, add and complete reconditioning tasks, and set the retail asking price.",
+      "Use wholesale disposal here, or open the VIN's Auction tab in Vehicle 360 for auction listings and bids.",
     ],
   },
   sales: {

@@ -21,6 +21,7 @@ import { leadsRouter, salesOrdersRouter } from "./routes/sales.js";
 import { serviceJobsRouter } from "./routes/service.js";
 import { usersRouter } from "./routes/users.js";
 import { vehiclesRouter } from "./routes/vehicles.js";
+import { usedVehiclesRouter } from "./routes/usedVehicles.js";
 
 export const app = express();
 
@@ -80,6 +81,7 @@ app.use("/api/v1/users", usersRouter);
 app.use("/api/v1/overview", overviewRouter);
 app.use("/api/v1/customers", customersRouter);
 app.use("/api/v1/vehicles", vehiclesRouter);
+app.use("/api/v1/used-vehicles", usedVehiclesRouter);
 app.use("/api/v1/leads", leadsRouter);
 app.use("/api/v1/sales-orders", salesOrdersRouter);
 app.use("/api/v1/service-jobs", serviceJobsRouter);
