@@ -4,7 +4,7 @@ import {
   deleteCustomerNote, findPotentialDuplicateCustomers, getCustomer360, getCustomerConsent,
   listCustomerConsentHistory, listCustomerDocuments, listCustomerNotes, listCustomers, listCustomerTasks,
   recordCustomerConsent, updateCustomer, updateCustomerDocumentStatus, updateCustomerTaskStatus,
-} from "../db.js";
+} from "../persistence.js";
 import { asyncRoute, HttpError } from "../errors.js";
 import { authorizePermission, CAPABILITIES } from "../permissions.js";
 import { optionalIsoDateTime, optionalNumber, optionalString, requireEnum, requireString, requireUuid, paginationParams } from "../validate.js";

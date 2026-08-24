@@ -1,4 +1,4 @@
-// Pure authorization-decision helpers. Kept dependency-free (no db.js import) so they are testable
+// Pure authorization-decision helpers. Kept dependency-free (no persistence import) so they are testable
 // without a live database: callers load the relevant rows first, then ask "would this mutation be
 // safe" before writing it.
 

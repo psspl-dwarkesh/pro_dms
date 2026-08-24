@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { deletePart, listParts, updatePart } from "../db.js";
+import { deletePart, listParts, updatePart } from "../persistence.js";
 import { asyncRoute, HttpError } from "../errors.js";
 import { authorizePermission, CAPABILITIES } from "../permissions.js";
 import { createCataloguePart, createPurchaseOrder, createReservation, createTransfer, getPartsWorkspace, receivePurchaseOrder, receiveTransfer, updateReservation } from "../partsRepository.js";

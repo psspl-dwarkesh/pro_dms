@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { poolConnectionOptions } from "../src/db.js";
+import { poolConnectionOptions } from "../src/persistence.js";
 
 test("Neon require mode becomes explicit certificate verification", () => {
   const options = poolConnectionOptions(

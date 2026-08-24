@@ -1,5 +1,5 @@
 import { verifySessionToken } from "./auth.js";
-import { getUserById } from "./db.js";
+import { getUserById } from "./persistence.js";
 import { HttpError } from "./errors.js";
 
 // Verifies the bearer token, then re-reads the user from the database on every request so a

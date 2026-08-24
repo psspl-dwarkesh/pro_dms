@@ -1,4 +1,4 @@
-import { pool } from "./db.js";
+import { pool } from "./persistence.js";
 
 async function query(text, values) {
   if (!pool) throw Object.assign(new Error("Database is not configured."), { code: "DATABASE_UNAVAILABLE", status: 503 });

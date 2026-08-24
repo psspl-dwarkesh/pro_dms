@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { databaseStatus, pool } from "../src/db.js";
+import { databaseStatus, pool } from "../src/persistence.js";
 
 const requiredTables = ["customers", "vehicles", "interactions", "service_jobs"];
 const status = await databaseStatus();

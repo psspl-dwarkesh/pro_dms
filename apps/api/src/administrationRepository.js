@@ -1,4 +1,4 @@
-import { DatabaseUnavailableError, pool } from "./db.js";
+import { DatabaseUnavailableError, pool } from "./persistence.js";
 
 async function query(text, values = undefined) {
   if (!pool) throw new DatabaseUnavailableError();

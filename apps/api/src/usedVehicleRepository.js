@@ -1,4 +1,4 @@
-import { pool } from "./db.js";
+import { pool } from "./persistence.js";
 import { HttpError } from "./errors.js";
 
 function database() {

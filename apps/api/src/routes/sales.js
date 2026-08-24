@@ -2,7 +2,7 @@ import { Router } from "express";
 import { recordAuditEvent } from "../audit.js";
 import {
   createLead, createSalesOrder, deleteLead, getLead360, getSalesOrder360, listLeads, listSalesOrders, updateLead, updateSalesOrder,
-} from "../db.js";
+} from "../persistence.js";
 import { asyncRoute, HttpError } from "../errors.js";
 import { authorize, branchScope, resolveWriteBranchId } from "../middleware.js";
 import { authorizePermission, CAPABILITIES } from "../permissions.js";

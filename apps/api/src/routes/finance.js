@@ -2,7 +2,7 @@ import { Router } from "express";
 import {
   createFinanceContract, createInsurancePolicy, listFinanceContracts, listInsurancePolicies,
   updateFinanceContract, updateInsurancePolicy,
-} from "../db.js";
+} from "../persistence.js";
 import { asyncRoute, HttpError } from "../errors.js";
 import { recordAuditEvent } from "../audit.js";
 import { createApplication, createApplicationDocument, createPayable, financeWorkspace, transitionApplication, transitionApplicationDocument, transitionPayable } from "../financeRepository.js";

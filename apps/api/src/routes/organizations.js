@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getOrganization, updateOrganization } from "../db.js";
+import { getOrganization, updateOrganization } from "../persistence.js";
 import { asyncRoute, HttpError } from "../errors.js";
 import { authorize } from "../middleware.js";
 import { optionalString } from "../validate.js";

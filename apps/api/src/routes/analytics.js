@@ -1,12 +1,12 @@
 import { Router } from "express";
 import { recordAuditEvent } from "../audit.js";
-import { DatabaseUnavailableError, pool } from "../db.js";
+import { DatabaseUnavailableError, pool } from "../persistence.js";
 import { asyncRoute, HttpError } from "../errors.js";
 import { branchScope } from "../middleware.js";
 import { authorizePermission, CAPABILITIES } from "../permissions.js";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_RANGE_DAYS = 366;
 
 function validDate(value) {

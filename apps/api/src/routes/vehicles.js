@@ -6,7 +6,7 @@ import {
   listVehicleDocuments, listVehicleOwnership, listVehicleValuations, listVehicles, transferVehicleOwnership,
   updateVehicle, updateVehicleAppraisalStatus, updateVehicleAuctionListing, updateVehicleDisposition,
   updateVehicleDocumentStatus,
-} from "../db.js";
+} from "../persistence.js";
 import { asyncRoute, HttpError } from "../errors.js";
 import { authorizePermission, CAPABILITIES } from "../permissions.js";
 import {

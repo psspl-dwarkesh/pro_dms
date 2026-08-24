@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { listAuditEvents } from "../db.js";
+import { listAuditEvents } from "../persistence.js";
 import { asyncRoute } from "../errors.js";
 import { authorizePermission, CAPABILITIES } from "../permissions.js";
 import { paginationParams } from "../validate.js";
