@@ -4,19 +4,25 @@ import { AuthProvider, useAuth } from "./auth/AuthContext";
 import LoginPage from "./auth/LoginPage";
 import SignupPage from "./auth/SignupPage";
 import { CrashFallback, ErrorBoundary } from "./components/ErrorBoundary";
+import { DASH_VIEWS, LEGACY_VIEW_ALIASES, firstPermittedView } from "./data";
 import type { AppView, DashView } from "./types";
 
 const DashboardApp = lazy(() => import("./dashboard/DashboardApp"));
 
-const DASH_VIEWS: DashView[] = ["overview", "sales", "service", "parts", "finance", "vehicles", "customers", "marketing", "usedcars", "inventory", "branch", "group", "workforce", "company"];
-
-function readRoute(): { appView: AppView; dashView: DashView; recordId?: string } {
+// dashView is null when the URL carries no ?workspace=. DashboardApp then lands on the first
+// portal the signed-in role permits and writes that into the URL, so there is no guessed default
+// here and no cross-portal home screen to guess at.
+function readRoute(): { appView: AppView; dashView: DashView | null; recordId?: string } {
   const params = new URLSearchParams(window.location.search);
-  const candidate = params.get("workspace") as DashView | null;
+  const requested = params.get("workspace");
+  // Sub-area ids survived the six-portal consolidation unchanged, so ?workspace=service still
+  // resolves - it now opens Vehicle 360 with that tab active. Only the two ids that genuinely
+  // went away (overview, inventory) need an alias.
+  const candidate = requested ? (LEGACY_VIEW_ALIASES[requested] ?? (requested as DashView)) : null;
   const recordId = params.get("record") ?? undefined;
   return candidate && DASH_VIEWS.includes(candidate)
     ? { appView: "dashboard", dashView: candidate, recordId }
-    : { appView: "landing", dashView: "overview" };
+    : { appView: "landing", dashView: null };
 }
 
 function WorkspaceLoader() {
@@ -29,10 +35,10 @@ function WorkspaceLoader() {
 }
 
 function AppShell() {
-  const { status, logout } = useAuth();
+  const { status, user, logout } = useAuth();
   const initialRoute = readRoute();
   const [appView, setAppView] = useState<AppView>(initialRoute.appView);
-  const [dashView, setDashView] = useState<DashView>(initialRoute.dashView);
+  const [dashView, setDashView] = useState<DashView | null>(initialRoute.dashView);
   const [recordId, setRecordId] = useState<string | undefined>(initialRoute.recordId);
 
   useEffect(() => {
@@ -59,7 +65,7 @@ function AppShell() {
     window.history.pushState({ autoAxis: view ? "workspace" : "product", view, recordId: targetRecordId }, "", `${url.pathname}${url.search}${url.hash}`);
   }
 
-  function openWorkspace(view: DashView = "overview") {
+  function openWorkspace(view: DashView = firstPermittedView(user?.role)) {
     writeRoute(view);
     setDashView(view);
     setRecordId(undefined);
@@ -91,7 +97,9 @@ function AppShell() {
   }
 
   function handleAuthSuccess() {
-    writeRoute(dashView);
+    // With no ?workspace= to honour, DashboardApp writes the route once it has resolved this
+    // role's landing portal - the session user is not in context yet at this point.
+    if (dashView) writeRoute(dashView);
     setAppView("dashboard");
     window.scrollTo({ top: 0, behavior: "auto" });
   }
@@ -113,10 +121,10 @@ function AppShell() {
         fallback={(reset) => (
           <CrashFallback
             title="This workspace hit a problem"
-            detail="Something went wrong rendering this page. Your session is still active — try again, or pick another workspace from the sidebar once it reloads."
+            detail="Something went wrong rendering this page. Your session is still active — try again, or pick another portal from the sidebar once it reloads."
             onRetry={() => {
               reset();
-              changeWorkspace("overview");
+              changeWorkspace(firstPermittedView(user?.role));
             }}
           />
         )}

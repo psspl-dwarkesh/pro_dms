@@ -1139,23 +1139,45 @@
 .collapse-button { border-color: var(--line); background: white; color: var(--ink-500); }
 .collapse-button:hover { background: var(--paper-2); color: var(--ink-950); }
 
-/* Always-visible workspace rail: one-click switching, independent of the contextual panel below */
-.icon-rail { position: relative; z-index: 41; width: 64px; height: 100vh; display: flex; flex: 0 0 auto; flex-direction: column; align-items: center; border-right: 1px solid rgba(255, 255, 255, 0.08); background: var(--ink-950); }
-.rail-brand { height: 72px; display: flex; flex: 0 0 auto; align-items: center; justify-content: center; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
-.rail-nav { width: 100%; flex: 1; overflow-y: auto; padding: 10px 0; scrollbar-width: none; }
-.rail-nav::-webkit-scrollbar { display: none; }
-.rail-group { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 0; }
-.rail-group + .rail-group { border-top: 1px solid rgba(255, 255, 255, 0.08); }
-.rail-group button { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 8px; background: transparent; color: #8fa4ae; cursor: pointer; }
-.rail-group button:hover { background: rgba(255, 255, 255, 0.06); color: white; }
-.rail-group button.active { background: var(--blue); color: white; }
-.rail-all-workspaces { width: 40px; height: 40px; flex: 0 0 auto; display: grid; place-items: center; margin-bottom: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding-top: 0; background: transparent; color: #8fa4ae; cursor: pointer; }
-.rail-all-workspaces:hover { background: rgba(255, 255, 255, 0.06); color: white; }
+/* Primary sidebar: exactly the six portals, always visible, icon plus text label - never
+   icon-only. Replaces the old 64px icon rail, which forced users to decode glyphs. */
+.portal-sidebar { position: relative; z-index: 41; width: 214px; height: 100vh; display: flex; flex: 0 0 auto; flex-direction: column; border-right: 1px solid rgba(255, 255, 255, 0.08); background: var(--ink-950); }
+.portal-brand { height: 72px; display: flex; flex: 0 0 auto; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-inline: 18px; }
+.portal-nav { width: 100%; flex: 1; overflow-y: auto; padding: 14px 10px; scrollbar-width: none; }
+.portal-nav::-webkit-scrollbar { display: none; }
+.portal-nav > div + div { margin-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); padding-top: 14px; }
+.portal-nav .nav-section-label { color: #6f8995; }
+.portal-nav button { position: relative; width: 100%; min-height: 42px; display: flex; align-items: center; gap: 11px; border-radius: 7px; padding: 0 11px; background: transparent; color: #a8bcc6; cursor: pointer; font-size: 13px; font-weight: 600; text-align: left; }
+.portal-nav button > svg { flex: 0 0 auto; }
+.portal-nav button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.portal-nav button:hover { background: rgba(255, 255, 255, 0.07); color: white; }
+.portal-nav button.active { background: var(--blue); color: white; font-weight: 700; }
+.portal-nav button.active svg { color: white; }
+
+/* The primary sidebar collapses into the mobile drawer below the drawer breakpoint, so the
+   drawer - and only the drawer - carries the portal list there. */
 .operations-sidebar .mobile-workspace-list { display: none; }
-@media (min-width: 1121px) {
-  /* The icon rail already carries the brand mark and full workspace list on desktop. */
+@media (min-width: 1025px) {
+  /* The primary sidebar already carries the brand mark on desktop. */
   .operations-sidebar .sidebar-brand { display: none; }
 }
+@media (max-width: 1280px) {
+  .portal-sidebar { width: 190px; }
+}
+@media (max-width: 1024px) {
+  .portal-sidebar { display: none; }
+  .operations-sidebar .mobile-workspace-list { display: block; }
+}
+
+/* Internal tab shell: a portal's own pages, pinned to the top of its scrolling content. Vehicle
+   360 and Analytics 360 use it today; a portal picks it up as soon as it has a second area. */
+.portal-tab-shell { display: flex; flex-direction: column; min-height: 100%; }
+.portal-tabs { position: sticky; z-index: 20; top: 0; display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid var(--line); padding-inline: clamp(20px, 3vw, 40px); background: rgba(255, 255, 255, 0.94); backdrop-filter: blur(12px); }
+.portal-tabs button { min-height: 46px; display: inline-flex; align-items: center; border-bottom: 2px solid transparent; padding: 0 14px; background: transparent; color: var(--ink-500); cursor: pointer; font-size: 12px; font-weight: 650; white-space: nowrap; }
+.portal-tabs button:hover { color: var(--ink-950); }
+.portal-tabs button[aria-selected="true"] { border-bottom-color: var(--blue); color: var(--blue); }
+.portal-tab-panel { flex: 1; min-height: 0; }
+.portal-tab-panel:focus { outline: none; }
 
 /* Contextual sidebar: quick actions and related-workspace links registered by the active page */
 .operations-nav a { position: relative; width: 100%; min-height: 42px; display: flex; align-items: center; gap: 12px; border: 1px solid transparent; border-radius: 6px; padding-inline: 11px; color: var(--ink-600); cursor: pointer; font-size: 13px; text-decoration: none; }

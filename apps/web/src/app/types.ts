@@ -1,20 +1,39 @@
 export type AppView = "landing" | "login" | "signup" | "dashboard";
 
-export type DashView =
-  | "overview"
+// The six primary portals, and nothing else, make up the primary sidebar. Each is a full
+// 360-style hub with its own dashboard, directory, detail pages, and workflows.
+// docs/six-portal-workspace-plan.md is the authoritative information architecture - read it
+// before adding, renaming, or reordering anything in this union.
+export type PortalId =
+  | "customers"
+  | "vehicles"
   | "sales"
+  | "finance"
+  | "marketing"
+  | "analytics";
+
+// Sub-areas that live *inside* a portal, reached from its contextual sidebar and internal tab
+// shell rather than from the primary sidebar. Vehicle 360 owns service/parts/usedcars (workshop,
+// parts, and the used/reconditioning/auction disposition workflow); Analytics 360 owns
+// branch/group/workforce (the reporting slice only - managing people is Administration).
+// The retired `overview` view is now Analytics 360's core area, and `inventory` folded into
+// Vehicle 360's core area, so neither needs an id of its own any more.
+export type PortalArea =
   | "service"
   | "parts"
-  | "finance"
-  | "vehicles"
-  | "customers"
-  | "marketing"
   | "usedcars"
-  | "inventory"
   | "branch"
   | "group"
-  | "workforce"
-  | "company";
+  | "workforce";
+
+// Administration is deliberately not a seventh portal: internal employees, partners, roles,
+// permissions, branch/org settings, and audit history are reached from the account menu.
+export type AdminView = "company";
+
+// Every routable workspace id. Sub-area ids are unchanged from the pre-consolidation union, so
+// existing ?workspace= deep links keep resolving - they now open the owning portal with that
+// sub-area active instead of a top-level page of its own.
+export type DashView = PortalId | PortalArea | AdminView;
 
 export type Role = "admin" | "general_manager" | "sales_manager" | "bdc_rep" | "finance_manager" | "service_advisor" | "receptionist";
 

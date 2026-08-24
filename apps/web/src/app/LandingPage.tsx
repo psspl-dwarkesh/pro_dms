@@ -13,7 +13,7 @@ type LandingPageProps = { onOpenWorkspace: (view?: DashView) => void; onGoToLogi
 type PreviewMode = "pulse" | "customer" | "vehicle" | "service";
 
 const previewModes: Array<{ id: PreviewMode; label: string; icon: typeof Gauge; view: DashView }> = [
-  { id: "pulse", label: "Executive", icon: Gauge, view: "overview" },
+  { id: "pulse", label: "Executive", icon: Gauge, view: "analytics" },
   { id: "customer", label: "Customer 360", icon: CircleUserRound, view: "customers" },
   { id: "vehicle", label: "Vehicle 360", icon: CarFront, view: "vehicles" },
   { id: "service", label: "Service-to-trade", icon: Wrench, view: "service" },
@@ -24,7 +24,7 @@ const axisDomains: Array<{ label: string; view: DashView; detail: string }> = [
   { label: "Service", view: "service", detail: "Booking → handover" },
   { label: "Parts", view: "parts", detail: "VIN fit → issue" },
   { label: "F&I", view: "finance", detail: "KYC → settlement" },
-  { label: "Inventory", view: "inventory", detail: "Order → allocation" },
+  { label: "Inventory", view: "vehicles", detail: "Order → allocation" },
   { label: "Used", view: "usedcars", detail: "Appraise → publish" },
 ];
 

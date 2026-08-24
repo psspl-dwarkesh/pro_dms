@@ -12,10 +12,11 @@ export type WorkflowStep = { icon: LucideIcon; label: string };
 // popover - only pages with an actual multi-step, multi-entity workflow get one; "coming soon"
 // placeholders have nothing to diagram yet.
 export const PAGE_WORKFLOW: Partial<Record<DashView, WorkflowStep[]>> = {
-  overview: [
+  analytics: [
     { icon: LayoutDashboard, label: "Check the four headline metrics" },
     { icon: ListChecks, label: "Open work flags what needs attention" },
-    { icon: ArrowRightCircle, label: "Jump into Sales, Service, Parts, or a 360 record" },
+    { icon: ArrowRightCircle, label: "Jump into the portal that owns it - Sales 360, Vehicle 360, a 360 record" },
+    { icon: Building2, label: "Use the tabs for branch, group, and workforce analysis" },
   ],
   customers: [
     { icon: Search, label: "Search or add a customer" },
@@ -33,7 +34,7 @@ export const PAGE_WORKFLOW: Partial<Record<DashView, WorkflowStep[]>> = {
     { icon: Plus, label: "Create a lead; select one to open its full record" },
     { icon: ArrowRightCircle, label: "Move it through stages as it progresses" },
     { icon: CalendarPlus, label: "Log a test drive from Quick actions" },
-    { icon: CheckCircle2, label: "Once won, convert it to a sale - it appears in Finance and insurance" },
+    { icon: CheckCircle2, label: "Once won, convert it to a sale - it appears in Finance 360" },
   ],
   service: [
     { icon: CalendarPlus, label: "Book a repair order; select one to open its full record" },
