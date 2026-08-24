@@ -3,8 +3,10 @@ import {
   KeyRound, MoreHorizontal, Plus, Search, Share2, Trash2, TrendingUp, UserRound, Warehouse, Wrench, X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { FormEvent, KeyboardEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from "../../lib/api";
+import { CurrencyField, DateField, DateTimeField, SelectField, TextArea, TextField } from "../components/forms";
+import { ActionMenu, AlertDialog, Dialog } from "../components/overlays";
 import type {
   AcquisitionChannel, AppraisalStatus, AuctionListingStatus, Branch, ConditionGrade, Customer,
   DispositionStatus, DispositionType, ServiceJob, ValuationSource, Vehicle, Vehicle360,
@@ -14,7 +16,7 @@ import type {
 import { CustomerPicker } from "./Pickers";
 import {
   InfoGrid, OperationalTable, RecordViewProps, SearchState, SectionToolbar, Timeline, Toast,
-  useDialogFocusTrap, useOpenIdSelection, WorkflowModal, WorkspacePage,
+  useOpenIdSelection, WorkflowModal, WorkspacePage,
 } from "./RecordViews";
 import { useContextualActions } from "./SidebarActions";
 import type { SidebarAction } from "./SidebarActions";
@@ -91,33 +93,18 @@ function exportVehicleSummary(vehicle: Vehicle360) {
   URL.revokeObjectURL(url);
 }
 
-// Replaces window.confirm for destructive actions. Cancel is the first focusable element, so a
+// Shared destructive confirmation keeps focus on a neutral action before the irreversible one.
 // destructive dialog opens focused on a neutral action rather than the confirm button.
 function ConfirmDialog({ title, message, confirmLabel, tone = "default", busy, onCancel, onConfirm }: {
   title: string; message: ReactNode; confirmLabel: string; tone?: "default" | "danger"; busy?: boolean; onCancel: () => void; onConfirm: () => void;
 }) {
-  const dialogRef = useRef<HTMLElement>(null);
-  useDialogFocusTrap(dialogRef, onCancel);
-  return (
-    <div className="modal-scrim" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && onCancel()}>
-      <section ref={dialogRef} tabIndex={-1} className="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-message">
-        <h2 id="confirm-dialog-title">{title}</h2>
-        <p id="confirm-dialog-message">{message}</p>
-        <div className="confirm-dialog-actions">
-          <button type="button" className="workspace-button" onClick={onCancel}>Cancel</button>
-          <button type="button" className={`workspace-button ${tone === "danger" ? "workspace-button--danger" : "workspace-button--dark"}`} onClick={onConfirm} disabled={busy}>{busy ? "Working..." : confirmLabel}</button>
-        </div>
-      </section>
-    </div>
-  );
+  return <AlertDialog title={title} message={message} confirmLabel={confirmLabel} tone={tone} busy={busy} onCancel={onCancel} onConfirm={onConfirm} />;
 }
 
 // Replaces a silent navigator.share call, which could report success even after the user
 // cancelled the OS share sheet. Copy-link and export always work; device share is an explicit,
 // separately labelled action that never claims success unless it actually completed.
 function ShareVehicleModal({ vehicle, onClose, notify }: { vehicle: Vehicle360; saving?: boolean; onClose: () => void; notify: (message: string) => void }) {
-  const dialogRef = useRef<HTMLElement>(null);
-  useDialogFocusTrap(dialogRef, onClose);
   const shareUrl = `${window.location.origin}${window.location.pathname}?workspace=vehicles&recordId=${vehicle.id}`;
   const canDeviceShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
   const title = `${vehicle.make} ${vehicle.model}`;
@@ -132,10 +119,8 @@ function ShareVehicleModal({ vehicle, onClose, notify }: { vehicle: Vehicle360; 
   }
 
   return (
-    <div className="modal-scrim" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && onClose()}>
-      <section ref={dialogRef} tabIndex={-1} className="workflow-modal share-modal" role="dialog" aria-modal="true" aria-labelledby="share-vehicle-title">
-        <header><div><span>Vehicle record</span><h2 id="share-vehicle-title">Share {title}</h2></div><button type="button" onClick={onClose} aria-label="Close dialog"><X /></button></header>
-        <div className="workflow-modal-body share-modal-body">
+    <Dialog title={`Share ${title}`} eyebrow="Vehicle record" onClose={onClose} className="workflow-modal share-modal">
+        <div className="share-modal-body">
           <label className="share-link-row">
             <span>Record link</span>
             <div>
@@ -148,8 +133,7 @@ function ShareVehicleModal({ vehicle, onClose, notify }: { vehicle: Vehicle360; 
             <button type="button" aria-disabled={!canDeviceShare} onClick={canDeviceShare ? shareViaDevice : undefined}><Share2 size={15} />{canDeviceShare ? "Share via device" : "Device share not available"}</button>
           </div>
         </div>
-      </section>
-    </div>
+    </Dialog>
   );
 }
 
@@ -158,55 +142,7 @@ type OverflowMenuItem = { id: string; label: string; icon: LucideIcon; onClick?:
 // An accessible "More" menu: Escape closes and returns focus to the trigger, Arrow Up/Down move
 // among items, and a click outside closes it.
 function OverflowMenu({ label, items }: { label: string; items: OverflowMenuItem[] }) {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const menuItems = Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
-    menuItems[0]?.focus();
-
-    function handleOutside(event: MouseEvent) {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    function handleKey(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape") { setOpen(false); triggerRef.current?.focus(); return; }
-      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-      event.preventDefault();
-      const current = menuItems.findIndex((item) => item === document.activeElement);
-      const next = (current + (event.key === "ArrowDown" ? 1 : -1) + menuItems.length) % menuItems.length;
-      menuItems[next]?.focus();
-    }
-    document.addEventListener("mousedown", handleOutside);
-    document.addEventListener("keydown", handleKey);
-    return () => {
-      document.removeEventListener("mousedown", handleOutside);
-      document.removeEventListener("keydown", handleKey);
-    };
-  }, [open]);
-
-  return (
-    <div className="record-more-menu" ref={containerRef}>
-      <button ref={triggerRef} type="button" aria-haspopup="menu" aria-expanded={open} aria-label={label} title={label} onClick={() => setOpen((value) => !value)}>
-        <MoreHorizontal size={17} />
-      </button>
-      {open && (
-        <div ref={menuRef} role="menu" aria-label={label} className="record-more-menu-popover">
-          {items.map((item) => {
-            const Icon = item.icon;
-            const content = <><Icon size={15} /><span>{item.label}</span></>;
-            return item.href ? (
-              <a key={item.id} role="menuitem" tabIndex={-1} href={item.href} className={item.tone === "danger" ? "danger-action" : ""} onClick={() => setOpen(false)}>{content}</a>
-            ) : (
-              <button key={item.id} type="button" role="menuitem" tabIndex={-1} className={item.tone === "danger" ? "danger-action" : ""} onClick={() => { setOpen(false); item.onClick?.(); }}>{content}</button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+  return <ActionMenu label={label} trigger={<MoreHorizontal size={17} />} items={items.map((item) => ({ id: item.id, label: item.label, icon: <item.icon size={15} />, href: item.href, onAction: item.onClick, tone: item.tone }))} />;
 }
 
 function useBranches() {
@@ -830,18 +766,18 @@ function CreateVehicleModal({ branches, onClose, onSubmit, saving }: {
   });
   return <WorkflowModal title="Add vehicle to inventory" eyebrow="Vehicle intake" completeLabel="Create vehicle" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
-      <label><span>VIN</span><input required value={form.vin} onChange={(event) => setForm({ ...form, vin: event.target.value.toUpperCase() })} /></label>
-      <label><span>Registration</span><input value={form.registration} onChange={(event) => setForm({ ...form, registration: event.target.value })} /></label>
-      <label><span>Make</span><input required value={form.make} onChange={(event) => setForm({ ...form, make: event.target.value })} /></label>
-      <label><span>Model</span><input required value={form.model} onChange={(event) => setForm({ ...form, model: event.target.value })} /></label>
-      <label><span>Variant</span><input value={form.variant} onChange={(event) => setForm({ ...form, variant: event.target.value })} /></label>
-      <label><span>Colour</span><input value={form.colour} onChange={(event) => setForm({ ...form, colour: event.target.value })} /></label>
-      <label><span>Status</span><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}><option value="in-stock">In stock</option><option value="demo">Demo</option><option value="reserved">Reserved</option><option value="customer-owned">Customer owned</option></select></label>
-      <label><span>Branch</span><select value={form.branchId} onChange={(event) => setForm({ ...form, branchId: event.target.value })}><option value="">Not assigned</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></label>
-      <label><span>Lot location</span><input value={form.lotLocation} onChange={(event) => setForm({ ...form, lotLocation: event.target.value })} placeholder="e.g. Bay 12" /></label>
-      <label><span>Acquisition channel</span><select value={form.acquisitionChannel} onChange={(event) => setForm({ ...form, acquisitionChannel: event.target.value })}><option value="">Not recorded</option><option value="trade-in">Trade-in</option><option value="auction-purchase">Auction purchase</option><option value="direct-purchase">Direct purchase</option><option value="consignment">Consignment</option></select></label>
-      <label><span>Acquisition cost (AUD)</span><input type="number" min="0" value={form.acquisitionCost} onChange={(event) => setForm({ ...form, acquisitionCost: event.target.value })} /></label>
-      <label><span>Intake date</span><input type="date" value={form.intakeAt} onChange={(event) => setForm({ ...form, intakeAt: event.target.value })} /></label>
+      <TextField label="VIN" required value={form.vin} onChange={(event) => setForm({ ...form, vin: event.target.value.toUpperCase() })} />
+      <TextField label="Registration" value={form.registration} onChange={(event) => setForm({ ...form, registration: event.target.value })} />
+      <TextField label="Make" required value={form.make} onChange={(event) => setForm({ ...form, make: event.target.value })} />
+      <TextField label="Model" required value={form.model} onChange={(event) => setForm({ ...form, model: event.target.value })} />
+      <TextField label="Variant" value={form.variant} onChange={(event) => setForm({ ...form, variant: event.target.value })} />
+      <TextField label="Colour" value={form.colour} onChange={(event) => setForm({ ...form, colour: event.target.value })} />
+      <SelectField label="Status" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}><option value="in-stock">In stock</option><option value="demo">Demo</option><option value="reserved">Reserved</option><option value="customer-owned">Customer owned</option></SelectField>
+      <SelectField label="Branch" value={form.branchId} onChange={(event) => setForm({ ...form, branchId: event.target.value })}><option value="">Not assigned</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</SelectField>
+      <TextField label="Lot location" value={form.lotLocation} onChange={(event) => setForm({ ...form, lotLocation: event.target.value })} placeholder="e.g. Bay 12" />
+      <SelectField label="Acquisition channel" value={form.acquisitionChannel} onChange={(event) => setForm({ ...form, acquisitionChannel: event.target.value })}><option value="">Not recorded</option><option value="trade-in">Trade-in</option><option value="auction-purchase">Auction purchase</option><option value="direct-purchase">Direct purchase</option><option value="consignment">Consignment</option></SelectField>
+      <CurrencyField label="Acquisition cost" value={form.acquisitionCost} onChange={(event) => setForm({ ...form, acquisitionCost: event.target.value })} />
+      <DateField label="Intake date" value={form.intakeAt} onChange={(event) => setForm({ ...form, intakeAt: event.target.value })} />
     </div>
   </WorkflowModal>;
 }
@@ -850,9 +786,9 @@ function EditVehicleModal({ vehicle, onClose, onSubmit, saving }: { vehicle: Veh
   const [form, setForm] = useState({ registration: vehicle.registration ?? "", colour: vehicle.colour ?? "", odometerKm: vehicle.odometerKm?.toString() ?? "" });
   return <WorkflowModal title="Edit vehicle" eyebrow="Vehicle record" completeLabel="Save changes" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
-      <label><span>Registration</span><input value={form.registration} onChange={(event) => setForm({ ...form, registration: event.target.value })} /></label>
-      <label><span>Colour</span><input value={form.colour} onChange={(event) => setForm({ ...form, colour: event.target.value })} /></label>
-      <label><span>Odometer (km)</span><input type="number" min="0" value={form.odometerKm} onChange={(event) => setForm({ ...form, odometerKm: event.target.value })} /></label>
+      <TextField label="Registration" value={form.registration} onChange={(event) => setForm({ ...form, registration: event.target.value })} />
+      <TextField label="Colour" value={form.colour} onChange={(event) => setForm({ ...form, colour: event.target.value })} />
+      <TextField label="Odometer (km)" type="number" min="0" value={form.odometerKm} onChange={(event) => setForm({ ...form, odometerKm: event.target.value })} />
     </div>
     <p className="workflow-form-note">Status changes from the record header; market value updates from the Valuation tab.</p>
   </WorkflowModal>;
@@ -862,8 +798,8 @@ function TransferOwnershipModal({ onClose, onSubmit, saving }: { saving: boolean
   const [form, setForm] = useState({ customerId: "", customerLabel: "", transferReason: "" });
   return <WorkflowModal title="Transfer ownership" eyebrow="Vehicle ownership" completeLabel="Transfer ownership" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
-      <label className="workflow-form-full"><span>New owner</span><CustomerPicker value={form.customerLabel} onSelect={(customer: Customer) => setForm({ ...form, customerId: customer.id, customerLabel: customer.displayName })} /></label>
-      <label className="workflow-form-full"><span>Reason</span><input value={form.transferReason} onChange={(event) => setForm({ ...form, transferReason: event.target.value })} placeholder="e.g. Sold, traded in, gifted" /></label>
+      <CustomerPicker className="workflow-form-full" label="New owner" required selectedId={form.customerId} value={form.customerLabel} onClear={() => setForm({ ...form, customerId: "", customerLabel: "" })} onSelect={(customer: Customer) => setForm({ ...form, customerId: customer.id, customerLabel: customer.displayName })} />
+      <TextField className="workflow-form-full" label="Reason" value={form.transferReason} onChange={(event) => setForm({ ...form, transferReason: event.target.value })} placeholder="e.g. Sold, traded in, gifted" />
     </div>
     {!form.customerId && <p className="inline-error"><AlertTriangle size={14} />Select the new owner from the picker above.</p>}
   </WorkflowModal>;
@@ -873,16 +809,16 @@ function AddDocumentModal({ onClose, onSubmit, saving }: { saving: boolean; onCl
   const [form, setForm] = useState({ documentType: "registration_certificate", label: "", storageReference: "" });
   return <WorkflowModal title="Add document" eyebrow="Vehicle documents" completeLabel="Add document" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
-      <label><span>Document type</span><select value={form.documentType} onChange={(event) => setForm({ ...form, documentType: event.target.value })}>
+      <SelectField label="Document type" value={form.documentType} onChange={(event) => setForm({ ...form, documentType: event.target.value })}>
         <option value="registration_certificate">Registration certificate</option>
         <option value="insurance">Insurance</option>
         <option value="invoice">Purchase invoice</option>
         <option value="inspection_report">Inspection report</option>
         <option value="valuation_report">Valuation report</option>
         <option value="other">Other</option>
-      </select></label>
-      <label><span>Label</span><input required value={form.label} onChange={(event) => setForm({ ...form, label: event.target.value })} placeholder="e.g. NSW registration papers" /></label>
-      <label className="workflow-form-full"><span>Storage reference</span><input value={form.storageReference} onChange={(event) => setForm({ ...form, storageReference: event.target.value })} placeholder="Link or reference to where the file lives" /></label>
+      </SelectField>
+      <TextField label="Label" required value={form.label} onChange={(event) => setForm({ ...form, label: event.target.value })} placeholder="e.g. NSW registration papers" />
+      <TextField className="workflow-form-full" label="Storage reference" value={form.storageReference} onChange={(event) => setForm({ ...form, storageReference: event.target.value })} placeholder="Link or reference to where the file lives" />
     </div>
   </WorkflowModal>;
 }
@@ -894,12 +830,12 @@ function AddAppraisalModal({ onClose, onSubmit, saving }: {
   const [form, setForm] = useState({ customerId: "", customerLabel: "", conditionGrade: "good" as ConditionGrade, odometerKm: "", exteriorNotes: "", mechanicalNotes: "", offeredValue: "" });
   return <WorkflowModal title="New trade-in appraisal" eyebrow="Vehicle appraisal" completeLabel="Save appraisal" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
-      <label className="workflow-form-full"><span>Customer (optional)</span><CustomerPicker value={form.customerLabel} onSelect={(customer: Customer) => setForm({ ...form, customerId: customer.id, customerLabel: customer.displayName })} /></label>
-      <label><span>Condition grade</span><select value={form.conditionGrade} onChange={(event) => setForm({ ...form, conditionGrade: event.target.value as ConditionGrade })}><option value="excellent">Excellent</option><option value="good">Good</option><option value="fair">Fair</option><option value="poor">Poor</option></select></label>
-      <label><span>Odometer (km)</span><input type="number" min="0" value={form.odometerKm} onChange={(event) => setForm({ ...form, odometerKm: event.target.value })} /></label>
-      <label><span>Offered value (AUD)</span><input type="number" min="0" value={form.offeredValue} onChange={(event) => setForm({ ...form, offeredValue: event.target.value })} /></label>
-      <label className="workflow-form-full"><span>Exterior notes</span><input value={form.exteriorNotes} onChange={(event) => setForm({ ...form, exteriorNotes: event.target.value })} /></label>
-      <label className="workflow-form-full"><span>Mechanical notes</span><input value={form.mechanicalNotes} onChange={(event) => setForm({ ...form, mechanicalNotes: event.target.value })} /></label>
+      <CustomerPicker className="workflow-form-full" label="Customer" selectedId={form.customerId} value={form.customerLabel} onClear={() => setForm({ ...form, customerId: "", customerLabel: "" })} onSelect={(customer: Customer) => setForm({ ...form, customerId: customer.id, customerLabel: customer.displayName })} />
+      <SelectField label="Condition grade" value={form.conditionGrade} onChange={(event) => setForm({ ...form, conditionGrade: event.target.value as ConditionGrade })}><option value="excellent">Excellent</option><option value="good">Good</option><option value="fair">Fair</option><option value="poor">Poor</option></SelectField>
+      <TextField label="Odometer (km)" type="number" min="0" value={form.odometerKm} onChange={(event) => setForm({ ...form, odometerKm: event.target.value })} />
+      <CurrencyField label="Offered value" value={form.offeredValue} onChange={(event) => setForm({ ...form, offeredValue: event.target.value })} />
+      <TextArea className="workflow-form-full" label="Exterior notes" value={form.exteriorNotes} onChange={(event) => setForm({ ...form, exteriorNotes: event.target.value })} />
+      <TextArea className="workflow-form-full" label="Mechanical notes" value={form.mechanicalNotes} onChange={(event) => setForm({ ...form, mechanicalNotes: event.target.value })} />
     </div>
   </WorkflowModal>;
 }
@@ -908,9 +844,9 @@ function AddValuationModal({ onClose, onSubmit, saving }: { saving: boolean; onC
   const [form, setForm] = useState({ source: "market" as ValuationSource, value: "", notes: "" });
   return <WorkflowModal title="Add valuation" eyebrow="Vehicle valuation" completeLabel="Save valuation" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
-      <label><span>Source</span><select value={form.source} onChange={(event) => setForm({ ...form, source: event.target.value as ValuationSource })}><option value="market">Market</option><option value="trade">Trade</option><option value="wholesale">Wholesale</option><option value="manual">Manual</option></select></label>
-      <label><span>Value (AUD)</span><input required type="number" min="0" value={form.value} onChange={(event) => setForm({ ...form, value: event.target.value })} /></label>
-      <label className="workflow-form-full"><span>Notes</span><input value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></label>
+      <SelectField label="Source" value={form.source} onChange={(event) => setForm({ ...form, source: event.target.value as ValuationSource })}><option value="market">Market</option><option value="trade">Trade</option><option value="wholesale">Wholesale</option><option value="manual">Manual</option></SelectField>
+      <CurrencyField label="Value" required value={form.value} onChange={(event) => setForm({ ...form, value: event.target.value })} />
+      <TextArea className="workflow-form-full" label="Notes" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
     </div>
     {form.source === "market" && <p className="workflow-form-note">A market valuation also updates the vehicle's current market value shown on the Overview tab.</p>}
   </WorkflowModal>;
@@ -926,11 +862,11 @@ function StockLocationModal({ vehicle, branches, onClose, onSubmit, saving }: {
   });
   return <WorkflowModal title="Update stock and location" eyebrow="Vehicle 360" completeLabel="Save changes" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
-      <label><span>Branch</span><select value={form.branchId} onChange={(event) => setForm({ ...form, branchId: event.target.value })}><option value="">Not assigned</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></label>
-      <label><span>Lot location</span><input value={form.lotLocation} onChange={(event) => setForm({ ...form, lotLocation: event.target.value })} /></label>
-      <label><span>Status</span><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>{["in-stock", "customer-owned", "reserved", "demo", "rental", "auction", "sold"].map((status) => <option key={status} value={status}>{status.replaceAll("-", " ")}</option>)}</select></label>
-      <label><span>Acquisition channel</span><select value={form.acquisitionChannel} onChange={(event) => setForm({ ...form, acquisitionChannel: event.target.value as AcquisitionChannel })}><option value="">Not recorded</option><option value="trade-in">Trade-in</option><option value="auction-purchase">Auction purchase</option><option value="direct-purchase">Direct purchase</option><option value="consignment">Consignment</option></select></label>
-      <label><span>Acquisition cost (AUD)</span><input type="number" min="0" value={form.acquisitionCost} onChange={(event) => setForm({ ...form, acquisitionCost: event.target.value })} /></label>
+      <SelectField label="Branch" value={form.branchId} onChange={(event) => setForm({ ...form, branchId: event.target.value })}><option value="">Not assigned</option>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</SelectField>
+      <TextField label="Lot location" value={form.lotLocation} onChange={(event) => setForm({ ...form, lotLocation: event.target.value })} />
+      <SelectField label="Status" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>{["in-stock", "customer-owned", "reserved", "demo", "rental", "auction", "sold"].map((status) => <option key={status} value={status}>{status.replaceAll("-", " ")}</option>)}</SelectField>
+      <SelectField label="Acquisition channel" value={form.acquisitionChannel} onChange={(event) => setForm({ ...form, acquisitionChannel: event.target.value as AcquisitionChannel })}><option value="">Not recorded</option><option value="trade-in">Trade-in</option><option value="auction-purchase">Auction purchase</option><option value="direct-purchase">Direct purchase</option><option value="consignment">Consignment</option></SelectField>
+      <CurrencyField label="Acquisition cost" value={form.acquisitionCost} onChange={(event) => setForm({ ...form, acquisitionCost: event.target.value })} />
     </div>
   </WorkflowModal>;
 }
@@ -939,9 +875,9 @@ function ListAuctionModal({ onClose, onSubmit, saving }: { saving: boolean; onCl
   const [form, setForm] = useState({ auctionHouse: "", reservePrice: "", closesAt: "" });
   return <WorkflowModal title="List for auction" eyebrow="Auction disposition" completeLabel="List vehicle" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
-      <label><span>Auction house</span><input value={form.auctionHouse} onChange={(event) => setForm({ ...form, auctionHouse: event.target.value })} /></label>
-      <label><span>Reserve price (AUD)</span><input type="number" min="0" value={form.reservePrice} onChange={(event) => setForm({ ...form, reservePrice: event.target.value })} /></label>
-      <label className="workflow-form-full"><span>Closes at</span><input type="datetime-local" value={form.closesAt} onChange={(event) => setForm({ ...form, closesAt: event.target.value })} /></label>
+      <TextField label="Auction house" value={form.auctionHouse} onChange={(event) => setForm({ ...form, auctionHouse: event.target.value })} />
+      <CurrencyField label="Reserve price" value={form.reservePrice} onChange={(event) => setForm({ ...form, reservePrice: event.target.value })} />
+      <DateTimeField className="workflow-form-full" label="Closes at" value={form.closesAt} onChange={(event) => setForm({ ...form, closesAt: event.target.value })} />
     </div>
   </WorkflowModal>;
 }
@@ -950,8 +886,8 @@ function RecordBidModal({ onClose, onSubmit, saving }: { saving: boolean; onClos
   const [form, setForm] = useState({ bidderName: "", amount: "" });
   return <WorkflowModal title="Record bid" eyebrow="Auction disposition" completeLabel="Record bid" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
-      <label><span>Bidder name</span><input required value={form.bidderName} onChange={(event) => setForm({ ...form, bidderName: event.target.value })} /></label>
-      <label><span>Amount (AUD)</span><input required type="number" min="0" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} /></label>
+      <TextField label="Bidder name" required value={form.bidderName} onChange={(event) => setForm({ ...form, bidderName: event.target.value })} />
+      <CurrencyField label="Amount" required value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} />
     </div>
   </WorkflowModal>;
 }
@@ -960,8 +896,8 @@ function RecordSaleModal({ onClose, onSubmit, saving }: { saving: boolean; onClo
   const [form, setForm] = useState({ soldPrice: "", buyerNote: "" });
   return <WorkflowModal title="Record auction sale" eyebrow="Auction disposition" completeLabel="Mark sold" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
-      <label><span>Sold price (AUD)</span><input required type="number" min="0" value={form.soldPrice} onChange={(event) => setForm({ ...form, soldPrice: event.target.value })} /></label>
-      <label className="workflow-form-full"><span>Buyer note</span><input value={form.buyerNote} onChange={(event) => setForm({ ...form, buyerNote: event.target.value })} /></label>
+      <CurrencyField label="Sold price" required value={form.soldPrice} onChange={(event) => setForm({ ...form, soldPrice: event.target.value })} />
+      <TextArea className="workflow-form-full" label="Buyer note" value={form.buyerNote} onChange={(event) => setForm({ ...form, buyerNote: event.target.value })} />
     </div>
   </WorkflowModal>;
 }
@@ -970,9 +906,9 @@ function CheckInDispositionModal({ onClose, onSubmit, saving }: { saving: boolea
   const [form, setForm] = useState({ status: "completed" as DispositionStatus, odometerIn: "", notes: "" });
   return <WorkflowModal title="Check in vehicle" eyebrow="Rental / demo disposition" completeLabel="Save" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
-      <label><span>Outcome</span><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as DispositionStatus })}><option value="completed">Completed - returned</option><option value="cancelled">Cancelled</option></select></label>
-      <label><span>Odometer in (km)</span><input type="number" min="0" value={form.odometerIn} onChange={(event) => setForm({ ...form, odometerIn: event.target.value })} /></label>
-      <label className="workflow-form-full"><span>Notes</span><input value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></label>
+      <SelectField label="Outcome" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as DispositionStatus })}><option value="completed">Completed - returned</option><option value="cancelled">Cancelled</option></SelectField>
+      <TextField label="Odometer in (km)" type="number" min="0" value={form.odometerIn} onChange={(event) => setForm({ ...form, odometerIn: event.target.value })} />
+      <TextArea className="workflow-form-full" label="Notes" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
     </div>
   </WorkflowModal>;
 }
@@ -984,10 +920,10 @@ function CheckoutDispositionModal({ onClose, onSubmit, saving }: {
   const [form, setForm] = useState({ dispositionType: "demo" as DispositionType, customerId: "", customerLabel: "", odometerOut: "", notes: "" });
   return <WorkflowModal title="Check out vehicle" eyebrow="Rental / demo disposition" completeLabel="Check out" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
-      <label><span>Type</span><select value={form.dispositionType} onChange={(event) => setForm({ ...form, dispositionType: event.target.value as DispositionType })}><option value="demo">Demo</option><option value="rental">Rental</option></select></label>
-      <label><span>Odometer out (km)</span><input type="number" min="0" value={form.odometerOut} onChange={(event) => setForm({ ...form, odometerOut: event.target.value })} /></label>
-      <label className="workflow-form-full"><span>Customer (optional)</span><CustomerPicker value={form.customerLabel} onSelect={(customer: Customer) => setForm({ ...form, customerId: customer.id, customerLabel: customer.displayName })} /></label>
-      <label className="workflow-form-full"><span>Notes</span><input value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></label>
+      <SelectField label="Type" value={form.dispositionType} onChange={(event) => setForm({ ...form, dispositionType: event.target.value as DispositionType })}><option value="demo">Demo</option><option value="rental">Rental</option></SelectField>
+      <TextField label="Odometer out (km)" type="number" min="0" value={form.odometerOut} onChange={(event) => setForm({ ...form, odometerOut: event.target.value })} />
+      <CustomerPicker className="workflow-form-full" label="Customer" selectedId={form.customerId} value={form.customerLabel} onClear={() => setForm({ ...form, customerId: "", customerLabel: "" })} onSelect={(customer: Customer) => setForm({ ...form, customerId: customer.id, customerLabel: customer.displayName })} />
+      <TextArea className="workflow-form-full" label="Notes" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
     </div>
   </WorkflowModal>;
 }
@@ -996,9 +932,9 @@ function VehicleServiceModal({ onClose, onSubmit, saving }: { saving: boolean; o
   const [form, setForm] = useState({ repairOrderNumber: `RO-${Math.floor(Math.random() * 90000 + 10000)}`, advisor: "", complaint: "" });
   return <WorkflowModal title="Create workshop booking" eyebrow="Vehicle operations" completeLabel="Confirm booking" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
-      <label><span>Repair order number</span><input value={form.repairOrderNumber} onChange={(event) => setForm({ ...form, repairOrderNumber: event.target.value })} /></label>
-      <label><span>Advisor</span><input value={form.advisor} onChange={(event) => setForm({ ...form, advisor: event.target.value })} /></label>
-      <label className="workflow-form-full"><span>Work requested</span><input value={form.complaint} onChange={(event) => setForm({ ...form, complaint: event.target.value })} /></label>
+      <TextField label="Repair order number" value={form.repairOrderNumber} onChange={(event) => setForm({ ...form, repairOrderNumber: event.target.value })} />
+      <TextField label="Advisor" value={form.advisor} onChange={(event) => setForm({ ...form, advisor: event.target.value })} />
+      <TextArea className="workflow-form-full" label="Work requested" value={form.complaint} onChange={(event) => setForm({ ...form, complaint: event.target.value })} />
     </div>
   </WorkflowModal>;
 }

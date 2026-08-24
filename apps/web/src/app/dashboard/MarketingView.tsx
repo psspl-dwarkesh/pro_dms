@@ -1,6 +1,7 @@
 import { AlertTriangle, Pause, Play, Plus, RefreshCw } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { ApiError, apiGet, apiPatch, apiPost } from "../../lib/api";
+import { CurrencyField, DateTimeField, SelectField, TextArea, TextField } from "../components/forms";
 import { WorkspacePage } from "./RecordViews";
 import "./marketing360.css";
 
@@ -47,13 +48,13 @@ export function MarketingView() {
     {error && <div className="marketing-state" role="alert"><AlertTriangle /><span>{error.message}{error.requestId ? ` Reference: ${error.requestId}.` : ""}</span><button type="button" onClick={load}><RefreshCw size={15} />Retry</button></div>}
     {showForm && <form className="marketing-form" onSubmit={createCampaign}>
       <h2>Create persisted campaign</h2>
-      <label><span>Name</span><input required maxLength={120} value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label>
-      <label><span>Audience</span><select required value={draft.audienceId} onChange={(event) => { const audience = workspace?.audiences.find((item) => item.id === event.target.value); setDraft({ ...draft, audienceId: event.target.value, channel: audience?.channel ?? draft.channel }); }}>{workspace?.audiences.map((audience) => <option value={audience.id} key={audience.id}>{audience.name}</option>)}</select></label>
-      <label><span>Channel</span><select value={draft.channel} onChange={(event) => setDraft({ ...draft, channel: event.target.value })}><option value="email">Email</option><option value="sms">SMS</option><option value="whatsapp">WhatsApp</option><option value="mixed">Mixed</option></select></label>
-      <label><span>Budget</span><input type="number" min="0" step="1" value={draft.budget} onChange={(event) => setDraft({ ...draft, budget: event.target.value })} /></label>
-      <label><span>Starts</span><input type="datetime-local" required value={draft.startsAt} onChange={(event) => setDraft({ ...draft, startsAt: event.target.value })} /></label>
-      <label><span>Ends</span><input type="datetime-local" required value={draft.endsAt} onChange={(event) => setDraft({ ...draft, endsAt: event.target.value })} /></label>
-      <label className="marketing-objective"><span>Objective</span><textarea required maxLength={240} value={draft.objective} onChange={(event) => setDraft({ ...draft, objective: event.target.value })} /></label>
+      <TextField label="Name" required maxLength={120} value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
+      <SelectField label="Audience" required value={draft.audienceId} onChange={(event) => { const audience = workspace?.audiences.find((item) => item.id === event.target.value); setDraft({ ...draft, audienceId: event.target.value, channel: audience?.channel ?? draft.channel }); }}>{workspace?.audiences.map((audience) => <option value={audience.id} key={audience.id}>{audience.name}</option>)}</SelectField>
+      <SelectField label="Channel" value={draft.channel} onChange={(event) => setDraft({ ...draft, channel: event.target.value })}><option value="email">Email</option><option value="sms">SMS</option><option value="whatsapp">WhatsApp</option><option value="mixed">Mixed</option></SelectField>
+      <CurrencyField label="Budget" step="1" value={draft.budget} onChange={(event) => setDraft({ ...draft, budget: event.target.value })} />
+      <DateTimeField label="Starts" required value={draft.startsAt} onChange={(event) => setDraft({ ...draft, startsAt: event.target.value })} />
+      <DateTimeField label="Ends" required value={draft.endsAt} onChange={(event) => setDraft({ ...draft, endsAt: event.target.value })} />
+      <TextArea className="marketing-objective" label="Objective" required maxLength={240} value={draft.objective} onChange={(event) => setDraft({ ...draft, objective: event.target.value })} />
       <div><button type="button" onClick={() => setShowForm(false)}>Cancel</button><button type="submit" disabled={saving || !workspace?.audiences.length}>{saving ? "Saving…" : "Save campaign"}</button></div>
     </form>}
     {loading && <p className="marketing-loading" aria-live="polite">Loading live campaigns…</p>}

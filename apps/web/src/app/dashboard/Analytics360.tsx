@@ -1,6 +1,7 @@
 import { AlertTriangle, ArrowRight, BarChart3, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, ApiError } from "../../lib/api";
+import { DateField, SelectField } from "../components/forms";
 import type { DashView } from "../types";
 import { WorkspacePage } from "./RecordViews";
 import "./analytics360.css";
@@ -73,9 +74,9 @@ export function Analytics360({ area, onNavigate }: { area: AnalyticsArea; onNavi
 
       <form className="analytics-filters" onSubmit={(event) => { event.preventDefault(); setFilters({ ...draft }); }}>
         <div className="analytics-filter-title"><SlidersHorizontal size={17} /><div><strong>Analysis filters</strong><span>Updates all KPIs, tables, and exceptions</span></div></div>
-        <label><span>From date</span><input type="date" required value={draft.from} max={draft.to} onChange={(event) => setDraft({ ...draft, from: event.target.value })} /></label>
-        <label><span>To date</span><input type="date" required value={draft.to} min={draft.from} max={toInputDate(today)} onChange={(event) => setDraft({ ...draft, to: event.target.value })} /></label>
-        <label><span>Branch scope</span><select value={draft.branchId} onChange={(event) => setDraft({ ...draft, branchId: event.target.value })}><option value="">All authorized branches</option>{branches.map((branch) => <option value={branch.id} key={branch.id}>{branch.name}</option>)}</select></label>
+        <DateField label="From date" required value={draft.from} max={draft.to} onChange={(event) => setDraft({ ...draft, from: event.target.value })} />
+        <DateField label="To date" required value={draft.to} min={draft.from} max={toInputDate(today)} onChange={(event) => setDraft({ ...draft, to: event.target.value })} />
+        <SelectField label="Branch scope" value={draft.branchId} onChange={(event) => setDraft({ ...draft, branchId: event.target.value })}><option value="">All authorized branches</option>{branches.map((branch) => <option value={branch.id} key={branch.id}>{branch.name}</option>)}</SelectField>
         <button type="submit" className="analytics-apply">Apply filters</button>
       </form>
 

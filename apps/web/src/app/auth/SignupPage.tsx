@@ -1,6 +1,7 @@
 import { AlertCircle, ArrowLeft, ArrowRight } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { Brand } from "../components/Brand";
+import { InlineError, TextField } from "../components/forms";
 import { useAuth } from "./AuthContext";
 
 type SignupPageProps = { onSuccess: () => void; onBackToSite: () => void; onGoToLogin: () => void };
@@ -49,14 +50,14 @@ export default function SignupPage({ onSuccess, onBackToSite, onGoToLogin }: Sig
         <h1>Create your dealership workspace</h1>
         <p className="auth-subtitle">Set up your company, its first branch, and your admin account. Every dealership company gets its own isolated workspace.</p>
         <form onSubmit={handleSubmit} className="auth-form auth-form--grid">
-          <label><span>Company name</span><input required value={form.organizationName} onChange={(event) => update("organizationName", event.target.value)} placeholder="Pacific Motor Group" /></label>
-          <label><span>First branch name</span><input required value={form.branchName} onChange={(event) => update("branchName", event.target.value)} placeholder="Sydney Central" /></label>
-          <label><span>Branch city</span><input value={form.branchCity} onChange={(event) => update("branchCity", event.target.value)} placeholder="Sydney" /></label>
-          <label><span>Branch code</span><input required value={form.branchCode} onChange={(event) => update("branchCode", event.target.value.toUpperCase())} placeholder="SYD" maxLength={12} /></label>
-          <label><span>Your name</span><input required value={form.adminName} onChange={(event) => update("adminName", event.target.value)} placeholder="Your full name" /></label>
-          <label><span>Work email</span><input type="email" required value={form.adminEmail} onChange={(event) => update("adminEmail", event.target.value)} placeholder="you@yourcompany.com" /></label>
-          <label className="auth-form-full"><span>Password</span><input type="password" required value={form.password} onChange={(event) => update("password", event.target.value)} placeholder="At least 8 characters" /></label>
-          {error && <p className="auth-error auth-form-full"><AlertCircle size={15} />{error}</p>}
+          <TextField label="Company name" required value={form.organizationName} onChange={(event) => update("organizationName", event.target.value)} placeholder="Pacific Motor Group" />
+          <TextField label="First branch name" required value={form.branchName} onChange={(event) => update("branchName", event.target.value)} placeholder="Sydney Central" />
+          <TextField label="Branch city" value={form.branchCity} onChange={(event) => update("branchCity", event.target.value)} placeholder="Sydney" />
+          <TextField label="Branch code" required value={form.branchCode} onChange={(event) => update("branchCode", event.target.value.toUpperCase())} placeholder="SYD" maxLength={12} />
+          <TextField label="Your name" required value={form.adminName} onChange={(event) => update("adminName", event.target.value)} placeholder="Your full name" autoComplete="name" />
+          <TextField label="Work email" type="email" required value={form.adminEmail} onChange={(event) => update("adminEmail", event.target.value)} placeholder="you@yourcompany.com" autoComplete="email" />
+          <TextField className="auth-form-full" label="Password" type="password" required value={form.password} onChange={(event) => update("password", event.target.value)} placeholder="At least 8 characters" autoComplete="new-password" />
+          {error && <div className="auth-error auth-form-full"><AlertCircle size={15} /><InlineError>{error}</InlineError></div>}
           <button type="submit" className="workspace-button workspace-button--dark auth-submit auth-form-full" disabled={loading}>
             {loading ? "Creating workspace…" : "Create workspace"} <ArrowRight size={15} />
           </button>

@@ -4,16 +4,18 @@ import {
   Trash2, UserPlus, WalletCards, Wrench, X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { FormEvent, KeyboardEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from "../../lib/api";
 import { WhatsAppIcon } from "../components/BrandIcons";
+import { CurrencyField, DateField, SelectField, TextArea, TextField, PhoneField } from "../components/forms";
+import { ActionMenu, AlertDialog, Dialog } from "../components/overlays";
 import type {
   Communication, ConsentChannel, ConsentStatus, Customer, Customer360, CustomerConsentEntry,
   CustomerDocument, CustomerNote, CustomerTask, DocumentStatus, SalesOrder, ServiceJob, TaskStatus,
 } from "../types";
 import {
   OperationalTable, RecordViewProps, SearchState, SectionToolbar, Timeline, Toast,
-  useDialogFocusTrap, useOpenIdSelection, WorkflowModal, WorkspacePage,
+  useOpenIdSelection, WorkflowModal, WorkspacePage,
 } from "./RecordViews";
 import { useContextualActions } from "./SidebarActions";
 import type { SidebarAction } from "./SidebarActions";
@@ -95,84 +97,21 @@ type OverflowMenuItem = { id: string; label: string; icon: LucideIcon; onClick?:
 // among items, and a click outside closes it. Fills the profile card's overflow slot so Edit,
 // Share, Call, and Email stay as the only frequent buttons on the card itself.
 function OverflowMenu({ label, items }: { label: string; items: OverflowMenuItem[] }) {
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const menuItems = Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
-    menuItems[0]?.focus();
-
-    function handleOutside(event: MouseEvent) {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
-    }
-    function handleKey(event: globalThis.KeyboardEvent) {
-      if (event.key === "Escape") { setOpen(false); triggerRef.current?.focus(); return; }
-      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-      event.preventDefault();
-      const current = menuItems.findIndex((item) => item === document.activeElement);
-      const next = (current + (event.key === "ArrowDown" ? 1 : -1) + menuItems.length) % menuItems.length;
-      menuItems[next]?.focus();
-    }
-    document.addEventListener("mousedown", handleOutside);
-    document.addEventListener("keydown", handleKey);
-    return () => {
-      document.removeEventListener("mousedown", handleOutside);
-      document.removeEventListener("keydown", handleKey);
-    };
-  }, [open]);
-
-  return (
-    <div className="record-more-menu" ref={containerRef}>
-      <button ref={triggerRef} type="button" aria-haspopup="menu" aria-expanded={open} aria-label={label} title={label} onClick={() => setOpen((value) => !value)}>
-        <MoreHorizontal size={17} />
-      </button>
-      {open && (
-        <div ref={menuRef} role="menu" aria-label={label} className="record-more-menu-popover">
-          {items.map((item) => {
-            const Icon = item.icon;
-            const content = <><Icon size={15} /><span>{item.label}</span></>;
-            return item.href ? (
-              <a key={item.id} role="menuitem" tabIndex={-1} href={item.href} className={item.tone === "danger" ? "danger-action" : ""} onClick={() => setOpen(false)}>{content}</a>
-            ) : (
-              <button key={item.id} type="button" role="menuitem" tabIndex={-1} className={item.tone === "danger" ? "danger-action" : ""} onClick={() => { setOpen(false); item.onClick?.(); }}>{content}</button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+  return <ActionMenu label={label} trigger={<MoreHorizontal size={17} />} items={items.map((item) => ({ id: item.id, label: item.label, icon: <item.icon size={15} />, href: item.href, onAction: item.onClick, tone: item.tone }))} />;
 }
 
-// Replaces window.confirm for destructive actions. Cancel is the first focusable element, so a
+// Shared destructive confirmation keeps focus on a neutral action before the irreversible one.
 // destructive dialog opens focused on a neutral action rather than the confirm button.
 function ConfirmDialog({ title, message, confirmLabel, tone = "default", busy, onCancel, onConfirm }: {
   title: string; message: ReactNode; confirmLabel: string; tone?: "default" | "danger"; busy?: boolean; onCancel: () => void; onConfirm: () => void;
 }) {
-  const dialogRef = useRef<HTMLElement>(null);
-  useDialogFocusTrap(dialogRef, onCancel);
-  return (
-    <div className="modal-scrim" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && onCancel()}>
-      <section ref={dialogRef} tabIndex={-1} className="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-message">
-        <h2 id="confirm-dialog-title">{title}</h2>
-        <p id="confirm-dialog-message">{message}</p>
-        <div className="confirm-dialog-actions">
-          <button type="button" className="workspace-button" onClick={onCancel}>Cancel</button>
-          <button type="button" className={`workspace-button ${tone === "danger" ? "workspace-button--danger" : "workspace-button--dark"}`} onClick={onConfirm} disabled={busy}>{busy ? "Working..." : confirmLabel}</button>
-        </div>
-      </section>
-    </div>
-  );
+  return <AlertDialog title={title} message={message} confirmLabel={confirmLabel} tone={tone} busy={busy} onCancel={onCancel} onConfirm={onConfirm} />;
 }
 
 // Replaces the old silent navigator.share call, which could report "Summary shared" even after
 // the user cancelled the OS share sheet. Copy-link and export always work; device share is an
 // explicit, separately labelled action, and never claims success unless it actually completed.
 function ShareCustomerModal({ customer, onClose, notify }: { customer: Customer360; onClose: () => void; notify: (message: string) => void }) {
-  const dialogRef = useRef<HTMLElement>(null);
-  useDialogFocusTrap(dialogRef, onClose);
   const shareUrl = `${window.location.origin}${window.location.pathname}?workspace=customers&recordId=${customer.id}`;
   const canDeviceShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
 
@@ -186,10 +125,8 @@ function ShareCustomerModal({ customer, onClose, notify }: { customer: Customer3
   }
 
   return (
-    <div className="modal-scrim" role="presentation" onMouseDown={(event) => event.currentTarget === event.target && onClose()}>
-      <section ref={dialogRef} tabIndex={-1} className="workflow-modal share-modal" role="dialog" aria-modal="true" aria-labelledby="share-dialog-title">
-        <header><div><span>Customer master</span><h2 id="share-dialog-title">Share {customer.displayName}</h2></div><button type="button" onClick={onClose} aria-label="Close dialog"><X /></button></header>
-        <div className="workflow-modal-body share-modal-body">
+    <Dialog title={`Share ${customer.displayName}`} eyebrow="Customer master" onClose={onClose} className="workflow-modal share-modal">
+        <div className="share-modal-body">
           <label className="share-link-row">
             <span>Record link</span>
             <div>
@@ -207,9 +144,7 @@ function ShareCustomerModal({ customer, onClose, notify }: { customer: Customer3
             {canDeviceShare && <button type="button" onClick={shareViaDevice}><Share2 size={15} />Share using device</button>}
           </div>
         </div>
-        <footer><span /><div><button type="button" onClick={onClose}>Close</button></div></footer>
-      </section>
-    </div>
+    </Dialog>
   );
 }
 
@@ -784,12 +719,12 @@ function CreateCustomerModal({ onClose, onSubmit, onOpenExisting, saving }: {
   const matches = useDuplicateCheck(form.mobile, form.email, form.displayName);
   return <WorkflowModal title="Create customer record" eyebrow="Customer master" completeLabel={matches.length ? "Create anyway" : "Create customer"} busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
-      <label><span>Customer type</span><select value={form.customerType} onChange={(event) => setForm({ ...form, customerType: event.target.value })}><option value="individual">Individual</option><option value="company">Company</option></select></label>
-      <label><span>Full name</span><input required value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} /></label>
-      <label><span>Mobile</span><input value={form.mobile} onChange={(event) => setForm({ ...form, mobile: event.target.value })} placeholder="+61 4xx xxx xxx" /></label>
-      <label><span>Email</span><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
-      <label><span>Preferred channel</span><input value={form.preferredChannel} onChange={(event) => setForm({ ...form, preferredChannel: event.target.value })} /></label>
-      <label><span>Address</span><input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} /></label>
+      <SelectField label="Customer type" value={form.customerType} onChange={(event) => setForm({ ...form, customerType: event.target.value })}><option value="individual">Individual</option><option value="company">Company</option></SelectField>
+      <TextField label="Full name" required value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} />
+      <PhoneField label="Mobile" value={form.mobile} onChange={(event) => setForm({ ...form, mobile: event.target.value })} placeholder="+61 4xx xxx xxx" />
+      <TextField label="Email" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+      <SelectField label="Preferred channel" value={form.preferredChannel} onChange={(event) => setForm({ ...form, preferredChannel: event.target.value })}><option>Email</option><option>SMS</option><option>WhatsApp</option><option>Phone</option></SelectField>
+      <TextField label="Address" value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} />
     </div>
     <DuplicateWarning matches={matches} onOpenExisting={onOpenExisting} />
   </WorkflowModal>;
@@ -803,11 +738,11 @@ function EditCustomerModal({ customer, onClose, onSubmit, onOpenExisting, saving
   const matches = useDuplicateCheck(form.mobile, form.email, form.displayName, customer.id);
   return <WorkflowModal title={`Edit ${customer.displayName}`} eyebrow="Customer master" completeLabel={matches.length ? "Save anyway" : "Save changes"} busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
-      <label><span>Full name</span><input value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} /></label>
-      <label><span>Mobile</span><input value={form.mobile} onChange={(event) => setForm({ ...form, mobile: event.target.value })} /></label>
-      <label><span>Email</span><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
-      <label><span>Preferred channel</span><select value={form.preferredChannel} onChange={(event) => setForm({ ...form, preferredChannel: event.target.value })}><option>Email</option><option>SMS</option><option>WhatsApp</option><option>Phone</option></select></label>
-      <label><span>Address</span><input value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} /></label>
+      <TextField label="Full name" required value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} />
+      <PhoneField label="Mobile" value={form.mobile} onChange={(event) => setForm({ ...form, mobile: event.target.value })} />
+      <TextField label="Email" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+      <SelectField label="Preferred channel" value={form.preferredChannel} onChange={(event) => setForm({ ...form, preferredChannel: event.target.value })}><option>Email</option><option>SMS</option><option>WhatsApp</option><option>Phone</option></SelectField>
+      <TextField label="Address" value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} />
     </div>
     <DuplicateWarning matches={matches} onOpenExisting={onOpenExisting} />
   </WorkflowModal>;
@@ -817,9 +752,9 @@ function CreateLeadModal({ customerName, onClose, onSubmit, saving }: { customer
   const [form, setForm] = useState({ source: "walk-in", interestedVehicle: "", expectedValue: "" });
   return <WorkflowModal title="Create connected opportunity" eyebrow={`Sales workflow - ${customerName}`} busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
-      <label><span>Source</span><select value={form.source} onChange={(event) => setForm({ ...form, source: event.target.value })}><option value="walk-in">Walk-in</option><option value="phone">Phone</option><option value="web">Web enquiry</option><option value="referral">Referral</option></select></label>
-      <label><span>Vehicle interest</span><input value={form.interestedVehicle} onChange={(event) => setForm({ ...form, interestedVehicle: event.target.value })} placeholder="e.g. BMW X5 upgrade" /></label>
-      <label><span>Expected value (AUD)</span><input type="number" min="0" value={form.expectedValue} onChange={(event) => setForm({ ...form, expectedValue: event.target.value })} /></label>
+      <SelectField label="Source" value={form.source} onChange={(event) => setForm({ ...form, source: event.target.value })}><option value="walk-in">Walk-in</option><option value="phone">Phone</option><option value="web">Web enquiry</option><option value="referral">Referral</option></SelectField>
+      <TextField label="Vehicle interest" value={form.interestedVehicle} onChange={(event) => setForm({ ...form, interestedVehicle: event.target.value })} placeholder="e.g. BMW X5 upgrade" />
+      <CurrencyField label="Expected value" value={form.expectedValue} onChange={(event) => setForm({ ...form, expectedValue: event.target.value })} />
     </div>
   </WorkflowModal>;
 }
@@ -828,10 +763,10 @@ function BookServiceModal({ vehicles, onClose, onSubmit, saving }: { vehicles: C
   const [form, setForm] = useState({ vehicleId: vehicles[0]?.id ?? "", repairOrderNumber: `RO-${Math.floor(Math.random() * 90000 + 10000)}`, advisor: "", complaint: "" });
   return <WorkflowModal title="Book service visit" eyebrow="Service booking" completeLabel="Confirm booking" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     {!vehicles.length ? <p className="inline-error"><AlertTriangle size={14} />This customer has no linked vehicle yet. Add a vehicle first.</p> : <div className="workflow-form-grid">
-      <label><span>Vehicle</span><select value={form.vehicleId} onChange={(event) => setForm({ ...form, vehicleId: event.target.value })}>{vehicles.map((vehicle) => <option key={vehicle.id ?? vehicle.vin} value={vehicle.id}>{vehicle.make} {vehicle.model} - {vehicle.registration ?? vehicle.vin}</option>)}</select></label>
-      <label><span>Repair order number</span><input value={form.repairOrderNumber} onChange={(event) => setForm({ ...form, repairOrderNumber: event.target.value })} /></label>
-      <label><span>Advisor</span><input value={form.advisor} onChange={(event) => setForm({ ...form, advisor: event.target.value })} /></label>
-      <label className="workflow-form-full"><span>Complaint or work requested</span><input value={form.complaint} onChange={(event) => setForm({ ...form, complaint: event.target.value })} /></label>
+      <SelectField label="Vehicle" value={form.vehicleId} onChange={(event) => setForm({ ...form, vehicleId: event.target.value })}>{vehicles.map((vehicle) => <option key={vehicle.id ?? vehicle.vin} value={vehicle.id}>{vehicle.make} {vehicle.model} - {vehicle.registration ?? vehicle.vin}</option>)}</SelectField>
+      <TextField label="Repair order number" value={form.repairOrderNumber} onChange={(event) => setForm({ ...form, repairOrderNumber: event.target.value })} />
+      <TextField label="Advisor" value={form.advisor} onChange={(event) => setForm({ ...form, advisor: event.target.value })} />
+      <TextArea className="workflow-form-full" label="Complaint or work requested" value={form.complaint} onChange={(event) => setForm({ ...form, complaint: event.target.value })} />
     </div>}
   </WorkflowModal>;
 }
@@ -840,10 +775,10 @@ function LogCommunicationModal({ onClose, onSubmit, saving }: { saving: boolean;
   const [form, setForm] = useState({ channel: "call", direction: "outbound", subject: "", summary: "" });
   return <WorkflowModal title="Log communication" eyebrow="Relationship timeline" completeLabel="Save" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
-      <label><span>Channel</span><select value={form.channel} onChange={(event) => setForm({ ...form, channel: event.target.value })}><option value="call">Call</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="sms">SMS</option></select></label>
-      <label><span>Direction</span><select value={form.direction} onChange={(event) => setForm({ ...form, direction: event.target.value })}><option value="outbound">Outbound</option><option value="inbound">Inbound</option></select></label>
-      <label><span>Subject</span><input value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })} /></label>
-      <label className="workflow-form-full"><span>Summary</span><textarea required value={form.summary} onChange={(event) => setForm({ ...form, summary: event.target.value })} /></label>
+      <SelectField label="Channel" value={form.channel} onChange={(event) => setForm({ ...form, channel: event.target.value })}><option value="call">Call</option><option value="whatsapp">WhatsApp</option><option value="email">Email</option><option value="sms">SMS</option></SelectField>
+      <SelectField label="Direction" value={form.direction} onChange={(event) => setForm({ ...form, direction: event.target.value })}><option value="outbound">Outbound</option><option value="inbound">Inbound</option></SelectField>
+      <TextField label="Subject" value={form.subject} onChange={(event) => setForm({ ...form, subject: event.target.value })} />
+      <TextArea className="workflow-form-full" label="Summary" required value={form.summary} onChange={(event) => setForm({ ...form, summary: event.target.value })} />
     </div>
   </WorkflowModal>;
 }
@@ -852,9 +787,9 @@ function CreateTaskModal({ onClose, onSubmit, saving }: { saving: boolean; onClo
   const [form, setForm] = useState({ title: "", assignedTo: "", dueAt: "" });
   return <WorkflowModal title="Create task" eyebrow="Customer follow-up" completeLabel="Create task" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <div className="workflow-form-grid">
-      <label className="workflow-form-full"><span>Task</span><input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="e.g. Call back about finance approval" /></label>
-      <label><span>Assigned to</span><input value={form.assignedTo} onChange={(event) => setForm({ ...form, assignedTo: event.target.value })} /></label>
-      <label><span>Due date</span><input type="date" value={form.dueAt} onChange={(event) => setForm({ ...form, dueAt: event.target.value })} /></label>
+      <TextField className="workflow-form-full" label="Task" required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="e.g. Call back about finance approval" />
+      <TextField label="Assigned to" value={form.assignedTo} onChange={(event) => setForm({ ...form, assignedTo: event.target.value })} />
+      <DateField label="Due date" value={form.dueAt} onChange={(event) => setForm({ ...form, dueAt: event.target.value })} />
     </div>
   </WorkflowModal>;
 }
@@ -864,15 +799,15 @@ function CreateDocumentModal({ onClose, onSubmit, saving }: { saving: boolean; o
   return <WorkflowModal title="Add document record" eyebrow="Document register" completeLabel="Add record" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
     <p className="workflow-form-note">Records that a document exists and where to find it - this does not upload a file.</p>
     <div className="workflow-form-grid">
-      <label><span>Type</span><select value={form.documentType} onChange={(event) => setForm({ ...form, documentType: event.target.value })}>
+      <SelectField label="Type" value={form.documentType} onChange={(event) => setForm({ ...form, documentType: event.target.value })}>
         <option value="id_proof">ID proof</option>
         <option value="address_proof">Address proof</option>
         <option value="license">Licence</option>
         <option value="contract">Contract</option>
         <option value="other">Other</option>
-      </select></label>
-      <label><span>Label</span><input required value={form.label} onChange={(event) => setForm({ ...form, label: event.target.value })} placeholder="e.g. Driver licence - front" /></label>
-      <label className="workflow-form-full"><span>Reference or location</span><input value={form.storageReference} onChange={(event) => setForm({ ...form, storageReference: event.target.value })} placeholder="Filed at reception, vault reference, or external link" /></label>
+      </SelectField>
+      <TextField label="Label" required value={form.label} onChange={(event) => setForm({ ...form, label: event.target.value })} placeholder="e.g. Driver licence - front" />
+      <TextField className="workflow-form-full" label="Reference or location" value={form.storageReference} onChange={(event) => setForm({ ...form, storageReference: event.target.value })} placeholder="Filed at reception, vault reference, or external link" />
     </div>
   </WorkflowModal>;
 }
