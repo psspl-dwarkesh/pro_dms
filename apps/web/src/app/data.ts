@@ -111,7 +111,7 @@ export const LEGACY_VIEW_ALIASES: Record<string, DashView> = {
 
 // Modules with no dedicated data model yet render a "coming soon" placeholder instead of invented
 // numbers. Each is a sub-area of a live portal now, so the portal around it still works.
-export const COMING_SOON_VIEWS: ReadonlySet<DashView> = new Set(["marketing", "usedcars", "branch", "group", "workforce"]);
+export const COMING_SOON_VIEWS: ReadonlySet<DashView> = new Set(["marketing", "usedcars"]);
 
 // Connected portals surfaced in each page's contextual sidebar, alongside its live quick actions.
 // Cross-portal only: a portal's own sub-areas are already in the tab strip and the Pages section,
@@ -136,11 +136,11 @@ export const PAGE_RELATED: Partial<Record<DashView, DashView[]>> = {
 // Coming-soon areas fall back to their planned-feature copy in DashboardApp, so they are omitted.
 export const PAGE_HELP: Partial<Record<DashView, { summary: string; canDo: string[] }>> = {
   customers: {
-    summary: "Every customer's connected record - contact details, vehicles, sales, service history, and communications in one place.",
+    summary: "Every customer's connected record - contact details, vehicles, sales, service history, communications, notes, tasks, consent, and documents in one place.",
     canDo: [
-      "Search or create a customer on the left; select one to open their full record.",
-      "Use Quick actions in the sidebar to create an opportunity, book service, log a call, or edit the profile.",
-      "Switch tabs (Overview, Activity, Vehicles, Sales & finance, Service & care, Communications) to see everything linked to that customer.",
+      "Search or create a customer on the left; select one to open their full record. Creating or editing checks for likely duplicates first.",
+      "Use Edit, Share, Call, Email, and More on the profile card, or Quick actions in the sidebar to create an opportunity, book service, or log a call.",
+      "Switch tabs - Overview, Activity, Vehicles, Sales & finance, Service & care, Communications, Notes, Tasks, Consent, and Documents - to see everything linked to that customer.",
     ],
   },
   vehicles: {
@@ -192,12 +192,24 @@ export const PAGE_HELP: Partial<Record<DashView, { summary: string; canDo: strin
       "Use the tabs above for branch, group, and workforce analysis.",
     ],
   },
+  branch: {
+    summary: "Branch-level sales, service, pipeline, productivity, and contribution analysis with authorized drill-downs.",
+    canDo: ["Filter by date and authorized branch.", "Compare operational revenue and open pipeline.", "Drill into exception records in their owning portal."],
+  },
+  group: {
+    summary: "Consolidated group analysis across the branches your role is authorized to see.",
+    canDo: ["Compare branches using consistent metric definitions.", "Review department contribution and weekly trends.", "Use the exception queue to open underlying records."],
+  },
+  workforce: {
+    summary: "Advisor and technician productivity analysis. Managing people remains in Administration.",
+    canDo: ["Review jobs, completion, and tracked service revenue by person.", "Change date and branch scope.", "Use disclosed definitions before drawing performance conclusions."],
+  },
   company: {
-    summary: "Administration - branches and team accounts for your organisation. Reached from the account menu, not the primary sidebar.",
+    summary: "Administration - people, invitations, access, schedules, workloads, settings, and audit history. Reached from the account menu, not the primary sidebar.",
     canDo: [
-      "Add a branch or a team account from the sidebar, or use the forms at the bottom of each table.",
-      "Assign each team member a role and, optionally, a home branch.",
-      "Deactivate an account without deleting its history by toggling its status.",
+      "Invite members and assign role presets plus explicit branch access.",
+      "Plan schedules and accountable workloads without duplicating employee records.",
+      "Maintain organization and branch settings, and review append-only audit history.",
     ],
   },
 };
@@ -216,9 +228,9 @@ const ALL_PORTAL_VIEWS: DashView[] = DASH_VIEWS.filter((view) => view !== ADMIN_
 export const ROLE_NAV: Record<Role, DashView[]> = {
   admin: [...ALL_PORTAL_VIEWS, ADMIN_VIEW],
   general_manager: ALL_PORTAL_VIEWS,
-  sales_manager: ["customers", "vehicles", "usedcars", "sales", "marketing"],
+  sales_manager: ["customers", "vehicles", "usedcars", "sales", "marketing", "analytics", "branch", "group", "workforce"],
   bdc_rep: ["customers", "sales"],
-  finance_manager: ["customers", "vehicles", "sales", "finance"],
+  finance_manager: ["customers", "vehicles", "sales", "finance", "analytics", "branch", "group", "workforce"],
   service_advisor: ["customers", "vehicles", "service", "parts"],
   receptionist: ["customers", "vehicles"],
 };

@@ -111,7 +111,7 @@ vehiclesRouter.post("/:id/ownership/transfer", authorizePermission(CAPABILITIES.
 }));
 
 // ---------------------------------------------------------------------------
-// Documents (metadata and a storage reference only -- see database/012_vehicle_360_core.sql)
+// Documents (metadata and a storage reference only -- see database/021_vehicle_360_core.sql)
 // ---------------------------------------------------------------------------
 
 vehiclesRouter.get("/:id/documents", authorizePermission(CAPABILITIES.VEHICLES_READ), asyncRoute(async (request, response) => {

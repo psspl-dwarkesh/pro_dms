@@ -19,7 +19,11 @@ export const CAPABILITIES = Object.freeze({
   PARTS_MANAGE: "parts.manage",
   FINANCE_MANAGE: "finance.manage",
   FINANCE_SENSITIVE_READ: "finance.sensitive.read",
+  ANALYTICS_READ: "analytics.read",
   ADMIN_MEMBERS_MANAGE: "admin.members.manage",
+  ADMIN_ROLES_MANAGE: "admin.roles.manage",
+  ADMIN_WORKFORCE_MANAGE: "admin.workforce.manage",
+  ADMIN_SETTINGS_MANAGE: "admin.settings.manage",
   ADMIN_AUDIT_READ: "admin.audit.read",
 });
 
@@ -35,13 +39,12 @@ const ROLE_CAPABILITIES = {
     CAPABILITIES.SERVICE_MANAGE,
     CAPABILITIES.PARTS_MANAGE,
     CAPABILITIES.FINANCE_MANAGE,
+    CAPABILITIES.ANALYTICS_READ,
     CAPABILITIES.ADMIN_AUDIT_READ,
   ],
-  // Vehicle 360 core (intake, ownership transfer, appraisal, valuation, stock/location, auction,
-  // and rental/demo) is sales-side work in a real dealership -- trade-in appraisals and stock
-  // intake are handled by sales, not just service. Adding VEHICLES_MANAGE here is additive (see
-  // the note above the capability list); it does not narrow any existing route.
-  sales_manager: [CAPABILITIES.CUSTOMERS_READ, CAPABILITIES.CUSTOMERS_MANAGE, CAPABILITIES.VEHICLES_READ, CAPABILITIES.VEHICLES_MANAGE, CAPABILITIES.SALES_MANAGE],
+  // Vehicle intake, ownership, appraisal, valuation, stock, auction, and rental/demo are
+  // sales-side operations, so sales managers need the existing vehicle-management capability.
+  sales_manager: [CAPABILITIES.CUSTOMERS_READ, CAPABILITIES.CUSTOMERS_MANAGE, CAPABILITIES.VEHICLES_READ, CAPABILITIES.VEHICLES_MANAGE, CAPABILITIES.SALES_MANAGE, CAPABILITIES.ANALYTICS_READ],
   bdc_rep: [CAPABILITIES.CUSTOMERS_READ, CAPABILITIES.CUSTOMERS_MANAGE, CAPABILITIES.SALES_MANAGE],
   finance_manager: [
     CAPABILITIES.CUSTOMERS_READ,
@@ -49,6 +52,7 @@ const ROLE_CAPABILITIES = {
     CAPABILITIES.SALES_MANAGE,
     CAPABILITIES.FINANCE_MANAGE,
     CAPABILITIES.FINANCE_SENSITIVE_READ,
+    CAPABILITIES.ANALYTICS_READ,
   ],
   service_advisor: [CAPABILITIES.CUSTOMERS_READ, CAPABILITIES.VEHICLES_READ, CAPABILITIES.VEHICLES_MANAGE, CAPABILITIES.SERVICE_MANAGE, CAPABILITIES.PARTS_MANAGE],
   receptionist: [CAPABILITIES.CUSTOMERS_READ, CAPABILITIES.VEHICLES_READ],
@@ -56,6 +60,10 @@ const ROLE_CAPABILITIES = {
 
 export function hasPermission(role, capability) {
   return Boolean(ROLE_CAPABILITIES[role]?.includes(capability));
+}
+
+export function roleCapabilities(role) {
+  return [...(ROLE_CAPABILITIES[role] ?? [])];
 }
 
 export function authorizePermission(capability) {

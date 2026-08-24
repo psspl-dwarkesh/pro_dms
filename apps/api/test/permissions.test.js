@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { CAPABILITIES, hasPermission } from "../src/permissions.js";
+import { CAPABILITIES, hasPermission, roleCapabilities } from "../src/permissions.js";
 
 test("admin holds every defined capability", () => {
   for (const capability of Object.values(CAPABILITIES)) {
@@ -26,4 +26,10 @@ test("only admin and general_manager can read the audit log", () => {
 
 test("an unknown role holds no capabilities (deny by default)", () => {
   assert.equal(hasPermission("not-a-real-role", CAPABILITIES.CUSTOMERS_READ), false);
+});
+
+test("administration capabilities extend the existing deny-by-default role map", () => {
+  assert.equal(hasPermission("admin", CAPABILITIES.ADMIN_WORKFORCE_MANAGE), true);
+  assert.equal(hasPermission("general_manager", CAPABILITIES.ADMIN_WORKFORCE_MANAGE), false);
+  assert.deepEqual(roleCapabilities("not-a-real-role"), []);
 });
