@@ -47,7 +47,8 @@ import {
 } from "../data";
 import type { Customer, DashView, Overview, PortalId, Vehicle } from "../types";
 import { CompanyAdmin } from "./CompanyAdmin";
-import { DomainView, OverviewView } from "./DashboardViews";
+import { Analytics360 } from "./Analytics360";
+import { DomainView } from "./DashboardViews";
 import { FinanceView, SalesView, ServiceView } from "./Hubs";
 import { PAGE_WORKFLOW, WorkflowDiagram } from "./PageWorkflows";
 import { PortalTabShell } from "./PortalShell";
@@ -299,7 +300,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
     if (area === "parts") return <DomainView view="parts" />;
     if (area === "sales") return <SalesView onNavigate={navigate} />;
     if (area === "finance") return <FinanceView />;
-    if (area === "analytics") return <OverviewView onNavigate={navigate} />;
+    if (area === "analytics" || area === "branch" || area === "group" || area === "workforce") return <Analytics360 area={area} onNavigate={navigate} />;
     if (area === ADMIN_VIEW) return <CompanyAdmin />;
     const copy = COMING_SOON_COPY[area];
     return (
