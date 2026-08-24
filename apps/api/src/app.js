@@ -2,9 +2,11 @@ import { randomUUID } from "node:crypto";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
+import { auditRequests } from "./audit.js";
 import { databaseStatus } from "./db.js";
 import { asyncRoute, errorEnvelope, HttpError } from "./errors.js";
 import { authenticate } from "./middleware.js";
+import { auditRouter } from "./routes/audit.js";
 import { authRouter } from "./routes/auth.js";
 import { branchesRouter } from "./routes/branches.js";
 import { communicationsRouter } from "./routes/communications.js";
@@ -65,7 +67,9 @@ app.get("/api/health", asyncRoute(async (_request, response) => {
 app.use("/api/v1/auth", authRouter);
 
 app.use("/api/v1", authenticate);
+app.use("/api/v1", auditRequests);
 
+app.use("/api/v1/audit-events", auditRouter);
 app.use("/api/v1/organizations", organizationsRouter);
 app.use("/api/v1/branches", branchesRouter);
 app.use("/api/v1/users", usersRouter);
