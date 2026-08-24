@@ -1,18 +1,39 @@
 import { verifySessionToken } from "./auth.js";
+import { getUserById } from "./db.js";
 import { HttpError } from "./errors.js";
 
-export function authenticate(request, _response, next) {
+// Verifies the bearer token, then re-reads the user from the database on every request so a
+// deactivation or role change takes effect immediately instead of waiting out the token's
+// lifetime. The JWT is only trusted for identity (its subject) and to prove the request was
+// authenticated recently; organizationId/branchId/role always come from the fresh database row,
+// never from the token's (possibly stale) claims.
+export async function authenticate(request, _response, next) {
   const header = request.headers.authorization ?? "";
   const [scheme, token] = header.split(" ");
   if (scheme !== "Bearer" || !token) {
     return next(new HttpError(401, "AUTHENTICATION_REQUIRED", "Sign in to continue."));
   }
 
+  let claims;
   try {
-    request.auth = verifySessionToken(token);
-    return next();
+    claims = verifySessionToken(token);
   } catch {
     return next(new HttpError(401, "SESSION_INVALID", "Your session has expired. Sign in again."));
+  }
+
+  try {
+    const user = await getUserById(claims.userId);
+    if (!user) return next(new HttpError(401, "SESSION_INVALID", "Your session has expired. Sign in again."));
+    if (!user.isActive) return next(new HttpError(401, "ACCOUNT_DEACTIVATED", "This account no longer has access. Contact an administrator."));
+    request.auth = {
+      userId: user.id,
+      organizationId: user.organizationId,
+      branchId: user.branchId,
+      role: user.role,
+    };
+    return next();
+  } catch (cause) {
+    return next(cause);
   }
 }
 

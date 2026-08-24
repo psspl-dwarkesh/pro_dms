@@ -224,6 +224,18 @@ export async function updateUser(organizationId, id, { role, branchId, isActive 
   return result.rows[0];
 }
 
+// Self-service profile edit: deliberately narrower than updateUser -- it can never change role,
+// branch, or active state, so a personal profile form can never become a privilege-escalation path.
+export async function updateOwnProfile(organizationId, id, { name }) {
+  const result = await query(
+    `update users set name = coalesce($3, name)
+      where id = $1 and organization_id = $2
+      returning id, organization_id as "organizationId", branch_id as "branchId", name, email, role, is_active as "isActive"`,
+    [id, organizationId, name ?? null],
+  );
+  return result.rows[0];
+}
+
 // ---------------------------------------------------------------------------
 // Customers
 // ---------------------------------------------------------------------------
@@ -886,4 +898,23 @@ export async function getOverview(organizationId, branchId) {
     lowStockParts: lowStockParts.rows[0].count,
     revenueMtd: revenueMtd.rows[0].total,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Audit events
+// ---------------------------------------------------------------------------
+
+export async function listAuditEvents(organizationId, { limit, offset }) {
+  const result = await query(
+    `select ae.id, ae.actor_user_id as "actorUserId", u.name as "actorName", ae.actor_role as "actorRole",
+            ae.action, ae.method, ae.path, ae.status_code as "statusCode", ae.target_type as "targetType",
+            ae.target_id as "targetId", ae.request_id as "requestId", ae.occurred_at as "occurredAt"
+       from audit_events ae
+       left join users u on u.id = ae.actor_user_id
+      where ae.organization_id = $1
+      order by ae.occurred_at desc
+      limit $2 offset $3`,
+    [organizationId, limit, offset],
+  );
+  return result.rows;
 }
