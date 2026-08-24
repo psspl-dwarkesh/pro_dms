@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from "../../lib/api";
 import type {
   DashView, Lead, Lead360, SalesOrder, SalesOrder360,
-  ServiceJob, ServiceJob360, Vehicle,
+  ServiceJob, WorkshopDetail, Vehicle,
 } from "../types";
 import { CustomerPicker, VehiclePicker } from "./Pickers";
 import { SearchState, Timeline, Toast, WorkflowModal, WorkspacePage } from "./RecordViews";
@@ -242,17 +242,21 @@ export function ServiceView({ onNavigate }: { onNavigate: (view: DashView, recor
   const [statusFilter, setStatusFilter] = useState("");
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [job, setJob] = useState<ServiceJob360 | null>(null);
+  const [job, setJob] = useState<WorkshopDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   const [modal, setModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [technician, setTechnician] = useState("");
+  const [inspection, setInspection] = useState({ area: "", result: "pass", notes: "", inspectedBy: "" });
+  const [estimate, setEstimate] = useState({ description: "", amount: "" });
+  const [invoiceNumber, setInvoiceNumber] = useState("");
   const { toast, notify } = useToast();
 
   function loadList() {
     setListLoading(true);
     setListError(null);
-    apiGet<{ serviceJobs: ServiceJob[] }>(`/api/v1/service-jobs${statusFilter ? `?status=${statusFilter}` : ""}`)
+    return apiGet<{ serviceJobs: ServiceJob[] }>(`/api/v1/service-jobs${statusFilter ? `?status=${statusFilter}` : ""}`)
       .then((result) => {
         setJobs(result.serviceJobs);
         if (!selectedId && result.serviceJobs.length) setSelectedId(result.serviceJobs[0].id);
@@ -263,8 +267,8 @@ export function ServiceView({ onNavigate }: { onNavigate: (view: DashView, recor
 
   function loadJob(id: string) {
     setDetailLoading(true);
-    apiGet<{ serviceJob: ServiceJob360 }>(`/api/v1/service-jobs/${id}/360`)
-      .then((result) => setJob(result.serviceJob))
+    return apiGet<{ workshop: WorkshopDetail }>(`/api/v1/service-jobs/${id}/workshop`)
+      .then((result) => { setJob(result.workshop); setTechnician(result.workshop.technician ?? ""); })
       .catch(() => setJob(null))
       .finally(() => setDetailLoading(false));
   }
@@ -298,6 +302,22 @@ export function ServiceView({ onNavigate }: { onNavigate: (view: DashView, recor
     } catch (cause) {
       notify(cause instanceof ApiError ? cause.message : "Could not update the repair order.");
     }
+  }
+
+  async function workshopAction(path: string, body: object, success: string) {
+    if (!job) return;
+    setSaving(true);
+    try { await apiPost(`/api/v1/service-jobs/${job.id}/${path}`, body); await Promise.all([loadJob(job.id), loadList()]); notify(success); }
+    catch (cause) { notify(cause instanceof ApiError ? cause.message : "The workshop update could not be saved."); }
+    finally { setSaving(false); }
+  }
+
+  async function assignTechnician() {
+    if (!job || !technician.trim()) return;
+    setSaving(true);
+    try { await apiPatch(`/api/v1/service-jobs/${job.id}`, { technician }); loadJob(job.id); loadList(); notify("Technician allocation saved."); }
+    catch (cause) { notify(cause instanceof ApiError ? cause.message : "The technician could not be allocated."); }
+    finally { setSaving(false); }
   }
 
   useContextualActions(() => {
@@ -348,6 +368,13 @@ export function ServiceView({ onNavigate }: { onNavigate: (view: DashView, recor
               <div><span>Parts</span><strong>{money.format(job.partsTotal)}</strong></div>
               <div><span>Opened</span><strong>{dateFormatter.format(new Date(job.openedAt))}</strong></div>
               <div><span>{job.closedAt ? "Closed" : "Promised"}</span><strong>{job.closedAt ? dateFormatter.format(new Date(job.closedAt)) : job.promisedAt ? dateFormatter.format(new Date(job.promisedAt)) : "Not set"}</strong></div>
+            </div>
+            <div className="workshop-grid">
+              <section className="workshop-card"><h4>Technician allocation</h4><label><span>Assigned technician</span><input value={technician} onChange={(event) => setTechnician(event.target.value)} /></label><button disabled={saving || !technician.trim()} type="button" onClick={assignTechnician}>Save allocation</button></section>
+              <section className="workshop-card"><h4>Inspection</h4><label><span>Inspection area</span><input value={inspection.area} onChange={(event) => setInspection({ ...inspection, area: event.target.value })} /></label><label><span>Result</span><select value={inspection.result} onChange={(event) => setInspection({ ...inspection, result: event.target.value })}><option value="pass">Pass</option><option value="attention">Attention</option><option value="urgent">Urgent</option></select></label><label><span>Inspector</span><input value={inspection.inspectedBy} onChange={(event) => setInspection({ ...inspection, inspectedBy: event.target.value })} /></label><label><span>Notes</span><textarea value={inspection.notes} onChange={(event) => setInspection({ ...inspection, notes: event.target.value })} /></label><button disabled={saving || !inspection.area || !inspection.inspectedBy} type="button" onClick={() => workshopAction("inspections", inspection, "Inspection saved.")}>Add inspection</button></section>
+              <section className="workshop-card"><h4>Estimate and digital approval</h4><label><span>Work proposed</span><textarea value={estimate.description} onChange={(event) => setEstimate({ ...estimate, description: event.target.value })} /></label><label><span>Amount (AUD)</span><input min="0" step="0.01" type="number" value={estimate.amount} onChange={(event) => setEstimate({ ...estimate, amount: event.target.value })} /></label><button disabled={saving || !estimate.description || !estimate.amount} type="button" onClick={() => workshopAction("estimates", { ...estimate, amount: Number(estimate.amount) }, "Estimate sent for approval.")}>Send estimate</button>{job.estimates.map((item) => <div className="workshop-row" key={item.id}><div><strong>{item.description}</strong><small>{money.format(item.amount)} · {item.status}</small></div>{item.status === "sent" && <div><button type="button" onClick={() => workshopAction(`estimates/${item.id}/decision`, { decision: "approved", approvedBy: job.customerName }, "Estimate approved.")}>Approve</button><button className="secondary" type="button" onClick={() => workshopAction(`estimates/${item.id}/decision`, { decision: "declined", approvedBy: job.customerName }, "Estimate declined.")}>Decline</button></div>}</div>)}</section>
+              <section className="workshop-card"><h4>Invoice</h4>{job.invoiceStatus === "issued" ? <p><strong>{job.invoiceNumber}</strong><br />{money.format(job.invoiceTotal ?? 0)} · Issued</p> : <><label><span>Invoice number</span><input value={invoiceNumber} onChange={(event) => setInvoiceNumber(event.target.value)} /></label><button disabled={saving || !invoiceNumber.trim()} type="button" onClick={() => workshopAction("invoice", { invoiceNumber }, "Invoice issued.")}>Issue invoice</button></>}</section>
+              <section className="workshop-card workshop-card-wide"><h4>Job tracking</h4>{job.events.length ? job.events.map((event) => <div className="workshop-row" key={event.id}><div><strong>{event.summary}</strong><small>{event.actorName ?? "System"} · {dateFormatter.format(new Date(event.occurredAt))}</small></div></div>) : <p>No workshop events recorded yet.</p>}</section>
             </div>
           </section>
         </div>}

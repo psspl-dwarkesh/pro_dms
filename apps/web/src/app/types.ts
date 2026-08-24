@@ -336,6 +336,16 @@ export type ServiceJob360 = ServiceJob & {
   odometerKm: number | null;
 };
 
+export type WorkshopDetail = ServiceJob360 & {
+  invoiceStatus: "not-ready" | "issued" | "paid" | "void";
+  invoiceNumber: string | null;
+  invoiceTotal: number | null;
+  invoicedAt: string | null;
+  inspections: Array<{ id: string; area: string; result: "pass" | "attention" | "urgent"; notes: string | null; inspectedBy: string; inspectedAt: string }>;
+  estimates: Array<{ id: string; description: string; amount: number; status: "draft" | "sent" | "approved" | "declined"; approvedBy: string | null; approvedAt: string | null; createdAt: string }>;
+  events: Array<{ id: string; eventType: string; summary: string; actorName: string | null; occurredAt: string }>;
+};
+
 export type Part = {
   id: string;
   sku: string;
