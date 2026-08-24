@@ -4,6 +4,7 @@ This is the first stop for contributors and coding agents. Read the smallest set
 
 ## Product and architecture
 
+- [Six-portal workspace plan](./six-portal-workspace-plan.md): **authoritative navigation and information architecture.** Read before touching navigation, routing, or any top-level workspace. Supersedes the "exactly two 360s" recommendation in the remediation DOCX.
 - [Product blueprint](./product-blueprint.md): product thesis, benchmark capabilities, demonstration journeys, and evidence policy.
 - [Showcase depth](./showcase-depth.md): completion contract, connected demonstration path, scope limits, and acceptance checks.
 - [DMS operating cockpits](./dms-operating-cockpits.md): implemented Sales, Used, Inventory, Insurance, and Workforce workflows.
