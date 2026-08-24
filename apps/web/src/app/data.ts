@@ -144,10 +144,11 @@ export const PAGE_HELP: Partial<Record<DashView, { summary: string; canDo: strin
     ],
   },
   vehicles: {
-    summary: "A VIN-led record for every vehicle - ownership, stock and location, service history, and valuation in one place.",
+    summary: "A VIN-led record for every vehicle - intake, ownership, documents, lifecycle, appraisal, valuation, and stock/location, plus auction and rental/demo disposition, all in one place.",
     canDo: [
       "Search or add a vehicle on the left; select one to open its full record.",
-      "Use Quick actions in the sidebar to update valuation or book a workshop visit.",
+      "Use the record's own tabs - Ownership, Documents, Appraisal, Valuation, Stock & location, Auction, Rental & demo - to work each part of the vehicle's lifecycle.",
+      "Use Quick actions in the sidebar to transfer ownership, record an appraisal or valuation, check the vehicle out, or book a workshop visit.",
       "Move between this portal's pages - Service and workshop, Parts, Used, recon, and auction - from the tabs above or the Pages list in the sidebar.",
     ],
   },

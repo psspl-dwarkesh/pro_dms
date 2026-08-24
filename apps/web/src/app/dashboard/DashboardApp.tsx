@@ -52,8 +52,9 @@ import { FinanceView, SalesView, ServiceView } from "./Hubs";
 import { MarketingComingSoonBadge, MarketingView } from "./MarketingView";
 import { PAGE_WORKFLOW, WorkflowDiagram } from "./PageWorkflows";
 import { PortalTabShell } from "./PortalShell";
-import { CustomerView, useDialogFocusTrap, VehicleView } from "./RecordViews";
+import { CustomerView, useDialogFocusTrap } from "./RecordViews";
 import { SidebarActionsProvider } from "./SidebarActions";
+import { VehicleView } from "./VehicleViews";
 import type { SidebarAction } from "./SidebarActions";
 
 type DashboardAppProps = {

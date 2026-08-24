@@ -37,7 +37,11 @@ const ROLE_CAPABILITIES = {
     CAPABILITIES.FINANCE_MANAGE,
     CAPABILITIES.ADMIN_AUDIT_READ,
   ],
-  sales_manager: [CAPABILITIES.CUSTOMERS_READ, CAPABILITIES.CUSTOMERS_MANAGE, CAPABILITIES.VEHICLES_READ, CAPABILITIES.SALES_MANAGE],
+  // Vehicle 360 core (intake, ownership transfer, appraisal, valuation, stock/location, auction,
+  // and rental/demo) is sales-side work in a real dealership -- trade-in appraisals and stock
+  // intake are handled by sales, not just service. Adding VEHICLES_MANAGE here is additive (see
+  // the note above the capability list); it does not narrow any existing route.
+  sales_manager: [CAPABILITIES.CUSTOMERS_READ, CAPABILITIES.CUSTOMERS_MANAGE, CAPABILITIES.VEHICLES_READ, CAPABILITIES.VEHICLES_MANAGE, CAPABILITIES.SALES_MANAGE],
   bdc_rep: [CAPABILITIES.CUSTOMERS_READ, CAPABILITIES.CUSTOMERS_MANAGE, CAPABILITIES.SALES_MANAGE],
   finance_manager: [
     CAPABILITIES.CUSTOMERS_READ,

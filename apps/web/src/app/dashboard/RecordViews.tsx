@@ -1,14 +1,14 @@
 import {
-  AlertTriangle, ArrowRight, BadgeCheck, CalendarDays, CarFront, CircleUserRound, Copy, Download, Edit3,
-  Gauge, Mail, MapPin, Phone, Plus, Search, Share2, ShieldCheck,
+  AlertTriangle, ArrowRight, BadgeCheck, CalendarDays, CarFront, Copy, Download, Edit3,
+  Mail, MapPin, Phone, Plus, Search, Share2, ShieldCheck,
   Trash2, UserPlus, WalletCards, Wrench, X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from "../../lib/api";
 import { GmailIcon, WhatsAppIcon } from "../components/BrandIcons";
 import type {
-  Communication, Customer, Customer360, DashView, SalesOrder, ServiceJob, Vehicle, Vehicle360,
+  Communication, Customer, Customer360, DashView, SalesOrder, ServiceJob,
 } from "../types";
 import { useContextualActions } from "./SidebarActions";
 import type { SidebarAction } from "./SidebarActions";
@@ -17,13 +17,13 @@ import type { SidebarAction } from "./SidebarActions";
 // inside a customer's Vehicles tab) hands this view a specific record id, it opens that exact
 // record instead of defaulting to the first row in the directory. recordId on onNavigate is the
 // matching half of that contract for outbound links.
-type RecordViewProps = { onNavigate: (view: DashView, recordId?: string) => void; openId?: string };
+export type RecordViewProps = { onNavigate: (view: DashView, recordId?: string) => void; openId?: string };
 
 // Applies `openId` to `setSelectedId` once per distinct value, so repeat renders (list reloads,
 // tab switches) do not stomp on a selection the user already made by clicking around the
 // directory. A new distinct openId (a fresh search selection while already on this page) still
 // takes effect.
-function useOpenIdSelection(openId: string | undefined, setSelectedId: (id: string) => void) {
+export function useOpenIdSelection(openId: string | undefined, setSelectedId: (id: string) => void) {
   const appliedOpenId = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (openId && openId !== appliedOpenId.current) {
@@ -50,13 +50,13 @@ export function Timeline({ items }: { items: Array<{ occurredAt: string; type: s
   return <div className="record-timeline">{items.map((item, index) => <div key={`${item.occurredAt}-${index}`} className="timeline-event"><i /><div><span>{dateFormatter.format(new Date(item.occurredAt))} - {item.type}</span><strong>{item.summary}</strong></div></div>)}</div>;
 }
 
-function OperationalTable({ columns, rows }: { columns: string[]; rows: Array<Array<string | number>> }) {
+export function OperationalTable({ columns, rows }: { columns: string[]; rows: Array<Array<string | number>> }) {
   const grid = { gridTemplateColumns: `repeat(${columns.length}, minmax(105px, 1fr))` };
   if (!rows.length) return <div className="timeline-empty">No records yet.</div>;
   return <div className="operational-table"><div className="operational-table-head" style={grid}>{columns.map((column) => <span key={column}>{column}</span>)}</div>{rows.map((row, index) => <div style={grid} key={index} className="operational-table-row">{row.map((value, valueIndex) => <span key={valueIndex} className={valueIndex === 0 ? "primary" : valueIndex === columns.length - 1 ? "status" : ""}>{value}</span>)}</div>)}</div>;
 }
 
-function SectionToolbar({ title, detail, action, onAction }: { title: string; detail: string; action?: string; onAction?: () => void }) {
+export function SectionToolbar({ title, detail, action, onAction }: { title: string; detail: string; action?: string; onAction?: () => void }) {
   return <div className="section-toolbar"><div><span>{title}</span><strong>{detail}</strong></div>{action && <button type="button" onClick={onAction}><Plus />{action}</button>}</div>;
 }
 
@@ -410,213 +410,7 @@ function LogCommunicationModal({ onClose, onSubmit, saving }: { saving: boolean;
   </WorkflowModal>;
 }
 
-// ---------------------------------------------------------------------------
-// Vehicle 360
-// ---------------------------------------------------------------------------
-
-type VehicleModal = null | "create-vehicle" | "edit-vehicle" | "book-service";
-
-export function VehicleView({ onNavigate, openId }: RecordViewProps) {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [listLoading, setListLoading] = useState(true);
-  const [listError, setListError] = useState<ApiError | null>(null);
-  const [query, setQuery] = useState("");
-
-  const [selectedId, setSelectedId] = useState<string | null>(openId ?? null);
-  useOpenIdSelection(openId, setSelectedId);
-  const [vehicle, setVehicle] = useState<Vehicle360 | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-
-  const [tab, setTab] = useState("Overview");
-  const [jobs, setJobs] = useState<ServiceJob[]>([]);
-
-  const [modal, setModal] = useState<VehicleModal>(null);
-  const [saving, setSaving] = useState(false);
-  const { toast, notify } = useToast();
-
-  function loadList(searchTerm: string) {
-    setListLoading(true);
-    setListError(null);
-    apiGet<{ vehicles: Vehicle[] }>(`/api/v1/vehicles${searchTerm ? `?q=${encodeURIComponent(searchTerm)}` : ""}`)
-      .then((result) => {
-        setVehicles(result.vehicles);
-        if (!selectedId && result.vehicles.length) setSelectedId(result.vehicles[0].id);
-      })
-      .catch((cause) => setListError(cause instanceof ApiError ? cause : new ApiError("Vehicle search failed.", { status: 500 })))
-      .finally(() => setListLoading(false));
-  }
-
-  useEffect(() => { loadList(""); }, []);
-
-  useEffect(() => {
-    if (!selectedId) { setVehicle(null); return; }
-    setDetailLoading(true);
-    apiGet<{ vehicle: Vehicle360 }>(`/api/v1/vehicles/${selectedId}/360`)
-      .then((result) => setVehicle(result.vehicle))
-      .catch(() => setVehicle(null))
-      .finally(() => setDetailLoading(false));
-  }, [selectedId]);
-
-  useEffect(() => {
-    if (!selectedId || tab !== "Work orders") return;
-    apiGet<{ serviceJobs: ServiceJob[] }>(`/api/v1/service-jobs?vehicleId=${selectedId}`).then((result) => setJobs(result.serviceJobs)).catch(() => setJobs([]));
-  }, [tab, selectedId]);
-
-  function searchVehicles(event: FormEvent) {
-    event.preventDefault();
-    loadList(query.trim());
-  }
-
-  async function submitCreateVehicle(form: { vin: string; make: string; model: string; variant: string; colour: string; registration: string; status: string }) {
-    setSaving(true);
-    try {
-      const result = await apiPost<{ vehicle: Vehicle }>("/api/v1/vehicles", form);
-      setModal(null);
-      loadList(query.trim());
-      setSelectedId(result.vehicle.id);
-      notify("Vehicle added to inventory.");
-    } catch (cause) {
-      notify(cause instanceof ApiError ? cause.message : "Could not create the vehicle.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function submitEditVehicle(form: { registration: string; colour: string; odometerKm: string; marketValue: string; status: string }) {
-    if (!vehicle) return;
-    setSaving(true);
-    try {
-      await apiPatch(`/api/v1/vehicles/${vehicle.id}`, { ...form, odometerKm: form.odometerKm ? Number(form.odometerKm) : undefined, marketValue: form.marketValue ? Number(form.marketValue) : undefined });
-      setModal(null);
-      apiGet<{ vehicle: Vehicle360 }>(`/api/v1/vehicles/${vehicle.id}/360`).then((result) => setVehicle(result.vehicle));
-      loadList(query.trim());
-      notify("Vehicle record updated.");
-    } catch (cause) {
-      notify(cause instanceof ApiError ? cause.message : "Could not update the vehicle.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function deleteVehicle() {
-    if (!vehicle) return;
-    if (!window.confirm(`Delete ${vehicle.make} ${vehicle.model}? This cannot be undone.`)) return;
-    try {
-      await apiDelete(`/api/v1/vehicles/${vehicle.id}`);
-      setSelectedId(null);
-      loadList(query.trim());
-      notify("Vehicle deleted.");
-    } catch (cause) {
-      notify(cause instanceof ApiError ? cause.message : "Could not delete the vehicle.");
-    }
-  }
-
-  async function submitBookService(form: { repairOrderNumber: string; advisor: string; complaint: string }) {
-    if (!vehicle || !vehicle.ownerId) return;
-    setSaving(true);
-    try {
-      await apiPost("/api/v1/service-jobs", { customerId: vehicle.ownerId, vehicleId: vehicle.id, repairOrderNumber: form.repairOrderNumber, advisor: form.advisor, complaint: form.complaint });
-      setModal(null);
-      notify("Workshop booking confirmed.");
-    } catch (cause) {
-      notify(cause instanceof ApiError ? cause.message : "Could not create the booking.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  useContextualActions(() => {
-    if (!vehicle) return [];
-    const list: SidebarAction[] = [
-      { id: "add-to-stock", label: "Add to stock", detail: "Create a VIN master record", icon: Plus, onClick: () => setModal("create-vehicle") },
-      { id: "update-valuation", label: "Update valuation", detail: "Odometer, colour and market value", icon: Gauge, onClick: () => setModal("edit-vehicle") },
-    ];
-    if (vehicle.ownerId) list.push({ id: "book-workshop", label: "Book workshop", detail: "Service or inspection", icon: Wrench, onClick: () => setModal("book-service") });
-    list.push({ id: "share", label: "Share", icon: Share2, onClick: () => shareRecord(`${vehicle.make} ${vehicle.model}`).then(() => notify("Summary shared.")), group: "This record" });
-    list.push({ id: "export", label: "Export", icon: Download, onClick: () => { exportCsv(`${vehicle.make} ${vehicle.model}`); notify("CSV exported."); }, group: "This record" });
-    list.push({ id: "delete", label: "Delete", icon: Trash2, tone: "danger", onClick: deleteVehicle, group: "This record" });
-    return list;
-  }, [vehicle]);
-
-  const estimatedTrade = useMemo(() => (vehicle?.marketValue ? vehicle.marketValue * 0.93 : null), [vehicle]);
-  const wholesaleFloor = useMemo(() => (vehicle?.marketValue ? vehicle.marketValue * 0.89 : null), [vehicle]);
-
-  return <WorkspacePage>
-    <div className="record-workbench">
-      <aside className="record-directory-panel">
-        <header className="directory-panel-heading"><div><span>Vehicle directory</span><strong>{vehicles.length} connected assets</strong></div><button type="button" onClick={() => setModal("create-vehicle")} aria-label="Add vehicle"><Plus /></button></header>
-        <form className="record-search" onSubmit={searchVehicles}><Search /><input aria-label="Search vehicles" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="VIN, registration, make or model" />{query && <button className="search-clear" type="button" aria-label="Clear vehicle search" onClick={() => { setQuery(""); loadList(""); }}><X /></button>}<button className="search-submit" type="submit" disabled={listLoading}>Search</button></form>
-        <SearchState loading={listLoading} error={listError} fields="VIN, registration, make, or model" />
-        <section className="vehicle-directory"><div className="vehicle-list-head"><span>Vehicle</span><span>Status</span><span>Value</span></div>
-          {vehicles.map((entry) => <button type="button" className={selectedId === entry.id ? "selected" : ""} key={entry.id} onClick={() => setSelectedId(entry.id)}><span className="vehicle-list-icon"><CarFront /></span><div><strong>{entry.modelYear ?? ""} {entry.make} {entry.model}</strong><small>{entry.registration ?? entry.vin.slice(-8)}</small></div><span>{entry.status}</span><b>{entry.marketValue ? money.format(entry.marketValue) : "-"}</b><ArrowRight /></button>)}
-          {!listLoading && !vehicles.length && <div className="customer-list-empty"><Search />No matching vehicles. Add one to get started.</div>}
-        </section>
-      </aside>
-      <section className="record-detail-panel">
-        {detailLoading && <div className="empty-state"><Search /><strong>Loading vehicle</strong></div>}
-        {!detailLoading && !vehicle && <div className="empty-state"><Search /><strong>No vehicle selected</strong><p>Search or add a vehicle to see its connected record.</p></div>}
-        {!detailLoading && vehicle && <>
-          <div className="record-layout">
-            <section className="record-main-card">
-              <div className="vehicle-hero"><div className="vehicle-silhouette"><CarFront /></div><div><span>{vehicle.modelYear ?? "Year unknown"} - {vehicle.status.replaceAll("-", " ")}</span><h3>{vehicle.make} {vehicle.model}</h3><p>{vehicle.variant ?? ""} {vehicle.colour ?? ""}</p></div><div><span>Registration</span><strong>{vehicle.registration ?? "Unregistered"}</strong></div></div>
-              <div className="record-tabs" role="tablist">{["Overview", "Lifecycle", "Work orders", "Valuation", "Ownership"].map((item) => <button role="tab" aria-selected={tab === item} className={tab === item ? "active" : ""} type="button" key={item} onClick={() => setTab(item)}>{item}</button>)}</div>
-              {tab === "Overview" && <div className="record-facts"><div><CarFront /><span>VIN</span><strong className="fact-small">{vehicle.vin}</strong></div><div><Gauge /><span>Odometer</span><strong>{vehicle.odometerKm ? `${new Intl.NumberFormat("en-AU").format(vehicle.odometerKm)} km` : "Not recorded"}</strong></div><div><WalletCards /><span>Market value</span><strong>{vehicle.marketValue ? money.format(vehicle.marketValue) : "Not set"}</strong></div><div><CircleUserRound /><span>Current owner</span>{vehicle.ownerId ? <button type="button" onClick={() => onNavigate("customers", vehicle.ownerId)}>{vehicle.ownerName}</button> : <strong>Unowned</strong>}</div></div>}
-              {tab === "Lifecycle" && <Timeline items={vehicle.timeline} />}
-              {tab === "Work orders" && <><SectionToolbar title="Workshop history" detail={`${jobs.length} repair orders on file`} action={vehicle.ownerId ? "Book workshop" : undefined} onAction={() => setModal("book-service")} /><OperationalTable columns={["Repair order", "Status", "Opened", "Labour"]} rows={jobs.map((job) => [job.repairOrderNumber, job.status, dateFormatter.format(new Date(job.openedAt)), money.format(job.labourTotal)])} /></>}
-              {tab === "Valuation" && <div className="valuation-panel"><div><span>Retail market</span><strong>{vehicle.marketValue ? money.format(vehicle.marketValue) : "Not set"}</strong></div>{estimatedTrade && <div><span>Estimated trade value</span><strong>{money.format(estimatedTrade)}</strong><em>Estimated at 93% of market value</em></div>}{wholesaleFloor && <div><span>Estimated wholesale floor</span><strong>{money.format(wholesaleFloor)}</strong><em>Estimated at 89% of market value</em></div>}<button type="button" onClick={() => setModal("edit-vehicle")}>Update valuation <ArrowRight /></button></div>}
-              {tab === "Ownership" && <InfoGrid items={[["Current owner", vehicle.ownerName ?? "Unowned"], ["Contact", vehicle.ownerMobile ?? "Not on file"], ["Status", vehicle.status]]} />}
-            </section>
-          </div>
-        </>}
-      </section>
-    </div>
-    {modal === "create-vehicle" && <CreateVehicleModal saving={saving} onClose={() => setModal(null)} onSubmit={submitCreateVehicle} />}
-    {modal === "edit-vehicle" && vehicle && <EditVehicleModal vehicle={vehicle} saving={saving} onClose={() => setModal(null)} onSubmit={submitEditVehicle} />}
-    {modal === "book-service" && vehicle && <VehicleServiceModal saving={saving} onClose={() => setModal(null)} onSubmit={submitBookService} />}
-    {toast && <Toast message={toast} />}
-  </WorkspacePage>;
-}
-
-function CreateVehicleModal({ onClose, onSubmit, saving }: { saving: boolean; onClose: () => void; onSubmit: (form: { vin: string; make: string; model: string; variant: string; colour: string; registration: string; status: string }) => void }) {
-  const [form, setForm] = useState({ vin: "", make: "", model: "", variant: "", colour: "", registration: "", status: "in-stock" });
-  return <WorkflowModal title="Add vehicle to inventory" eyebrow="Vehicle intake" completeLabel="Create vehicle" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
-    <div className="workflow-form-grid">
-      <label><span>VIN</span><input required value={form.vin} onChange={(event) => setForm({ ...form, vin: event.target.value.toUpperCase() })} /></label>
-      <label><span>Registration</span><input value={form.registration} onChange={(event) => setForm({ ...form, registration: event.target.value })} /></label>
-      <label><span>Make</span><input required value={form.make} onChange={(event) => setForm({ ...form, make: event.target.value })} /></label>
-      <label><span>Model</span><input required value={form.model} onChange={(event) => setForm({ ...form, model: event.target.value })} /></label>
-      <label><span>Variant</span><input value={form.variant} onChange={(event) => setForm({ ...form, variant: event.target.value })} /></label>
-      <label><span>Colour</span><input value={form.colour} onChange={(event) => setForm({ ...form, colour: event.target.value })} /></label>
-      <label><span>Status</span><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}><option value="in-stock">In stock</option><option value="demo">Demo</option><option value="reserved">Reserved</option><option value="customer-owned">Customer owned</option></select></label>
-    </div>
-  </WorkflowModal>;
-}
-
-function EditVehicleModal({ vehicle, onClose, onSubmit, saving }: { vehicle: Vehicle360; saving: boolean; onClose: () => void; onSubmit: (form: { registration: string; colour: string; odometerKm: string; marketValue: string; status: string }) => void }) {
-  const [form, setForm] = useState({ registration: vehicle.registration ?? "", colour: vehicle.colour ?? "", odometerKm: vehicle.odometerKm?.toString() ?? "", marketValue: vehicle.marketValue?.toString() ?? "", status: vehicle.status });
-  return <WorkflowModal title="Update vehicle" eyebrow="Vehicle record" completeLabel="Save changes" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
-    <div className="workflow-form-grid">
-      <label><span>Registration</span><input value={form.registration} onChange={(event) => setForm({ ...form, registration: event.target.value })} /></label>
-      <label><span>Colour</span><input value={form.colour} onChange={(event) => setForm({ ...form, colour: event.target.value })} /></label>
-      <label><span>Odometer (km)</span><input type="number" min="0" value={form.odometerKm} onChange={(event) => setForm({ ...form, odometerKm: event.target.value })} /></label>
-      <label><span>Market value (AUD)</span><input type="number" min="0" value={form.marketValue} onChange={(event) => setForm({ ...form, marketValue: event.target.value })} /></label>
-      <label><span>Status</span><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}><option value="in-stock">In stock</option><option value="demo">Demo</option><option value="reserved">Reserved</option><option value="customer-owned">Customer owned</option><option value="sold">Sold</option></select></label>
-    </div>
-  </WorkflowModal>;
-}
-
-function VehicleServiceModal({ onClose, onSubmit, saving }: { saving: boolean; onClose: () => void; onSubmit: (form: { repairOrderNumber: string; advisor: string; complaint: string }) => void }) {
-  const [form, setForm] = useState({ repairOrderNumber: `RO-${Math.floor(Math.random() * 90000 + 10000)}`, advisor: "", complaint: "" });
-  return <WorkflowModal title="Create workshop booking" eyebrow="Vehicle operations" completeLabel="Confirm booking" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
-    <div className="workflow-form-grid">
-      <label><span>Repair order number</span><input value={form.repairOrderNumber} onChange={(event) => setForm({ ...form, repairOrderNumber: event.target.value })} /></label>
-      <label><span>Advisor</span><input value={form.advisor} onChange={(event) => setForm({ ...form, advisor: event.target.value })} /></label>
-      <label className="workflow-form-full"><span>Work requested</span><input value={form.complaint} onChange={(event) => setForm({ ...form, complaint: event.target.value })} /></label>
-    </div>
-  </WorkflowModal>;
-}
-
-function InfoGrid({ items }: { items: string[][] }) {
+export function InfoGrid({ items }: { items: string[][] }) {
   return <div className="info-grid">{items.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>;
 }
 
