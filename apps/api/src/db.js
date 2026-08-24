@@ -265,6 +265,54 @@ export async function listCustomers(organizationId, { search, limit, offset }) {
   return result.rows;
 }
 
+// Bare digits only, so "04 1234 5678", "+61 4 1234 5678", and "0412345678" compare equal when
+// checking for duplicates.
+function normalizedDigits(value) {
+  return value ? value.replace(/\D/g, "") : "";
+}
+
+// Surfaces existing customers that look like the same person or company before a create/edit
+// commits -- the remediation spec's entity-selection rule (7.4) permits "Create new ..." only
+// after duplicate checking. Matches are exact (normalized mobile, case-insensitive email, or
+// case-insensitive display name), not fuzzy: a false-positive block is worse than an occasional
+// missed near-duplicate. Capped at 5 and excludes the record being edited when `excludeId` is set.
+export async function findPotentialDuplicateCustomers(organizationId, { mobile, email, displayName, excludeId }) {
+  const mobileDigits = normalizedDigits(mobile);
+  const trimmedEmail = email ? email.trim().toLowerCase() : "";
+  const trimmedName = displayName ? displayName.trim() : "";
+  if (!mobileDigits && !trimmedEmail && !trimmedName) return [];
+
+  const values = [organizationId];
+  const conditions = [];
+  if (mobileDigits) {
+    values.push(mobileDigits);
+    conditions.push(`regexp_replace(coalesce(mobile, ''), '\\D', '', 'g') = $${values.length}`);
+  }
+  if (trimmedEmail) {
+    values.push(trimmedEmail);
+    conditions.push(`lower(email) = $${values.length}`);
+  }
+  if (trimmedName) {
+    values.push(trimmedName);
+    conditions.push(`lower(display_name) = lower($${values.length})`);
+  }
+  let where = `organization_id = $1 and (${conditions.join(" or ")})`;
+  if (excludeId) {
+    values.push(excludeId);
+    where += ` and id <> $${values.length}`;
+  }
+
+  const result = await query(
+    `select id, display_name as "displayName", customer_type as "customerType", mobile, email,
+            preferred_channel as "preferredChannel", address, lifetime_value::float as "lifetimeValue",
+            created_at as "customerSince"
+       from customers where ${where}
+      order by created_at desc limit 5`,
+    values,
+  );
+  return result.rows;
+}
+
 export async function createCustomer(organizationId, { customerType, displayName, mobile, email, preferredChannel, address }) {
   const result = await query(
     `insert into customers (organization_id, customer_type, display_name, mobile, email, preferred_channel, address)
@@ -834,12 +882,20 @@ export async function updateInsurancePolicy(organizationId, id, { status, premiu
 // Communications
 // ---------------------------------------------------------------------------
 
-export async function listCommunications(organizationId, customerId, { limit, offset }) {
+export async function listCommunications(organizationId, customerId, { channel, direction, limit, offset }) {
   const values = [organizationId];
   let where = "c.organization_id = $1";
   if (customerId) {
     values.push(customerId);
     where += ` and comm.customer_id = $${values.length}`;
+  }
+  if (channel) {
+    values.push(channel);
+    where += ` and comm.channel = $${values.length}`;
+  }
+  if (direction) {
+    values.push(direction);
+    where += ` and comm.direction = $${values.length}`;
   }
   values.push(limit, offset);
   const result = await query(
@@ -862,6 +918,164 @@ export async function createCommunication(organizationId, { customerId, channel,
      values ($1, $2, $3, $4, $5)
      returning id, customer_id as "customerId", channel, direction, subject, summary, occurred_at as "occurredAt"`,
     [customerId, channel, direction, subject ?? null, summary],
+  );
+  return result.rows[0];
+}
+
+// ---------------------------------------------------------------------------
+// Customer notes, tasks, consent, and documents (database/013_customer_relationship_records.sql)
+// ---------------------------------------------------------------------------
+
+async function assertCustomerOwned(organizationId, customerId) {
+  const owned = await query("select id from customers where id = $1 and organization_id = $2", [customerId, organizationId]);
+  if (!owned.rowCount) throw Object.assign(new Error("Customer not found."), { status: 404, code: "CUSTOMER_NOT_FOUND", expose: true });
+}
+
+export async function listCustomerNotes(organizationId, customerId, { limit, offset }) {
+  await assertCustomerOwned(organizationId, customerId);
+  const result = await query(
+    `select cn.id, cn.customer_id as "customerId", cn.body, cn.created_at as "createdAt",
+            cn.author_user_id as "authorUserId", u.name as "authorName"
+       from customer_notes cn
+       left join users u on u.id = cn.author_user_id
+      where cn.organization_id = $1 and cn.customer_id = $2
+      order by cn.created_at desc limit $3 offset $4`,
+    [organizationId, customerId, limit, offset],
+  );
+  return result.rows;
+}
+
+export async function createCustomerNote(organizationId, customerId, { body, authorUserId }) {
+  await assertCustomerOwned(organizationId, customerId);
+  const result = await query(
+    `insert into customer_notes (organization_id, customer_id, author_user_id, body)
+     values ($1, $2, $3, $4)
+     returning id, customer_id as "customerId", body, created_at as "createdAt", author_user_id as "authorUserId"`,
+    [organizationId, customerId, authorUserId ?? null, body],
+  );
+  return result.rows[0];
+}
+
+export async function deleteCustomerNote(organizationId, customerId, noteId) {
+  const result = await query(
+    "delete from customer_notes where id = $1 and customer_id = $2 and organization_id = $3",
+    [noteId, customerId, organizationId],
+  );
+  return result.rowCount > 0;
+}
+
+export async function listCustomerTasks(organizationId, customerId, { limit, offset }) {
+  await assertCustomerOwned(organizationId, customerId);
+  const result = await query(
+    `select id, customer_id as "customerId", title, assigned_to as "assignedTo", due_at as "dueAt",
+            status, created_at as "createdAt", completed_at as "completedAt"
+       from customer_tasks
+      where organization_id = $1 and customer_id = $2
+      order by (status = 'open') desc, due_at asc nulls last, created_at desc
+      limit $3 offset $4`,
+    [organizationId, customerId, limit, offset],
+  );
+  return result.rows;
+}
+
+export async function createCustomerTask(organizationId, customerId, { title, assignedTo, dueAt, createdBy }) {
+  await assertCustomerOwned(organizationId, customerId);
+  const result = await query(
+    `insert into customer_tasks (organization_id, customer_id, title, assigned_to, due_at, created_by)
+     values ($1, $2, $3, $4, $5, $6)
+     returning id, customer_id as "customerId", title, assigned_to as "assignedTo", due_at as "dueAt",
+               status, created_at as "createdAt", completed_at as "completedAt"`,
+    [organizationId, customerId, title, assignedTo ?? null, dueAt ?? null, createdBy ?? null],
+  );
+  return result.rows[0];
+}
+
+export async function updateCustomerTaskStatus(organizationId, customerId, taskId, status) {
+  const result = await query(
+    `update customer_tasks set status = $4, completed_at = case when $4 = 'open' then null else now() end
+      where id = $1 and customer_id = $2 and organization_id = $3
+      returning id, customer_id as "customerId", title, assigned_to as "assignedTo", due_at as "dueAt",
+                status, created_at as "createdAt", completed_at as "completedAt"`,
+    [taskId, customerId, organizationId, status],
+  );
+  return result.rows[0];
+}
+
+// Every consent channel a customer can be asked about, in the order the UI always shows them --
+// so a channel with no recorded decision yet still renders as "not yet recorded" rather than
+// silently disappearing from the list.
+const CONSENT_CHANNELS = ["call", "whatsapp", "email", "sms"];
+
+// Consent is an append-only event log (see the migration): this reduces it to the current state
+// per channel, defaulting an unrecorded channel to "unknown" rather than guessing opted in or out.
+export async function getCustomerConsent(organizationId, customerId) {
+  await assertCustomerOwned(organizationId, customerId);
+  const result = await query(
+    `select distinct on (channel) channel, status, source, recorded_at as "recordedAt", recorded_by as "recordedBy"
+       from customer_consents
+      where organization_id = $1 and customer_id = $2
+      order by channel, recorded_at desc`,
+    [organizationId, customerId],
+  );
+  const current = new Map(result.rows.map((row) => [row.channel, row]));
+  return CONSENT_CHANNELS.map((channel) => current.get(channel) ?? { channel, status: "unknown", source: null, recordedAt: null, recordedBy: null });
+}
+
+export async function listCustomerConsentHistory(organizationId, customerId, { limit, offset }) {
+  await assertCustomerOwned(organizationId, customerId);
+  const result = await query(
+    `select id, channel, status, source, recorded_at as "recordedAt", recorded_by as "recordedBy"
+       from customer_consents
+      where organization_id = $1 and customer_id = $2
+      order by recorded_at desc limit $3 offset $4`,
+    [organizationId, customerId, limit, offset],
+  );
+  return result.rows;
+}
+
+export async function recordCustomerConsent(organizationId, customerId, { channel, status, source, recordedBy }) {
+  await assertCustomerOwned(organizationId, customerId);
+  const result = await query(
+    `insert into customer_consents (organization_id, customer_id, channel, status, source, recorded_by)
+     values ($1, $2, $3, $4, $5, $6)
+     returning id, channel, status, source, recorded_at as "recordedAt", recorded_by as "recordedBy"`,
+    [organizationId, customerId, channel, status, source ?? null, recordedBy ?? null],
+  );
+  return result.rows[0];
+}
+
+export async function listCustomerDocuments(organizationId, customerId, { limit, offset }) {
+  await assertCustomerOwned(organizationId, customerId);
+  const result = await query(
+    `select id, customer_id as "customerId", document_type as "documentType", label, status,
+            storage_reference as "storageReference", uploaded_by as "uploadedBy", created_at as "createdAt"
+       from customer_documents
+      where organization_id = $1 and customer_id = $2
+      order by created_at desc limit $3 offset $4`,
+    [organizationId, customerId, limit, offset],
+  );
+  return result.rows;
+}
+
+export async function createCustomerDocument(organizationId, customerId, { documentType, label, status, storageReference, uploadedBy }) {
+  await assertCustomerOwned(organizationId, customerId);
+  const result = await query(
+    `insert into customer_documents (organization_id, customer_id, document_type, label, status, storage_reference, uploaded_by)
+     values ($1, $2, $3, $4, $5, $6, $7)
+     returning id, customer_id as "customerId", document_type as "documentType", label, status,
+               storage_reference as "storageReference", uploaded_by as "uploadedBy", created_at as "createdAt"`,
+    [organizationId, customerId, documentType, label, status ?? "received", storageReference ?? null, uploadedBy ?? null],
+  );
+  return result.rows[0];
+}
+
+export async function updateCustomerDocumentStatus(organizationId, customerId, documentId, status) {
+  const result = await query(
+    `update customer_documents set status = $4
+      where id = $1 and customer_id = $2 and organization_id = $3
+      returning id, customer_id as "customerId", document_type as "documentType", label, status,
+                storage_reference as "storageReference", uploaded_by as "uploadedBy", created_at as "createdAt"`,
+    [documentId, customerId, organizationId, status],
   );
   return result.rows[0];
 }

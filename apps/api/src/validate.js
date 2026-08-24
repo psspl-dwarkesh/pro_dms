@@ -28,6 +28,15 @@ export function optionalNumber(value) {
   return number;
 }
 
+export function optionalIsoDateTime(value, field) {
+  if (value === undefined || value === null || value === "") return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new HttpError(400, "INVALID_INPUT", `${field} must be a valid date.`, [{ field }]);
+  }
+  return date.toISOString();
+}
+
 export function requireEnum(value, field, allowed) {
   if (!allowed.includes(value)) {
     throw new HttpError(400, "INVALID_INPUT", `${field} must be one of: ${allowed.join(", ")}.`, [{ field }]);
