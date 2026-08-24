@@ -133,6 +133,53 @@ export async function findVehicles(searchTerm) {
   return result.rows;
 }
 
+export async function searchAllRecords(searchTerm, limit) {
+  if (!pool) return null;
+  const value = `%${searchTerm}%`;
+  const [customers, vehicles, operations] = await Promise.all([
+    query(
+      `select id, display_name as title,
+              concat_ws(' · ', nullif(mobile, ''), nullif(email, '')) as subtitle,
+              customer_type as meta
+         from customers
+        where display_name ilike $1 or mobile ilike $1 or email ilike $1
+        order by lifetime_value desc limit $2`,
+      [value, limit],
+    ),
+    query(
+      `select id, concat_ws(' ', model_year::text, make, model) as title,
+              concat_ws(' · ', registration, vin) as subtitle,
+              status as meta
+         from vehicles
+        where vin ilike $1 or registration ilike $1 or make ilike $1 or model ilike $1
+        order by model_year desc nulls last limit $2`,
+      [value, limit],
+    ),
+    query(
+      `select * from (
+         select sj.id::text as id, 'repair-order' as kind, sj.repair_order_number as title,
+                coalesce(nullif(sj.complaint, ''), sj.status) as subtitle,
+                concat_ws(' · ', v.registration, c.display_name) as meta, 'service' as view
+           from service_jobs sj
+           join customers c on c.id = sj.customer_id
+           join vehicles v on v.id = sj.vehicle_id
+          where sj.repair_order_number ilike $1 or sj.complaint ilike $1
+             or c.display_name ilike $1 or v.registration ilike $1 or v.vin ilike $1
+         union all
+         select so.id::text, 'deal', 'Deal ' || left(so.id::text, 8), so.status,
+                concat_ws(' · ', v.registration, c.display_name), 'sales'
+           from sales_orders so
+           join customers c on c.id = so.customer_id
+           join vehicles v on v.id = so.vehicle_id
+          where so.id::text ilike $1 or c.display_name ilike $1
+             or v.registration ilike $1 or v.vin ilike $1
+       ) records limit $2`,
+      [value, limit],
+    ),
+  ]);
+  return { customers: customers.rows, vehicles: vehicles.rows, operations: operations.rows };
+}
+
 export async function getVehicle360(id) {
   if (!pool) return null;
   const result = await query(

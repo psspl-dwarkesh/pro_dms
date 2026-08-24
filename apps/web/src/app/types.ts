@@ -38,6 +38,7 @@ export type Customer360 = {
 
 export type Vehicle360 = {
   id: string;
+  ownerId?: string;
   vin: string;
   registration: string;
   make: string;
@@ -63,4 +64,20 @@ export type DomainConfig = {
   queue: Array<{ primary: string; secondary: string; meta: string; status: string; tone: "good" | "warn" | "bad" | "neutral" }>;
   insightTitle: string;
   insight: string;
+};
+
+export type GlobalSearchRecord = {
+  id: string;
+  kind: string;
+  title: string;
+  subtitle: string;
+  meta: string;
+  view: DashView;
+};
+
+export type GlobalSearchResponse = {
+  dataSource: "postgresql" | "demonstration";
+  query: string;
+  total: number;
+  groups: Array<{ id: string; label: string; results: GlobalSearchRecord[] }>;
 };

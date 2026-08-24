@@ -1652,6 +1652,33 @@
 .command-clear { width: 30px !important; height: 30px !important; display: grid !important; place-items: center; border-radius: 50% !important; padding: 0 !important; background: var(--paper-2) !important; color: var(--ink-500) !important; }
 .command-clear:hover { background: var(--blue-soft) !important; color: var(--blue) !important; }
 .command-clear svg { width: 14px !important; }
+.command-palette--grouped { width: min(100%,720px); max-height: min(78dvh,760px); display: flex; flex-direction: column; }
+.command-palette--grouped > header { flex: 0 0 auto; }
+.command-search-meta { min-height: 38px; display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding: 7px 18px; color: var(--ink-500); font-size: 9px; }
+.command-search-meta > em { border-radius: 4px; padding: 4px 7px; background: var(--paper-2); color: var(--ink-600); font-size: 8px; font-style: normal; font-weight: 680; }
+.command-search-meta > em.connected { background: var(--mint-soft); color: #087d5b; }
+.command-result-groups { min-height: 0; overflow-y: auto; padding: 6px 10px 12px; }
+.command-result-groups > section > header { height: auto; display: flex; align-items: center; justify-content: space-between; border: 0; padding: 12px 8px 6px; color: var(--ink-500); }
+.command-result-groups > section > header span { font-size: 9px; font-weight: 720; letter-spacing: .07em; text-transform: uppercase; }
+.command-result-groups > section > header em { min-width: 22px; border-radius: 4px; padding: 3px 6px; background: var(--paper-2); color: var(--ink-500); font-size: 8px; font-style: normal; text-align: center; }
+.command-result-groups > section > button { width: 100%; min-height: 68px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 12px; border: 1px solid transparent; border-radius: 6px; padding: 9px 10px; background: transparent; color: var(--ink-950); cursor: pointer; text-align: left; }
+.command-result-groups > section > button:hover,
+.command-result-groups > section > button.selected { border-color: rgba(20,99,255,.18); background: var(--blue-wash); }
+.command-result-groups > section > button > i { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 6px; background: var(--blue-soft); color: var(--blue); }
+.command-result-groups > section > button > i svg { width: 17px; }
+.command-result-groups > section > button > div { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.command-result-groups > section > button strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.command-result-groups > section > button small,
+.command-result-groups > section > button div em { overflow: hidden; color: var(--ink-500); font-size: 9px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.command-result-groups > section > button div em { color: var(--blue); font-size: 8px; }
+.command-result-groups > section > button > svg { width: 14px; color: var(--ink-400); }
+.command-state { min-height: 170px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 24px; color: var(--ink-500); text-align: center; }
+.command-state strong { color: var(--ink-950); font-size: 11px; }
+.command-state small { font-size: 9px; }
+.command-state--error > svg { color: var(--red); }
+.command-state--error > button { margin-top: 6px; border-radius: 5px; padding: 8px 12px; background: var(--blue); color: white; cursor: pointer; font-size: 9px; font-weight: 680; }
+.command-empty--start { padding-inline: 30px; text-align: center; }
+.command-empty--start span { max-width: 420px; line-height: 1.5; }
 
 @media (max-width: 900px) {
   .operations-topbar .user-menu { display: flex; }
@@ -1667,4 +1694,9 @@
   .record-directory-panel { height: auto; max-height: none; }
   .record-directory-panel .customer-directory,
   .record-directory-panel .vehicle-directory { max-height: 360px; }
+  .command-scrim { padding: 8px; padding-top: 8px; }
+  .command-palette--grouped { max-height: calc(100dvh - 16px); }
+  .command-palette--grouped > header { height: 58px; padding-inline: 12px; }
+  .command-palette--grouped kbd { display: none; }
+  .command-result-groups { padding-inline: 5px; }
 }
