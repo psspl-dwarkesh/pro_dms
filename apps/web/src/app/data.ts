@@ -111,7 +111,7 @@ export const LEGACY_VIEW_ALIASES: Record<string, DashView> = {
 
 // Modules with no dedicated data model yet render a "coming soon" placeholder instead of invented
 // numbers. Each is a sub-area of a live portal now, so the portal around it still works.
-export const COMING_SOON_VIEWS: ReadonlySet<DashView> = new Set(["marketing", "usedcars", "branch", "group", "workforce"]);
+export const COMING_SOON_VIEWS: ReadonlySet<DashView> = new Set(["marketing", "usedcars"]);
 
 // Connected portals surfaced in each page's contextual sidebar, alongside its live quick actions.
 // Cross-portal only: a portal's own sub-areas are already in the tab strip and the Pages section,
@@ -191,6 +191,18 @@ export const PAGE_HELP: Partial<Record<DashView, { summary: string; canDo: strin
       "Use the tabs above for branch, group, and workforce analysis.",
     ],
   },
+  branch: {
+    summary: "Branch-level sales, service, pipeline, productivity, and contribution analysis with authorized drill-downs.",
+    canDo: ["Filter by date and authorized branch.", "Compare operational revenue and open pipeline.", "Drill into exception records in their owning portal."],
+  },
+  group: {
+    summary: "Consolidated group analysis across the branches your role is authorized to see.",
+    canDo: ["Compare branches using consistent metric definitions.", "Review department contribution and weekly trends.", "Use the exception queue to open underlying records."],
+  },
+  workforce: {
+    summary: "Advisor and technician productivity analysis. Managing people remains in Administration.",
+    canDo: ["Review jobs, completion, and tracked service revenue by person.", "Change date and branch scope.", "Use disclosed definitions before drawing performance conclusions."],
+  },
   company: {
     summary: "Administration - branches and team accounts for your organisation. Reached from the account menu, not the primary sidebar.",
     canDo: [
@@ -215,9 +227,9 @@ const ALL_PORTAL_VIEWS: DashView[] = DASH_VIEWS.filter((view) => view !== ADMIN_
 export const ROLE_NAV: Record<Role, DashView[]> = {
   admin: [...ALL_PORTAL_VIEWS, ADMIN_VIEW],
   general_manager: ALL_PORTAL_VIEWS,
-  sales_manager: ["customers", "vehicles", "usedcars", "sales", "marketing"],
+  sales_manager: ["customers", "vehicles", "usedcars", "sales", "marketing", "analytics", "branch", "group", "workforce"],
   bdc_rep: ["customers", "sales"],
-  finance_manager: ["customers", "vehicles", "sales", "finance"],
+  finance_manager: ["customers", "vehicles", "sales", "finance", "analytics", "branch", "group", "workforce"],
   service_advisor: ["customers", "vehicles", "service", "parts"],
   receptionist: ["customers", "vehicles"],
 };
