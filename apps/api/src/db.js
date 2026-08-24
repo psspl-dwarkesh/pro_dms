@@ -420,34 +420,43 @@ export async function listVehicles(organizationId, { search, status, limit, offs
   return result.rows;
 }
 
-export async function createVehicle(organizationId, { vin, registration, make, model, variant, colour, modelYear, odometerKm, marketValue, status }) {
+export async function createVehicle(organizationId, { vin, registration, make, model, variant, colour, modelYear, odometerKm, marketValue, status, branchId, lotLocation, acquisitionChannel, acquisitionCost, intakeAt }) {
   const result = await query(
-    `insert into vehicles (organization_id, vin, registration, make, model, variant, colour, model_year, odometer_km, market_value, status)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    `insert into vehicles (organization_id, vin, registration, make, model, variant, colour, model_year, odometer_km, market_value, status, branch_id, lot_location, acquisition_channel, acquisition_cost, intake_at)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, coalesce($16, now()))
      returning id, vin, registration, make, model, variant, colour, model_year as "modelYear",
-               odometer_km as "odometerKm", market_value::float as "marketValue", status`,
-    [organizationId, vin, registration ?? null, make, model, variant ?? null, colour ?? null, modelYear ?? null, odometerKm ?? null, marketValue ?? null, status ?? "active"],
+               odometer_km as "odometerKm", market_value::float as "marketValue", status,
+               branch_id as "branchId", lot_location as "lotLocation", acquisition_channel as "acquisitionChannel",
+               acquisition_cost::float as "acquisitionCost", intake_at as "intakeAt"`,
+    [organizationId, vin, registration ?? null, make, model, variant ?? null, colour ?? null, modelYear ?? null, odometerKm ?? null, marketValue ?? null, status ?? "active", branchId ?? null, lotLocation ?? null, acquisitionChannel ?? null, acquisitionCost ?? null, intakeAt ?? null],
   ).catch((cause) => {
     if (cause?.cause?.code === "23505") {
       throw Object.assign(new Error("A vehicle with that VIN already exists."), { status: 409, code: "VEHICLE_VIN_IN_USE", expose: true });
     }
     throw cause;
   });
+  await recordVehicleEvent(result.rows[0].id, null, "intake", `Added to inventory${acquisitionChannel ? ` via ${acquisitionChannel}` : ""}`);
   return result.rows[0];
 }
 
-export async function updateVehicle(organizationId, id, { registration, colour, odometerKm, marketValue, status }) {
+export async function updateVehicle(organizationId, id, { registration, colour, odometerKm, marketValue, status, branchId, lotLocation, acquisitionChannel, acquisitionCost }) {
   const result = await query(
     `update vehicles set
        registration = coalesce($3, registration),
        colour = coalesce($4, colour),
        odometer_km = coalesce($5, odometer_km),
        market_value = coalesce($6, market_value),
-       status = coalesce($7, status)
+       status = coalesce($7, status),
+       branch_id = coalesce($8, branch_id),
+       lot_location = coalesce($9, lot_location),
+       acquisition_channel = coalesce($10, acquisition_channel),
+       acquisition_cost = coalesce($11, acquisition_cost)
       where id = $1 and organization_id = $2
       returning id, vin, registration, make, model, variant, colour, model_year as "modelYear",
-                odometer_km as "odometerKm", market_value::float as "marketValue", status`,
-    [id, organizationId, registration ?? null, colour ?? null, odometerKm ?? null, marketValue ?? null, status ?? null],
+                odometer_km as "odometerKm", market_value::float as "marketValue", status,
+                branch_id as "branchId", lot_location as "lotLocation", acquisition_channel as "acquisitionChannel",
+                acquisition_cost::float as "acquisitionCost", intake_at as "intakeAt"`,
+    [id, organizationId, registration ?? null, colour ?? null, odometerKm ?? null, marketValue ?? null, status ?? null, branchId ?? null, lotLocation ?? null, acquisitionChannel ?? null, acquisitionCost ?? null],
   );
   return result.rows[0];
 }
@@ -467,8 +476,12 @@ export async function getVehicle360(organizationId, id) {
     `select v.id, v.vin, v.registration, v.make, v.model, v.variant, v.colour,
             v.model_year as "modelYear", v.odometer_km as "odometerKm",
             v.market_value::float as "marketValue", v.status,
+            v.branch_id as "branchId", b.name as "branchName", v.lot_location as "lotLocation",
+            v.acquisition_channel as "acquisitionChannel", v.acquisition_cost::float as "acquisitionCost",
+            v.intake_at as "intakeAt",
             c.id as "ownerId", c.display_name as "ownerName", c.mobile as "ownerMobile"
        from vehicles v
+       left join branches b on b.id = v.branch_id
        left join vehicle_ownerships vo on vo.vehicle_id = v.id and vo.ended_on is null
        left join customers c on c.id = vo.customer_id
       where v.id = $1 and v.organization_id = $2`,
@@ -1078,6 +1091,396 @@ export async function updateCustomerDocumentStatus(organizationId, customerId, d
     [documentId, customerId, organizationId, status],
   );
   return result.rows[0];
+}
+
+// ---------------------------------------------------------------------------
+// Vehicle 360 core: ownership transfer, documents, appraisal, valuation, stock/location, auction,
+// and rental/demo disposition (database/021_vehicle_360_core.sql)
+// ---------------------------------------------------------------------------
+
+async function assertVehicleOwned(organizationId, vehicleId) {
+  const owned = await query("select id from vehicles where id = $1 and organization_id = $2", [vehicleId, organizationId]);
+  if (!owned.rowCount) throw Object.assign(new Error("Vehicle not found."), { status: 404, code: "VEHICLE_NOT_FOUND", expose: true });
+}
+
+// Every workflow below writes one row into the vehicle's shared timeline (the same `interactions`
+// table the existing Lifecycle tab already reads), so that tab reflects the whole record rather
+// than only service history. customer_id is optional (see the migration) -- an auction listing or
+// a valuation update may have no customer attached yet.
+async function recordVehicleEvent(vehicleId, customerId, type, summary) {
+  await query(
+    `insert into interactions (customer_id, vehicle_id, interaction_type, occurred_at, summary)
+     values ($1, $2, $3, now(), $4)`,
+    [customerId ?? null, vehicleId, type, summary],
+  );
+}
+
+// A vehicle can only be checked out for one rental/demo, or listed at auction, at a time. Enforced
+// here before the write, and again by the database (vehicle_dispositions_one_active) in case two
+// requests race.
+async function assertVehicleAvailableForDisposition(organizationId, vehicleId) {
+  const activeDisposition = await query(
+    "select id from vehicle_dispositions where vehicle_id = $1 and organization_id = $2 and status = 'active'",
+    [vehicleId, organizationId],
+  );
+  if (activeDisposition.rowCount) {
+    throw Object.assign(new Error("This vehicle is already checked out on an active rental or demo."), { status: 409, code: "VEHICLE_UNAVAILABLE", expose: true });
+  }
+  const activeAuction = await query(
+    "select id from vehicle_auction_listings where vehicle_id = $1 and organization_id = $2 and status in ('listed', 'bidding')",
+    [vehicleId, organizationId],
+  );
+  if (activeAuction.rowCount) {
+    throw Object.assign(new Error("This vehicle has an active auction listing."), { status: 409, code: "VEHICLE_UNAVAILABLE", expose: true });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Ownership history and transfer
+// ---------------------------------------------------------------------------
+
+export async function listVehicleOwnership(organizationId, vehicleId) {
+  await assertVehicleOwned(organizationId, vehicleId);
+  const result = await query(
+    `select vo.id, vo.vehicle_id as "vehicleId", vo.customer_id as "customerId", c.display_name as "customerName",
+            c.mobile as "customerMobile", vo.started_on as "startedOn", vo.ended_on as "endedOn",
+            vo.is_primary as "isPrimary", vo.transfer_reason as "transferReason"
+       from vehicle_ownerships vo
+       join customers c on c.id = vo.customer_id
+      where vo.organization_id = $1 and vo.vehicle_id = $2
+      order by vo.started_on desc, vo.id desc`,
+    [organizationId, vehicleId],
+  );
+  return result.rows;
+}
+
+export async function transferVehicleOwnership(organizationId, vehicleId, { customerId, startedOn, transferReason, recordedBy }) {
+  await assertVehicleOwned(organizationId, vehicleId);
+  const owner = await query('select display_name as "displayName" from customers where id = $1 and organization_id = $2', [customerId, organizationId]);
+  if (!owner.rowCount) throw Object.assign(new Error("Customer not found."), { status: 404, code: "CUSTOMER_NOT_FOUND", expose: true });
+
+  const effectiveDate = startedOn ?? new Date().toISOString();
+  await query(
+    `update vehicle_ownerships set ended_on = $3
+      where vehicle_id = $1 and organization_id = $2 and ended_on is null`,
+    [vehicleId, organizationId, effectiveDate],
+  );
+  const inserted = await query(
+    `insert into vehicle_ownerships (organization_id, vehicle_id, customer_id, started_on, is_primary, transfer_reason, recorded_by)
+     values ($1, $2, $3, $4, true, $5, $6)
+     returning id, vehicle_id as "vehicleId", customer_id as "customerId", started_on as "startedOn",
+               ended_on as "endedOn", is_primary as "isPrimary", transfer_reason as "transferReason"`,
+    [organizationId, vehicleId, customerId, effectiveDate, transferReason ?? null, recordedBy ?? null],
+  );
+  await recordVehicleEvent(vehicleId, customerId, "ownership-transfer", `Ownership transferred to ${owner.rows[0].displayName}${transferReason ? ` — ${transferReason}` : ""}`);
+  return { ...inserted.rows[0], customerName: owner.rows[0].displayName };
+}
+
+// ---------------------------------------------------------------------------
+// Documents (metadata and a storage reference only -- see database/021_vehicle_360_core.sql)
+// ---------------------------------------------------------------------------
+
+export async function listVehicleDocuments(organizationId, vehicleId, { limit, offset }) {
+  await assertVehicleOwned(organizationId, vehicleId);
+  const result = await query(
+    `select id, vehicle_id as "vehicleId", document_type as "documentType", label, status,
+            storage_reference as "storageReference", uploaded_by as "uploadedBy", created_at as "createdAt"
+       from vehicle_documents
+      where organization_id = $1 and vehicle_id = $2
+      order by created_at desc limit $3 offset $4`,
+    [organizationId, vehicleId, limit, offset],
+  );
+  return result.rows;
+}
+
+export async function createVehicleDocument(organizationId, vehicleId, { documentType, label, status, storageReference, uploadedBy }) {
+  await assertVehicleOwned(organizationId, vehicleId);
+  const result = await query(
+    `insert into vehicle_documents (organization_id, vehicle_id, document_type, label, status, storage_reference, uploaded_by)
+     values ($1, $2, $3, $4, $5, $6, $7)
+     returning id, vehicle_id as "vehicleId", document_type as "documentType", label, status,
+               storage_reference as "storageReference", uploaded_by as "uploadedBy", created_at as "createdAt"`,
+    [organizationId, vehicleId, documentType, label, status ?? "received", storageReference ?? null, uploadedBy ?? null],
+  );
+  return result.rows[0];
+}
+
+export async function updateVehicleDocumentStatus(organizationId, vehicleId, documentId, status) {
+  const result = await query(
+    `update vehicle_documents set status = $4
+      where id = $1 and vehicle_id = $2 and organization_id = $3
+      returning id, vehicle_id as "vehicleId", document_type as "documentType", label, status,
+                storage_reference as "storageReference", uploaded_by as "uploadedBy", created_at as "createdAt"`,
+    [documentId, vehicleId, organizationId, status],
+  );
+  return result.rows[0];
+}
+
+// ---------------------------------------------------------------------------
+// Trade-in / acquisition appraisal
+// ---------------------------------------------------------------------------
+
+export async function listVehicleAppraisals(organizationId, vehicleId, { limit, offset }) {
+  await assertVehicleOwned(organizationId, vehicleId);
+  const result = await query(
+    `select va.id, va.vehicle_id as "vehicleId", va.customer_id as "customerId", c.display_name as "customerName",
+            va.condition_grade as "conditionGrade", va.odometer_km as "odometerKm", va.exterior_notes as "exteriorNotes",
+            va.mechanical_notes as "mechanicalNotes", va.offered_value::float as "offeredValue", va.status,
+            va.created_at as "createdAt", va.decided_at as "decidedAt"
+       from vehicle_appraisals va
+       left join customers c on c.id = va.customer_id
+      where va.organization_id = $1 and va.vehicle_id = $2
+      order by va.created_at desc limit $3 offset $4`,
+    [organizationId, vehicleId, limit, offset],
+  );
+  return result.rows;
+}
+
+export async function createVehicleAppraisal(organizationId, vehicleId, { customerId, appraiserId, conditionGrade, odometerKm, exteriorNotes, mechanicalNotes, offeredValue, status }) {
+  await assertVehicleOwned(organizationId, vehicleId);
+  const result = await query(
+    `insert into vehicle_appraisals (organization_id, vehicle_id, customer_id, appraiser_id, condition_grade, odometer_km, exterior_notes, mechanical_notes, offered_value, status)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     returning id, vehicle_id as "vehicleId", customer_id as "customerId", condition_grade as "conditionGrade",
+               odometer_km as "odometerKm", exterior_notes as "exteriorNotes", mechanical_notes as "mechanicalNotes",
+               offered_value::float as "offeredValue", status, created_at as "createdAt", decided_at as "decidedAt"`,
+    [organizationId, vehicleId, customerId ?? null, appraiserId ?? null, conditionGrade, odometerKm ?? null, exteriorNotes ?? null, mechanicalNotes ?? null, offeredValue ?? null, status ?? "draft"],
+  );
+  await recordVehicleEvent(vehicleId, customerId, "appraisal", `Trade-in appraisal recorded — condition ${conditionGrade}${offeredValue ? `, offered ${offeredValue}` : ""}`);
+  return result.rows[0];
+}
+
+// Accepting an appraisal also logs its offered value as a 'trade' valuation, so the Valuation
+// tab's history reflects the decision without a second manual entry.
+export async function updateVehicleAppraisalStatus(organizationId, vehicleId, appraisalId, status, decidedBy) {
+  const result = await query(
+    `update vehicle_appraisals set status = $4, decided_at = case when $4 in ('accepted', 'declined', 'expired') then now() else decided_at end
+      where id = $1 and vehicle_id = $2 and organization_id = $3
+      returning id, vehicle_id as "vehicleId", customer_id as "customerId", condition_grade as "conditionGrade",
+                odometer_km as "odometerKm", exterior_notes as "exteriorNotes", mechanical_notes as "mechanicalNotes",
+                offered_value::float as "offeredValue", status, created_at as "createdAt", decided_at as "decidedAt"`,
+    [appraisalId, vehicleId, organizationId, status],
+  );
+  const appraisal = result.rows[0];
+  if (appraisal && status === "accepted" && appraisal.offeredValue) {
+    await createVehicleValuation(organizationId, vehicleId, { source: "trade", value: appraisal.offeredValue, notes: "From accepted trade-in appraisal", createdBy: decidedBy });
+    await recordVehicleEvent(vehicleId, appraisal.customerId, "appraisal-accepted", `Trade-in appraisal accepted at ${appraisal.offeredValue}`);
+  }
+  return appraisal;
+}
+
+// ---------------------------------------------------------------------------
+// Valuation history
+// ---------------------------------------------------------------------------
+
+export async function listVehicleValuations(organizationId, vehicleId, { limit, offset }) {
+  await assertVehicleOwned(organizationId, vehicleId);
+  const result = await query(
+    `select id, vehicle_id as "vehicleId", source, value::float as value, notes,
+            valued_at as "valuedAt", created_by as "createdBy"
+       from vehicle_valuations
+      where organization_id = $1 and vehicle_id = $2
+      order by valued_at desc limit $3 offset $4`,
+    [organizationId, vehicleId, limit, offset],
+  );
+  return result.rows;
+}
+
+// vehicles.market_value stays the cached "current" figure existing readers rely on; a fresh
+// 'market' valuation refreshes it here so the two never drift apart.
+export async function createVehicleValuation(organizationId, vehicleId, { source, value, notes, createdBy }) {
+  await assertVehicleOwned(organizationId, vehicleId);
+  const result = await query(
+    `insert into vehicle_valuations (organization_id, vehicle_id, source, value, notes, created_by)
+     values ($1, $2, $3, $4, $5, $6)
+     returning id, vehicle_id as "vehicleId", source, value::float as value, notes, valued_at as "valuedAt", created_by as "createdBy"`,
+    [organizationId, vehicleId, source, value, notes ?? null, createdBy ?? null],
+  );
+  if (source === "market") {
+    await query("update vehicles set market_value = $3 where id = $1 and organization_id = $2", [vehicleId, organizationId, value]);
+  }
+  await recordVehicleEvent(vehicleId, null, "valuation", `${source} valuation recorded — ${value}`);
+  return result.rows[0];
+}
+
+// ---------------------------------------------------------------------------
+// Auction disposition
+// ---------------------------------------------------------------------------
+
+export async function listVehicleAuctionListings(organizationId, vehicleId, { limit, offset }) {
+  await assertVehicleOwned(organizationId, vehicleId);
+  const listings = await query(
+    `select id, vehicle_id as "vehicleId", status, auction_house as "auctionHouse", reserve_price::float as "reservePrice",
+            listed_at as "listedAt", closes_at as "closesAt", sold_price::float as "soldPrice", buyer_note as "buyerNote",
+            created_at as "createdAt"
+       from vehicle_auction_listings
+      where organization_id = $1 and vehicle_id = $2
+      order by created_at desc limit $3 offset $4`,
+    [organizationId, vehicleId, limit, offset],
+  );
+  if (!listings.rowCount) return [];
+  const bids = await query(
+    `select id, listing_id as "listingId", bidder_name as "bidderName", amount::float as amount, placed_at as "placedAt"
+       from vehicle_auction_bids where listing_id = any($1::uuid[]) order by amount desc, placed_at desc`,
+    [listings.rows.map((row) => row.id)],
+  );
+  const bidsByListing = new Map();
+  for (const bid of bids.rows) {
+    if (!bidsByListing.has(bid.listingId)) bidsByListing.set(bid.listingId, []);
+    bidsByListing.get(bid.listingId).push(bid);
+  }
+  return listings.rows.map((listing) => ({ ...listing, bids: bidsByListing.get(listing.id) ?? [] }));
+}
+
+export async function createVehicleAuctionListing(organizationId, vehicleId, { auctionHouse, reservePrice, closesAt, status, createdBy }) {
+  await assertVehicleOwned(organizationId, vehicleId);
+  const initialStatus = status ?? "draft";
+  if (initialStatus === "listed" || initialStatus === "bidding") await assertVehicleAvailableForDisposition(organizationId, vehicleId);
+  const result = await query(
+    `insert into vehicle_auction_listings (organization_id, vehicle_id, status, auction_house, reserve_price, listed_at, closes_at, created_by)
+     values ($1, $2, $3, $4, $5, case when $3 in ('listed', 'bidding') then now() else null end, $6, $7)
+     returning id, vehicle_id as "vehicleId", status, auction_house as "auctionHouse", reserve_price::float as "reservePrice",
+               listed_at as "listedAt", closes_at as "closesAt", sold_price::float as "soldPrice", buyer_note as "buyerNote",
+               created_at as "createdAt"`,
+    [organizationId, vehicleId, initialStatus, auctionHouse ?? null, reservePrice ?? null, closesAt ?? null, createdBy ?? null],
+  );
+  if (initialStatus === "listed" || initialStatus === "bidding") {
+    await query("update vehicles set status = 'auction' where id = $1 and organization_id = $2", [vehicleId, organizationId]);
+    await recordVehicleEvent(vehicleId, null, "auction-listed", `Listed for auction${auctionHouse ? ` with ${auctionHouse}` : ""}`);
+  }
+  return { ...result.rows[0], bids: [] };
+}
+
+export async function updateVehicleAuctionListing(organizationId, vehicleId, listingId, { status, reservePrice, closesAt, soldPrice, buyerNote }) {
+  const existing = await query(
+    "select status from vehicle_auction_listings where id = $1 and vehicle_id = $2 and organization_id = $3",
+    [listingId, vehicleId, organizationId],
+  );
+  if (!existing.rowCount) return undefined;
+  if (status && (status === "listed" || status === "bidding") && !["listed", "bidding"].includes(existing.rows[0].status)) {
+    await assertVehicleAvailableForDisposition(organizationId, vehicleId);
+  }
+
+  const result = await query(
+    `update vehicle_auction_listings set
+       status = coalesce($4, status),
+       reserve_price = coalesce($5, reserve_price),
+       closes_at = coalesce($6, closes_at),
+       sold_price = coalesce($7, sold_price),
+       buyer_note = coalesce($8, buyer_note),
+       listed_at = case when $4 in ('listed', 'bidding') and listed_at is null then now() else listed_at end,
+       updated_at = now()
+      where id = $1 and vehicle_id = $2 and organization_id = $3
+      returning id, vehicle_id as "vehicleId", status, auction_house as "auctionHouse", reserve_price::float as "reservePrice",
+                listed_at as "listedAt", closes_at as "closesAt", sold_price::float as "soldPrice", buyer_note as "buyerNote",
+                created_at as "createdAt"`,
+    [listingId, vehicleId, organizationId, status ?? null, reservePrice ?? null, closesAt ?? null, soldPrice ?? null, buyerNote ?? null],
+  );
+  const listing = result.rows[0];
+  if (!listing) return undefined;
+
+  if (status === "sold") {
+    await query("update vehicles set status = 'sold' where id = $1 and organization_id = $2", [vehicleId, organizationId]);
+    await recordVehicleEvent(vehicleId, null, "auction-sold", `Sold at auction for ${listing.soldPrice ?? listing.reservePrice ?? "an undisclosed price"}`);
+  } else if (status === "unsold" || status === "cancelled") {
+    await query("update vehicles set status = 'in-stock' where id = $1 and organization_id = $2 and status = 'auction'", [vehicleId, organizationId]);
+    await recordVehicleEvent(vehicleId, null, "auction-closed", `Auction listing ${status}`);
+  } else if (status === "listed" || status === "bidding") {
+    await query("update vehicles set status = 'auction' where id = $1 and organization_id = $2", [vehicleId, organizationId]);
+  }
+
+  const bids = await query(
+    `select id, listing_id as "listingId", bidder_name as "bidderName", amount::float as amount, placed_at as "placedAt"
+       from vehicle_auction_bids where listing_id = $1 order by amount desc, placed_at desc`,
+    [listingId],
+  );
+  return { ...listing, bids: bids.rows };
+}
+
+export async function createVehicleAuctionBid(organizationId, vehicleId, listingId, { bidderName, amount }) {
+  const listing = await query(
+    "select status from vehicle_auction_listings where id = $1 and vehicle_id = $2 and organization_id = $3",
+    [listingId, vehicleId, organizationId],
+  );
+  if (!listing.rowCount) throw Object.assign(new Error("Auction listing not found."), { status: 404, code: "AUCTION_LISTING_NOT_FOUND", expose: true });
+  if (!["listed", "bidding"].includes(listing.rows[0].status)) {
+    throw Object.assign(new Error("This auction listing is not open for bids."), { status: 409, code: "AUCTION_NOT_OPEN", expose: true });
+  }
+  const result = await query(
+    `insert into vehicle_auction_bids (listing_id, bidder_name, amount)
+     values ($1, $2, $3)
+     returning id, listing_id as "listingId", bidder_name as "bidderName", amount::float as amount, placed_at as "placedAt"`,
+    [listingId, bidderName, amount],
+  );
+  await query("update vehicle_auction_listings set status = 'bidding', updated_at = now() where id = $1 and status = 'listed'", [listingId]);
+  await recordVehicleEvent(vehicleId, null, "auction-bid", `Bid recorded — ${bidderName} at ${amount}`);
+  return result.rows[0];
+}
+
+// ---------------------------------------------------------------------------
+// Rental / demo disposition
+// ---------------------------------------------------------------------------
+
+export async function listVehicleDispositions(organizationId, vehicleId, { limit, offset }) {
+  await assertVehicleOwned(organizationId, vehicleId);
+  const result = await query(
+    `select vd.id, vd.vehicle_id as "vehicleId", vd.disposition_type as "dispositionType", vd.customer_id as "customerId",
+            c.display_name as "customerName", vd.starts_at as "startsAt", vd.ends_at as "endsAt", vd.status,
+            vd.odometer_out as "odometerOut", vd.odometer_in as "odometerIn", vd.notes, vd.created_at as "createdAt"
+       from vehicle_dispositions vd
+       left join customers c on c.id = vd.customer_id
+      where vd.organization_id = $1 and vd.vehicle_id = $2
+      order by vd.starts_at desc limit $3 offset $4`,
+    [organizationId, vehicleId, limit, offset],
+  );
+  return result.rows;
+}
+
+export async function createVehicleDisposition(organizationId, vehicleId, { dispositionType, customerId, startsAt, odometerOut, notes, createdBy }) {
+  await assertVehicleOwned(organizationId, vehicleId);
+  await assertVehicleAvailableForDisposition(organizationId, vehicleId);
+  const result = await query(
+    `insert into vehicle_dispositions (organization_id, vehicle_id, disposition_type, customer_id, starts_at, odometer_out, notes, created_by)
+     values ($1, $2, $3, $4, coalesce($5, now()), $6, $7, $8)
+     returning id, vehicle_id as "vehicleId", disposition_type as "dispositionType", customer_id as "customerId",
+               starts_at as "startsAt", ends_at as "endsAt", status, odometer_out as "odometerOut",
+               odometer_in as "odometerIn", notes, created_at as "createdAt"`,
+    [organizationId, vehicleId, dispositionType, customerId ?? null, startsAt ?? null, odometerOut ?? null, notes ?? null, createdBy ?? null],
+  ).catch((cause) => {
+    if (cause?.cause?.code === "23505") {
+      throw Object.assign(new Error("This vehicle is already checked out on an active rental or demo."), { status: 409, code: "VEHICLE_UNAVAILABLE", expose: true });
+    }
+    throw cause;
+  });
+  await query("update vehicles set status = $3 where id = $1 and organization_id = $2", [vehicleId, organizationId, dispositionType]);
+  await recordVehicleEvent(vehicleId, customerId, dispositionType === "rental" ? "rental-checkout" : "demo-checkout", `Checked out for ${dispositionType}${customerId ? "" : " (no customer attached)"}`);
+  return result.rows[0];
+}
+
+export async function updateVehicleDisposition(organizationId, vehicleId, dispositionId, { status, odometerIn, notes }) {
+  const result = await query(
+    `update vehicle_dispositions set
+       status = coalesce($4, status),
+       odometer_in = coalesce($5, odometer_in),
+       notes = coalesce($6, notes),
+       ends_at = case when $4 in ('completed', 'cancelled') then now() else ends_at end
+      where id = $1 and vehicle_id = $2 and organization_id = $3
+      returning id, vehicle_id as "vehicleId", disposition_type as "dispositionType", customer_id as "customerId",
+                starts_at as "startsAt", ends_at as "endsAt", status, odometer_out as "odometerOut",
+                odometer_in as "odometerIn", notes, created_at as "createdAt"`,
+    [dispositionId, vehicleId, organizationId, status ?? null, odometerIn ?? null, notes ?? null],
+  );
+  const disposition = result.rows[0];
+  if (!disposition) return undefined;
+
+  if (status === "completed" || status === "cancelled") {
+    const values = [vehicleId, organizationId];
+    let odometerSet = "";
+    if (odometerIn) { values.push(odometerIn); odometerSet = `, odometer_km = $${values.length}`; }
+    await query(`update vehicles set status = 'in-stock'${odometerSet} where id = $1 and organization_id = $2`, values);
+    await recordVehicleEvent(vehicleId, disposition.customerId, "disposition-checkin", `${disposition.dispositionType === "rental" ? "Rental" : "Demo"} ${status}${odometerIn ? ` — returned at ${odometerIn} km` : ""}`);
+  }
+  return disposition;
 }
 
 // ---------------------------------------------------------------------------

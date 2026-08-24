@@ -55,10 +55,11 @@ import { MarketingComingSoonBadge, MarketingView } from "./MarketingView";
 import { PAGE_WORKFLOW, WorkflowDiagram } from "./PageWorkflows";
 import { PortalTabShell } from "./PortalShell";
 import { CustomerView } from "./CustomerViews";
-import { useDialogFocusTrap, VehicleView } from "./RecordViews";
+import { useDialogFocusTrap } from "./RecordViews";
 import { SidebarActionsProvider } from "./SidebarActions";
 import type { SidebarAction } from "./SidebarActions";
 import { Sales360 } from "./Sales360";
+import { VehicleView } from "./VehicleViews";
 
 type DashboardAppProps = {
   // null when the URL carries no ?workspace=: sign-in then lands on the first portal this role

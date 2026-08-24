@@ -113,11 +113,119 @@ export type Vehicle = {
   status: string;
 };
 
+export type AcquisitionChannel = "trade-in" | "auction-purchase" | "direct-purchase" | "consignment";
+
 export type Vehicle360 = Vehicle & {
   ownerId?: string;
   ownerName?: string | null;
   ownerMobile?: string | null;
   timeline: TimelineEvent[];
+  branchId?: string | null;
+  branchName?: string | null;
+  lotLocation?: string | null;
+  acquisitionChannel?: AcquisitionChannel | null;
+  acquisitionCost?: number | null;
+  intakeAt?: string | null;
+};
+
+// Vehicle 360 core relationship and disposition records. See
+// database/021_vehicle_360_core.sql and apps/api/src/routes/vehicles.js.
+export type VehicleOwnershipEntry = {
+  id: string;
+  vehicleId: string;
+  customerId: string;
+  customerName: string;
+  customerMobile?: string | null;
+  startedOn: string;
+  endedOn: string | null;
+  isPrimary: boolean;
+  transferReason: string | null;
+};
+
+export type VehicleDocumentStatus = "requested" | "received" | "verified" | "rejected";
+
+// Metadata and a storage reference only - no file bytes travel through this type.
+export type VehicleDocument = {
+  id: string;
+  vehicleId: string;
+  documentType: string;
+  label: string;
+  status: VehicleDocumentStatus;
+  storageReference: string | null;
+  uploadedBy: string | null;
+  createdAt: string;
+};
+
+export type ConditionGrade = "excellent" | "good" | "fair" | "poor";
+export type AppraisalStatus = "draft" | "offered" | "accepted" | "declined" | "expired";
+
+export type VehicleAppraisal = {
+  id: string;
+  vehicleId: string;
+  customerId: string | null;
+  customerName?: string | null;
+  conditionGrade: ConditionGrade;
+  odometerKm: number | null;
+  exteriorNotes: string | null;
+  mechanicalNotes: string | null;
+  offeredValue: number | null;
+  status: AppraisalStatus;
+  createdAt: string;
+  decidedAt: string | null;
+};
+
+export type ValuationSource = "market" | "trade" | "wholesale" | "manual";
+
+export type VehicleValuation = {
+  id: string;
+  vehicleId: string;
+  source: ValuationSource;
+  value: number;
+  notes: string | null;
+  valuedAt: string;
+  createdBy: string | null;
+};
+
+export type AuctionListingStatus = "draft" | "listed" | "bidding" | "sold" | "unsold" | "cancelled";
+
+export type VehicleAuctionBid = {
+  id: string;
+  listingId: string;
+  bidderName: string;
+  amount: number;
+  placedAt: string;
+};
+
+export type VehicleAuctionListing = {
+  id: string;
+  vehicleId: string;
+  status: AuctionListingStatus;
+  auctionHouse: string | null;
+  reservePrice: number | null;
+  listedAt: string | null;
+  closesAt: string | null;
+  soldPrice: number | null;
+  buyerNote: string | null;
+  createdAt: string;
+  bids: VehicleAuctionBid[];
+};
+
+export type DispositionType = "rental" | "demo";
+export type DispositionStatus = "active" | "completed" | "cancelled";
+
+export type VehicleDisposition = {
+  id: string;
+  vehicleId: string;
+  dispositionType: DispositionType;
+  customerId: string | null;
+  customerName?: string | null;
+  startsAt: string;
+  endsAt: string | null;
+  status: DispositionStatus;
+  odometerOut: number | null;
+  odometerIn: number | null;
+  notes: string | null;
+  createdAt: string;
 };
 
 export type Lead = {
