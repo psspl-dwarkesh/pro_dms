@@ -36,7 +36,7 @@
 .command-palette-content input { min-width: 0; border: 0; outline: 0; font-size: 14px; }
 .command-palette-content kbd { border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; color: var(--ink-500); font-size: 10px; }
 .command-palette-content > span { display: block; padding: 15px 18px 8px; color: var(--ink-500); font-size: 11px; font-weight: 750; }
-.command-palette-content > button { width: calc(100% - 20px); min-height: 62px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; margin: 0 10px; border-top: 1px solid var(--line); padding: 10px; background: transparent; cursor: pointer; text-align: left; }
+.command-palette-content > :where(button, a) { width: calc(100% - 20px); min-height: 62px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; margin: 0 10px; border-top: 1px solid var(--line); padding: 10px; background: transparent; cursor: pointer; text-align: left; }
 
 @media (max-width: 640px) {
   .aa-overlay-backdrop { padding: 0; place-items: end stretch; }

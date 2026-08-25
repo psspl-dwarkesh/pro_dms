@@ -24,6 +24,7 @@ export const NAV_SECTIONS: Array<{ label: string; items: Array<{ id: PortalId; l
       { id: "finance", label: "Finance 360", blurb: "Applications, contracts, insurance, payables" },
       { id: "marketing", label: "Marketing 360", blurb: "Audiences, campaigns, journeys, attribution" },
       { id: "analytics", label: "Analytics 360", blurb: "Dealership, branch, group, and workforce analysis" },
+      { id: "aianalyst", label: "AI Analyst 360", blurb: "Automated insights and predictive analysis across every portal" },
     ],
   },
 ];
@@ -69,6 +70,7 @@ export const PORTAL_AREAS: Record<PortalId, Array<{ id: DashView; label: string 
     { id: "group", label: "Group analytics" },
     { id: "workforce", label: "Workforce productivity" },
   ],
+  aianalyst: [{ id: "aianalyst", label: "Overview" }],
 };
 
 const PORTAL_BY_VIEW = new Map<DashView, PortalId>(
@@ -110,8 +112,10 @@ export const LEGACY_VIEW_ALIASES: Record<string, DashView> = {
 };
 
 // Modules with no dedicated data model yet render a "coming soon" placeholder instead of invented
-// numbers. Each is a sub-area of a live portal now, so the portal around it still works.
-export const COMING_SOON_VIEWS: ReadonlySet<DashView> = new Set(["marketing"]);
+// numbers. Each is a sub-area of a live portal now, so the portal around it still works. A portal
+// id in this set also gets the small "Coming soon" pill next to its name anywhere it appears
+// (sidebar, header dropdown, related links) - see ComingSoonBadge in components/ComingSoon.tsx.
+export const COMING_SOON_VIEWS: ReadonlySet<DashView> = new Set(["marketing", "aianalyst"]);
 
 // Connected portals surfaced in each page's contextual sidebar, alongside its live quick actions.
 // Cross-portal only: a portal's own sub-areas are already in the tab strip and the Pages section,
@@ -130,6 +134,7 @@ export const PAGE_RELATED: Partial<Record<DashView, DashView[]>> = {
   group: ["sales", "finance"],
   workforce: ["customers", "sales"],
   company: ["analytics"],
+  aianalyst: ["analytics"],
 };
 
 // Short "what is this page / how do I use it" copy shown from the topbar help affordance.
@@ -236,9 +241,9 @@ const ALL_PORTAL_VIEWS: DashView[] = DASH_VIEWS.filter((view) => view !== ADMIN_
 export const ROLE_NAV: Record<Role, DashView[]> = {
   admin: [...ALL_PORTAL_VIEWS, ADMIN_VIEW],
   general_manager: ALL_PORTAL_VIEWS,
-  sales_manager: ["customers", "vehicles", "usedcars", "sales", "marketing", "analytics", "branch", "group", "workforce"],
+  sales_manager: ["customers", "vehicles", "usedcars", "sales", "marketing", "analytics", "branch", "group", "workforce", "aianalyst"],
   bdc_rep: ["customers", "sales"],
-  finance_manager: ["customers", "vehicles", "sales", "finance", "analytics", "branch", "group", "workforce"],
+  finance_manager: ["customers", "vehicles", "sales", "finance", "analytics", "branch", "group", "workforce", "aianalyst"],
   service_advisor: ["customers", "vehicles", "service", "parts"],
   receptionist: ["customers", "vehicles"],
 };
