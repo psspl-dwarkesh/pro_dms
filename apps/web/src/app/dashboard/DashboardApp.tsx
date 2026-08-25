@@ -61,6 +61,7 @@ import type { SidebarAction } from "./SidebarActions";
 import { Sales360 } from "./Sales360";
 import { VehicleView } from "./VehicleViews";
 import { UsedRecon } from "./UsedRecon";
+import "./workspace-typography.css";
 
 type DashboardAppProps = {
   // null when the URL carries no ?workspace=: sign-in then lands on the first portal this role
@@ -94,7 +95,6 @@ const COMING_SOON_COPY: Partial<Record<DashView, { description: string; planned:
   workforce: { description: "Productivity and profitability analysis of workforce data is planned once employee records are modeled. Managing people - schedules, roles, roster - stays in Administration.", planned: ["Productivity by advisor and technician", "Contribution to department profitability", "Capacity and utilisation trends"] },
 };
 
-type Health = { service?: string; status?: string; database?: string | { status?: string } };
 type SearchHit = { id: string; title: string; detail: string; view: DashView };
 
 export default function DashboardApp({ initialView, initialRecordId, onNavigate, onLogout }: DashboardAppProps) {
@@ -104,7 +104,6 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
   const [recordId, setRecordId] = useState<string | undefined>(initialRecordId);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [health, setHealth] = useState<"checking" | "connected" | "not-configured" | "unavailable">("checking");
   const [overview, setOverview] = useState<Overview | null>(null);
   const [commandOpen, setCommandOpen] = useState(false);
   const [noticeOpen, setNoticeOpen] = useState(false);
@@ -112,6 +111,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
   const [commandResults, setCommandResults] = useState<SearchHit[]>([]);
   const [commandLoading, setCommandLoading] = useState(false);
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
+  const [workspacePreview, setWorkspacePreview] = useState<PortalId | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [pageActions, setPageActions] = useState<SidebarAction[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -119,6 +119,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
   const helpTriggerRef = useRef<HTMLButtonElement>(null);
   const helpPopoverRef = useRef<HTMLDivElement>(null);
   const workspaceMenuRef = useRef<HTMLElement>(null);
+  const workspaceCloseTimerRef = useRef<number | undefined>(undefined);
   const landedRef = useRef(false);
 
   const allowedViews = useMemo(() => new Set(user ? ROLE_NAV[user.role] : []), [user]);
@@ -145,16 +146,6 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
     landedRef.current = true;
     onNavigate(landingView);
   }, [initialView, landingView, onNavigate]);
-  useEffect(() => {
-    const controller = new AbortController();
-    apiGet<Health>("/api/health", { signal: controller.signal, timeoutMs: 4000 })
-      .then((result) => {
-        const database = typeof result.database === "string" ? result.database : result.database?.status;
-        setHealth(database === "connected" ? "connected" : database === "not-configured" ? "not-configured" : "unavailable");
-      })
-      .catch(() => setHealth("unavailable"));
-    return () => controller.abort();
-  }, []);
   useEffect(() => {
     const controller = new AbortController();
     apiGet<{ overview: Overview }>("/api/v1/overview", { signal: controller.signal, timeoutMs: 6000 })
@@ -205,6 +196,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
     navigate(landingView);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, view, allowedViews, landingView]);
+  useEffect(() => () => window.clearTimeout(workspaceCloseTimerRef.current), []);
 
   // The topbar names the portal; the tab strip names the page inside it.
   const currentLabel = activePortal ? portalLabel(activePortal) : viewLabel(view);
@@ -226,6 +218,17 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
   function openPortal(portal: PortalId) {
     const firstPage = PORTAL_AREAS[portal].find((area) => allowedViews.has(area.id));
     if (firstPage) navigate(firstPage.id);
+  }
+
+  function showWorkspaceMenu(portal: PortalId | null = activePortal) {
+    window.clearTimeout(workspaceCloseTimerRef.current);
+    if (portal) setWorkspacePreview(portal);
+    setWorkspaceMenuOpen(true);
+  }
+
+  function scheduleWorkspaceMenuClose() {
+    window.clearTimeout(workspaceCloseTimerRef.current);
+    workspaceCloseTimerRef.current = window.setTimeout(() => setWorkspaceMenuOpen(false), 180);
   }
 
   function renderActionSection(label: string, actions: SidebarAction[]) {
@@ -342,7 +345,8 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
     canDo: (COMING_SOON_COPY[view]?.planned ?? []).map((item) => `Planned: ${item}`),
   };
   const workflowSteps = PAGE_WORKFLOW[view];
-  const healthLabel = health === "connected" ? "Database connected" : health === "not-configured" ? "Database not configured" : health === "checking" ? "Checking connection..." : "Database unavailable";
+  const previewPortal = workspacePreview ?? activePortal ?? navSections[0]?.items[0]?.id ?? null;
+  const previewPages = previewPortal ? PORTAL_AREAS[previewPortal].filter((area) => allowedViews.has(area.id)) : [];
 
   return (
     <SidebarActionsProvider value={{ setActions: setPageActions }}>
@@ -394,7 +398,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
               <button type="button" className="mobile-nav-trigger" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu /></button>
               <span className="mobile-topbar-brand"><Brand compact /></span>
               <span className="topbar-divider" />
-              <button type="button" className="workspace-switcher" aria-expanded={workspaceMenuOpen} onClick={() => setWorkspaceMenuOpen((value) => !value)}><span className="workspace-switcher-icon"><CurrentViewIcon /></span><span><small>Portal</small><strong>{currentLabel}</strong>{activePortal === "marketing" && <MarketingStatusBadge />}</span><ChevronDown /></button>
+              <button type="button" className="workspace-switcher" aria-expanded={workspaceMenuOpen} onPointerEnter={() => showWorkspaceMenu()} onPointerLeave={scheduleWorkspaceMenuClose} onFocus={() => showWorkspaceMenu()} onClick={() => showWorkspaceMenu()}><span className="workspace-switcher-icon"><CurrentViewIcon /></span><span><small>Portal</small><strong>{currentLabel}</strong>{activePortal === "marketing" && <MarketingStatusBadge />}</span><ChevronDown /></button>
               <button ref={helpTriggerRef} type="button" aria-label="What is this page?" aria-expanded={helpOpen} className="icon-button page-help-trigger" onClick={() => setHelpOpen((value) => !value)}><HelpCircle size={17} /></button>
             </div>
             <div className="topbar-actions">
@@ -424,14 +428,12 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                     {allowedViews.has("parts") && <button type="button" onClick={() => navigate("parts")}><b>{overview.lowStockParts} parts at or below reorder point</b><small>Open in Vehicle 360 - Parts</small></button>}
                     {allowedViews.has("sales") && <button type="button" onClick={() => navigate("sales")}><b>{overview.openLeads} open leads</b><small>Open in Sales 360</small></button>}
                   </>
-                ) : <span className="notification-empty">Connect the database to see live counts.</span>}
+                ) : <span className="notification-empty">Live operational counts are temporarily unavailable.</span>}
               </div>
             )}
             {profileOpen && (
               <div className="profile-popover">
-                <div><span>{userInitials}</span><p><strong>{user?.name}</strong><small>{user?.email}</small></p></div>
-                <div className="profile-meta"><span className="role-badge">{user ? roleLabel(user.role) : ""}</span><span>{organization?.name}</span></div>
-                <div className="profile-status"><span className={`db-status db-status-${health}`} aria-hidden="true" />{healthLabel}</div>
+                <header className="profile-popover-header"><span>{userInitials}</span><p><strong>{user?.name}</strong><small>{user?.email}</small></p></header>
                 {/* Administration is not a portal: employees, roles, branches, and audit history
                     are account/settings concerns, reached from here rather than the sidebar. */}
                 {allowedViews.has(ADMIN_VIEW) && (
@@ -444,18 +446,33 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
             )}
           </header>
           {workspaceMenuOpen && (
-            <section className="workspace-menu" aria-label="Choose a portal" ref={workspaceMenuRef}>
+            <section className="workspace-menu" aria-label="Choose a portal" ref={workspaceMenuRef} onPointerEnter={() => showWorkspaceMenu()} onPointerLeave={scheduleWorkspaceMenuClose}>
               <header><div><span>Portal navigator</span><strong>Move to the work, not another app.</strong></div><button type="button" onClick={() => setWorkspaceMenuOpen(false)} aria-label="Close portal navigator"><X /></button></header>
-              <div className="workspace-menu-groups">
-                {navSections.map((section) => (
-                  <div key={section.label}>
-                    <span>{section.label}</span>
-                    {section.items.map((item) => {
-                      const Icon = viewIcons[item.id];
-                      return <button type="button" key={item.id} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}><i><Icon /></i><span><strong>{item.label}{item.id === "marketing" && <MarketingStatusBadge />}</strong><small>{PORTAL_BLURBS[item.id]}</small></span><ArrowRight /></button>;
-                    })}
-                  </div>
-                ))}
+              <div className="workspace-menu-body">
+                <div className="workspace-menu-groups">
+                  {navSections.map((section) => (
+                    <div key={section.label}>
+                      <span>{section.label}</span>
+                      {section.items.map((item) => {
+                        const Icon = viewIcons[item.id];
+                        return <button type="button" key={item.id} className={activePortal === item.id ? "active" : ""} onPointerEnter={() => setWorkspacePreview(item.id)} onFocus={() => setWorkspacePreview(item.id)} onClick={() => openPortal(item.id)}><i><Icon /></i><span><strong>{item.label}{item.id === "marketing" && <MarketingStatusBadge />}</strong><small>{PORTAL_BLURBS[item.id]}</small></span><ArrowRight /></button>;
+                      })}
+                    </div>
+                  ))}
+                </div>
+                {previewPortal && (
+                  <aside className="workspace-menu-preview" aria-label={`${portalLabel(previewPortal)} pages`}>
+                    <span>Pages in this portal</span>
+                    <strong>{portalLabel(previewPortal)}</strong>
+                    <p>{PORTAL_BLURBS[previewPortal]}</p>
+                    <nav>
+                      {previewPages.map((area) => {
+                        const Icon = viewIcons[area.id];
+                        return <button type="button" key={area.id} className={view === area.id ? "active" : ""} onClick={() => navigate(area.id)}><Icon /><span><strong>{area.label}</strong><small>{view === area.id ? "Current page" : `Open ${area.label}`}</small></span><ArrowRight /></button>;
+                      })}
+                    </nav>
+                  </aside>
+                )}
               </div>
             </section>
           )}

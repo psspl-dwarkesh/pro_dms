@@ -1,0 +1,960 @@
+/*
+ * AutoAxis workspace type system
+ *
+ * The public site has its own expressive scale. This file is deliberately
+ * scoped to the authenticated operations shell and normalises every portal
+ * around one readable, data-dense hierarchy.
+ */
+
+.operations-shell {
+  /* AutoAxis workspace palette: navy structure, warm action colour, and teal
+     state feedback. Keep this scoped so the public marketing site is free to
+     use its own campaign palette. */
+  --blue: #f26a3d;
+  --blue-hover: #d95227;
+  --blue-soft: #fff0ea;
+  --blue-wash: #fff8f5;
+  --signal: #f26a3d;
+  --signal-deep: #d95227;
+  --signal-soft: #fff0ea;
+  --teal: #149b8e;
+  --teal-deep: #0a7068;
+  --teal-soft: #e9f7f5;
+  color: var(--ink-800);
+  font-family: var(--font-body);
+  font-size: var(--workspace-type-body);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--workspace-leading-body);
+  text-rendering: optimizeLegibility;
+}
+
+.operations-shell :where(h1, h2, h3, h4, strong, button, input, select, textarea) {
+  font-family: var(--font-body);
+}
+
+.operations-shell :where(h1, h2, h3, h4) {
+  color: var(--ink-950);
+  font-weight: 650;
+  text-wrap: balance;
+}
+
+.operations-shell :where(p, li, dd, dt) {
+  text-wrap: pretty;
+}
+
+/* Shell navigation and top bar */
+.operations-shell .nav-section-label {
+  padding: 8px 10px;
+  color: var(--ink-400);
+  font-size: var(--workspace-type-caption);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.25;
+}
+
+.operations-shell .portal-nav button,
+.operations-shell .operations-nav button,
+.operations-shell .operations-nav a {
+  min-height: 44px;
+  font-size: var(--workspace-type-label);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.operations-shell .group-switcher strong,
+.operations-shell .workspace-switcher strong,
+.operations-shell .operations-topbar .user-menu strong {
+  font-size: var(--workspace-type-label);
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.operations-shell .group-switcher small,
+.operations-shell .workspace-switcher small,
+.operations-shell .operations-topbar .user-menu small {
+  color: var(--ink-600);
+  font-size: var(--workspace-type-caption);
+  line-height: 1.35;
+}
+
+.operations-shell .brand-product {
+  font-size: 0.6875rem;
+  line-height: 1.2;
+}
+
+.operations-shell .operations-topbar .global-search {
+  font-size: var(--workspace-type-label);
+}
+
+.operations-shell .global-search kbd {
+  font-size: 0.6875rem;
+  font-weight: 650;
+}
+
+.operations-shell .portal-tabs {
+  gap: 6px;
+  padding-inline: clamp(18px, 3vw, 36px);
+}
+
+.operations-shell .portal-tabs button {
+  min-height: 50px;
+  padding-inline: 16px;
+  font-size: var(--workspace-type-label);
+  font-weight: 600;
+}
+
+.operations-shell :where(.page-help-popover, .workspace-menu, .notification-popover, .profile-popover) {
+  font-size: var(--workspace-type-label);
+  line-height: var(--workspace-leading-body);
+}
+
+.operations-shell .page-help-popover > span,
+.operations-shell .workspace-menu > header strong {
+  font-size: var(--workspace-type-card-title);
+}
+
+.operations-shell :where(.page-help-popover > p, .page-help-popover > ul, .workflow-disclosure summary, .workflow-diagram-step > span:last-child) {
+  font-size: var(--workspace-type-caption);
+  line-height: 1.5;
+}
+
+.operations-shell .workspace-menu > header span,
+.operations-shell .workspace-menu-groups > div > span {
+  font-size: var(--workspace-type-caption);
+}
+
+.operations-shell .workspace-menu-groups button {
+  min-height: 68px;
+  padding: 10px;
+}
+
+.operations-shell .workspace-menu-groups button strong {
+  font-size: var(--workspace-type-label);
+}
+
+.operations-shell .workspace-menu-groups button small {
+  color: var(--ink-600);
+  font-size: var(--workspace-type-caption);
+  line-height: 1.4;
+}
+
+/* Page-level hierarchy */
+.operations-shell .workspace-page {
+  padding-block: 32px 80px;
+  color: var(--ink-800);
+  font-size: var(--workspace-type-body);
+  line-height: var(--workspace-leading-body);
+}
+
+.operations-shell .workspace-page :where(h1) {
+  font-size: var(--workspace-type-page-title);
+  letter-spacing: -0.035em;
+  line-height: var(--workspace-leading-tight);
+}
+
+.operations-shell .workspace-page :where(h2) {
+  font-size: var(--workspace-type-section-title);
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.operations-shell .workspace-page :where(h3) {
+  font-size: var(--workspace-type-card-title);
+  line-height: 1.4;
+}
+
+.operations-shell .workspace-page :where(h4) {
+  font-size: var(--workspace-type-body-lg);
+  line-height: 1.4;
+}
+
+.operations-shell .workspace-page :where(p, li, dd, dt) {
+  font-size: var(--workspace-type-body);
+  line-height: var(--workspace-leading-body);
+}
+
+.operations-shell .workspace-page :where(small) {
+  font-size: var(--workspace-type-caption);
+  line-height: 1.45;
+}
+
+.operations-shell .workspace-page :where(button, input, select, textarea) {
+  font-size: var(--workspace-type-label);
+  line-height: 1.35;
+}
+
+.operations-shell .workspace-page :where(input, select, textarea) {
+  min-height: var(--workspace-control-height);
+  padding-inline: 12px;
+}
+
+.operations-shell .workspace-page :where(textarea) {
+  padding-block: 10px;
+  line-height: 1.5;
+}
+
+.operations-shell .workspace-button {
+  min-height: var(--workspace-control-height);
+  padding-inline: 16px;
+  font-size: var(--workspace-type-label);
+  font-weight: 650;
+}
+
+/* Portal introductions share the same title, summary, and breathing room. */
+.operations-shell .workspace-page :where(.analytics-header, .parts-heading, .used-heading) {
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.operations-shell .workspace-page :where(.marketing-header, .finance-hero, .admin-hero) {
+  gap: 28px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: clamp(22px, 3vw, 32px);
+}
+
+.operations-shell .workspace-page :where(.analytics-header, .parts-heading, .used-heading, .marketing-header, .finance-hero, .admin-hero) :where(h1, h2) {
+  margin: 6px 0 8px;
+  font-size: var(--workspace-type-page-title);
+}
+
+.operations-shell .workspace-page :where(.analytics-header, .parts-heading, .used-heading, .marketing-header, .finance-hero, .admin-hero) p {
+  max-width: 760px;
+  margin: 0;
+  font-size: var(--workspace-type-body-lg);
+  line-height: var(--workspace-leading-relaxed);
+}
+
+.operations-shell .workspace-page :where(.analytics-header, .parts-heading, .used-heading, .marketing-header, .finance-hero, .admin-hero) > div:first-child > span,
+.operations-shell .workspace-page :where(.analytics-panel, .parts-panel, .marketing-grid) header span {
+  font-size: var(--workspace-type-caption);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  line-height: 1.35;
+}
+
+.operations-shell .admin-hero p,
+.operations-shell .admin-hero-metrics span {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.operations-shell .admin-hero h1 {
+  color: white;
+}
+
+.operations-shell .admin-hero-metrics span {
+  font-size: var(--workspace-type-caption);
+  line-height: 1.4;
+}
+
+/* Cards, metrics, and recurring labels */
+.operations-shell .workspace-page :where(.workspace-card, .metric-card, .record-main-card, .admin-card, .analytics-panel, .analytics-kpi, .parts-panel, .parts-metrics article, .finance-metrics article, .finance-card, .marketing-kpis article, .marketing-grid > section, .marketing-grid > aside, .sales360-section, .sales360-order, .sales360-kpis div, .used-kpis article, .used-detail, .workshop-card) {
+  border-color: var(--line);
+  box-shadow: var(--shadow-sm);
+}
+
+.operations-shell .workspace-page :where(.metric-card, .analytics-kpi, .parts-metrics article, .finance-metrics article, .marketing-kpis article, .sales360-kpis div, .used-kpis article) {
+  min-height: 140px;
+  padding: 20px;
+}
+
+.operations-shell .workspace-page :where(.metric-card, .analytics-kpi, .parts-metrics article, .finance-metrics article, .marketing-kpis article, .sales360-kpis div, .used-kpis article) > :where(span, small) {
+  color: var(--ink-600);
+  font-size: var(--workspace-type-label);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.operations-shell .workspace-page :where(.metric-card, .analytics-kpi, .parts-metrics article, .finance-metrics article, .marketing-kpis article, .sales360-kpis div, .used-kpis article) > strong {
+  margin-block: 12px 8px;
+  font-size: 1.75rem;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+}
+
+.operations-shell .metric-card > em {
+  font-size: var(--workspace-type-caption);
+  line-height: 1.4;
+}
+
+.operations-shell :where(.card-heading span, .record-section-heading span, .section-toolbar span, .operating-studio > header span, .studio-summary span, .source-badge, .share-link-row > span) {
+  color: var(--ink-600);
+  font-size: var(--workspace-type-caption);
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  line-height: 1.35;
+}
+
+.operations-shell :where(.card-heading strong, .record-section-heading strong, .section-toolbar strong, .operating-studio > header strong) {
+  font-size: var(--workspace-type-card-title);
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.operations-shell .workspace-page :where(.workspace-card, .admin-card, .analytics-panel, .parts-panel, .marketing-grid > section, .marketing-grid > aside, .sales360-section, .sales360-order, .used-detail, .workshop-card) :where(p, small) {
+  color: var(--ink-600);
+}
+
+/* Tables retain density without dropping below the readable scale. */
+.operations-shell .workspace-page :where(table) {
+  font-size: var(--workspace-type-label);
+  line-height: 1.45;
+}
+
+.operations-shell .workspace-page :where(th, td) {
+  padding: 13px 16px;
+}
+
+.operations-shell .workspace-page :where(th) {
+  color: var(--ink-600);
+  font-size: var(--workspace-type-caption);
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  line-height: 1.35;
+}
+
+.operations-shell .workspace-page :where(td) {
+  color: var(--ink-800);
+  font-size: var(--workspace-type-label);
+}
+
+/* Work queues and operational lists */
+.operations-shell :where(.exception-list, .work-queue, .agenda-card, .analytics-exceptions, .parts-queue, .admin-list, .sales360-items, .comm-list, .tasks-list, .documents-list) :where(strong) {
+  font-size: var(--workspace-type-label);
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.operations-shell :where(.exception-list, .work-queue, .agenda-card, .analytics-exceptions, .parts-queue, .admin-list, .sales360-items, .comm-list, .tasks-list, .documents-list) :where(p, span, small) {
+  font-size: var(--workspace-type-caption);
+  line-height: 1.5;
+}
+
+.operations-shell :where(.exception-list > button, .work-queue > button, .analytics-exceptions button, .record-directory-panel .entity-directory > button, .record-directory-panel .customer-directory > button, .record-directory-panel .vehicle-directory > button) {
+  padding-block: 12px;
+}
+
+.operations-shell :where(.queue-status, .exception-list em, .role-badge, .source-badge, .age-badge, .parts-status, .admin-status, .finance-status, .marketing-status, .marketing-live-badge, .consent-status) {
+  font-size: var(--workspace-type-caption);
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  line-height: 1.35;
+}
+
+/* Customer and Vehicle 360 master-detail typography */
+.operations-shell .record-directory-panel .record-search input,
+.operations-shell .record-directory-panel .record-search .search-submit,
+.operations-shell .filter-chips button {
+  font-size: var(--workspace-type-caption);
+}
+
+.operations-shell .record-directory-panel .record-search-state {
+  padding: 8px 13px;
+  font-size: var(--workspace-type-caption);
+  line-height: 1.45;
+}
+
+.operations-shell .directory-panel-heading span {
+  color: var(--blue);
+  font-size: var(--workspace-type-caption);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+}
+
+.operations-shell .directory-panel-heading strong {
+  font-size: var(--workspace-type-body-lg);
+  line-height: 1.4;
+}
+
+.operations-shell .record-directory-panel :where(.customer-directory, .vehicle-directory, .entity-directory) > button strong {
+  font-size: var(--workspace-type-label);
+}
+
+.operations-shell .record-directory-panel .customer-directory > button small,
+.operations-shell .record-directory-panel .customer-directory > button em,
+.operations-shell .record-directory-panel .vehicle-directory > button small,
+.operations-shell .record-directory-panel .vehicle-directory > button em,
+.operations-shell .record-directory-panel .entity-directory > button small,
+.operations-shell .record-directory-panel .entity-directory > button em {
+  color: var(--ink-600);
+  font-size: var(--workspace-type-caption);
+  line-height: 1.4;
+}
+
+.operations-shell .record-directory-panel :where(.customer-list-avatar, .vehicle-list-icon, .entity-list-icon) {
+  font-size: 0.6875rem;
+}
+
+.operations-shell .workspace-page .record-identity h3,
+.operations-shell .workspace-page .vehicle-hero h3 {
+  font-size: 1.75rem;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.operations-shell :where(.record-identity, .vehicle-hero) p {
+  color: var(--ink-600);
+  font-size: var(--workspace-type-label);
+  line-height: 1.5;
+}
+
+.operations-shell :where(.record-identity, .vehicle-hero) > div:nth-child(2) > span,
+.operations-shell .record-facts span,
+.operations-shell .info-grid span,
+.operations-shell .operational-table :where(.operational-table-head span, button span),
+.operations-shell .timeline-event span {
+  color: var(--ink-600);
+  font-size: var(--workspace-type-caption);
+  line-height: 1.4;
+}
+
+.operations-shell .record-tabs button {
+  min-height: 40px;
+  padding-inline: 10px;
+  font-size: var(--workspace-type-label);
+}
+
+.operations-shell .record-tabs {
+  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-width: thin;
+}
+
+.operations-shell .record-tabs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.operations-shell .record-tabs::-webkit-scrollbar-thumb {
+  border-radius: 99px;
+  background: var(--line-strong);
+}
+
+.operations-shell :where(.record-facts strong, .record-facts button, .info-grid strong, .timeline-event strong) {
+  font-size: var(--workspace-type-label);
+  line-height: 1.4;
+}
+
+.operations-shell .info-grid div {
+  min-height: 92px;
+  padding: 18px;
+}
+
+.operations-shell .side-panel > strong {
+  font-size: 1.5rem;
+  line-height: 1.25;
+}
+
+.operations-shell .side-panel > span {
+  font-size: var(--workspace-type-caption);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+}
+
+.operations-shell .side-panel > p {
+  font-size: var(--workspace-type-label);
+  line-height: var(--workspace-leading-body);
+}
+
+.operations-shell :where(.side-panel > button:not(.vehicle-link), .status-check, .section-toolbar > button) {
+  font-size: var(--workspace-type-caption);
+}
+
+/* Studio cards and guided workflows */
+.operations-shell .operating-studio > nav button {
+  min-height: 88px;
+  padding: 15px;
+  font-size: var(--workspace-type-label);
+  line-height: 1.4;
+}
+
+.operations-shell .operating-studio > nav small,
+.operations-shell :where(.studio-coverage span, .studio-records span, .studio-records em, .workflow-lane > div:last-child button) {
+  font-size: var(--workspace-type-caption);
+  line-height: 1.45;
+}
+
+.operations-shell .studio-summary strong,
+.operations-shell .studio-records strong {
+  font-size: var(--workspace-type-label);
+  line-height: 1.45;
+}
+
+.operations-shell .studio-summary button {
+  font-size: var(--workspace-type-caption);
+}
+
+/* Portal-specific controls, analytics context, and administration */
+.operations-shell .analytics-filter-title strong,
+.operations-shell :where(.admin-card h2, .analytics-panel h2) {
+  font-size: var(--workspace-type-card-title);
+}
+
+.operations-shell .analytics-filter-title span,
+.operations-shell .analytics-filters label > span,
+.operations-shell :where(.analytics-context, .analytics-kpi details, .analytics-panel header p, .analytics-metric-context) {
+  color: var(--ink-600);
+  font-size: var(--workspace-type-caption);
+  line-height: 1.5;
+}
+
+.operations-shell .analytics-disclosure {
+  font-size: var(--workspace-type-caption);
+  line-height: 1.4;
+}
+
+.operations-shell :where(.admin-table-wrap table, .analytics-table) {
+  font-size: var(--workspace-type-label);
+}
+
+.operations-shell :where(.admin-role-grid p, .admin-role-grid ul, .admin-list article span, .admin-branch-settings label, .admin-branch-settings > div span, .admin-form label > span, .admin-check-list legend) {
+  color: var(--ink-600);
+  font-size: var(--workspace-type-caption);
+  line-height: 1.5;
+}
+
+.operations-shell :where(.admin-row-actions button, .admin-list button, .admin-table-wrap td button, .admin-branch-settings button, .admin-tabs button, .admin-primary, .analytics-apply, .analytics-state button) {
+  min-height: 40px;
+  font-size: var(--workspace-type-caption);
+}
+
+/* Communications, tasks, documents, notes, sharing, and consent */
+.operations-shell :where(.comm-card-meta, .comm-card-date, .note-card-meta, .task-row span, .document-row span, .consent-card p, .consent-history summary, .workflow-form-note) {
+  color: var(--ink-600);
+  font-size: var(--workspace-type-caption);
+  line-height: 1.45;
+}
+
+.operations-shell :where(.comm-card-subject, .note-card p, .task-row strong, .document-row strong, .consent-card-head strong) {
+  font-size: var(--workspace-type-label);
+  line-height: 1.5;
+}
+
+.operations-shell .comm-card-summary {
+  color: var(--ink-600);
+  font-size: var(--workspace-type-label);
+  line-height: 1.55;
+}
+
+.operations-shell :where(.comm-filters select, .comm-toolbar > button, .notes-form button, .task-row select, .document-row select, .consent-card-actions button, .share-link-row input, .share-link-row button, .share-modal-actions button, .share-modal-actions a) {
+  font-size: var(--workspace-type-caption);
+}
+
+/* Forms and overlays opened from any portal */
+.operations-shell :where(.workflow-modal h2, .admin-dialog h2) {
+  font-size: 1.5rem;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+
+.operations-shell :where(.workflow-form-grid label, .profile-edit-form label, .finance-form label, .marketing-form label, .admin-form label) {
+  color: var(--ink-700);
+  font-size: var(--workspace-type-label);
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.operations-shell :where(.workflow-form-grid input, .workflow-form-grid select, .workflow-form-grid textarea, .profile-edit-form input:not([type="checkbox"]), .profile-edit-form select, .finance-form input, .finance-form select, .marketing-form input, .marketing-form select, .marketing-form textarea, .admin-form input, .admin-form select, .admin-form textarea) {
+  min-height: var(--workspace-control-height);
+  font-size: var(--workspace-type-label);
+  line-height: 1.4;
+}
+
+/* Shell polish: one alignment grid, a visible brand, and consistent account UI. */
+.operations-shell .operations-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.operations-shell :where(.topbar-left, .topbar-actions) {
+  min-width: 0;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.operations-shell .workspace-switcher {
+  min-width: 220px;
+  min-height: 48px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+
+.operations-shell .workspace-switcher:hover,
+.operations-shell .workspace-switcher[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--signal) 32%, var(--line));
+  background: var(--signal-soft);
+}
+
+.operations-shell .workspace-switcher > svg {
+  transition: transform 160ms ease;
+}
+
+.operations-shell .workspace-switcher[aria-expanded="true"] > svg {
+  transform: rotate(180deg);
+}
+
+.operations-shell :where(button, a, input, select, textarea):focus-visible {
+  outline-color: color-mix(in srgb, var(--signal) 36%, transparent);
+}
+
+.operations-shell .portal-brand .brand-lockup--inverse {
+  color: var(--signal);
+}
+
+.operations-shell .portal-brand .brand-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.operations-shell .portal-brand .brand-word {
+  color: #ffffff;
+  font-size: 1.125rem;
+  font-weight: 760;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+}
+
+.operations-shell .portal-brand .brand-product {
+  color: #91a8b2;
+  font-size: 0.6875rem;
+  font-weight: 650;
+  letter-spacing: 0.11em;
+}
+
+.operations-shell .profile-popover {
+  width: 300px;
+}
+
+.operations-shell .profile-popover-header {
+  min-height: 82px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--paper);
+}
+
+.operations-shell .profile-popover-header > span {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--ink-950);
+  color: white;
+  font-size: var(--workspace-type-caption);
+  font-weight: 800;
+}
+
+.operations-shell .profile-popover-header p {
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.operations-shell .profile-popover-header strong {
+  font-size: var(--workspace-type-label);
+  line-height: 1.35;
+}
+
+.operations-shell .profile-popover-header small {
+  overflow: hidden;
+  color: var(--ink-600);
+  font-size: var(--workspace-type-caption);
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operations-shell .profile-popover > :where(button, a) {
+  min-height: 48px;
+  padding-inline: 16px;
+  font-size: var(--workspace-type-label);
+  font-weight: 600;
+}
+
+.operations-shell .profile-popover footer {
+  padding: 12px 16px;
+  font-size: var(--workspace-type-caption);
+  line-height: 1.4;
+}
+
+/* Hovering the portal switcher previews the pages inside each portal. */
+.operations-shell .workspace-menu {
+  z-index: 60;
+  top: 68px;
+  width: min(780px, calc(100% - 48px));
+  border-radius: 12px;
+  background: var(--paper);
+}
+
+.operations-shell .workspace-menu > header {
+  min-height: 70px;
+  padding: 14px 18px;
+  background: var(--paper-subtle);
+}
+
+.operations-shell .workspace-menu-body {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.92fr) minmax(300px, 1.08fr);
+  min-height: 420px;
+}
+
+.operations-shell .workspace-menu-body > .workspace-menu-groups {
+  display: block;
+  max-height: min(66vh, 520px);
+  overflow-y: auto;
+  padding: 18px;
+}
+
+.operations-shell .workspace-menu-groups > div {
+  gap: 7px;
+}
+
+.operations-shell .workspace-menu-groups button {
+  min-height: 64px;
+  padding: 9px 10px;
+}
+
+.operations-shell .workspace-menu-preview {
+  min-width: 0;
+  border-left: 1px solid var(--line);
+  padding: 24px;
+  background: var(--paper-subtle);
+}
+
+.operations-shell .workspace-menu-preview > span {
+  display: block;
+  color: var(--signal-deep);
+  font-size: var(--workspace-type-caption);
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.operations-shell .workspace-menu-preview > strong {
+  display: block;
+  margin-top: 7px;
+  color: var(--ink-950);
+  font-size: var(--workspace-type-section-title);
+  line-height: 1.3;
+}
+
+.operations-shell .workspace-menu-preview > p {
+  margin: 7px 0 18px;
+  color: var(--ink-600);
+  font-size: var(--workspace-type-label);
+  line-height: 1.5;
+}
+
+.operations-shell .workspace-menu-preview nav {
+  display: grid;
+  gap: 8px;
+}
+
+.operations-shell .workspace-menu-preview nav button {
+  width: 100%;
+  min-height: 60px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  background: white;
+  color: var(--ink-700);
+  cursor: pointer;
+  text-align: left;
+}
+
+.operations-shell .workspace-menu-preview nav button:hover,
+.operations-shell .workspace-menu-preview nav button.active {
+  border-color: color-mix(in srgb, var(--signal) 32%, var(--line));
+  background: var(--signal-soft);
+  color: var(--signal-deep);
+}
+
+.operations-shell .workspace-menu-preview nav button > svg {
+  width: 18px;
+}
+
+.operations-shell .workspace-menu-preview nav button > span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.operations-shell .workspace-menu-preview nav button strong {
+  color: var(--ink-950);
+  font-size: var(--workspace-type-label);
+  line-height: 1.35;
+}
+
+.operations-shell .workspace-menu-preview nav button small {
+  color: var(--ink-600);
+  font-size: var(--workspace-type-caption);
+  line-height: 1.35;
+}
+
+/* The table component renders div rows, so style the actual DOM contract. */
+.operations-shell .operational-table {
+  overflow-x: auto;
+  background: white;
+}
+
+.operations-shell :where(.record-detail-panel, .record-layout, .record-main-card) {
+  min-width: 0;
+}
+
+.operations-shell .record-main-card .record-tabs {
+  max-width: 100%;
+}
+
+.operations-shell :where(.operational-table-head, .operational-table-row) {
+  min-width: 620px;
+  display: grid;
+  align-items: center;
+  gap: 16px;
+  padding-inline: 16px;
+}
+
+.operations-shell .operational-table-head {
+  min-height: 42px;
+}
+
+.operations-shell .operational-table-row {
+  min-height: 56px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-800);
+}
+
+.operations-shell .operational-table-row:hover {
+  background: var(--signal-soft);
+}
+
+.operations-shell :where(.operational-table-head, .operational-table-row) > span {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--workspace-type-label);
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operations-shell .operational-table-head > span {
+  color: var(--ink-600);
+  font-size: var(--workspace-type-caption);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.operations-shell .operational-table-row > span.primary {
+  color: var(--ink-950);
+  font-weight: 650;
+}
+
+.operations-shell .operational-table-row > span.status {
+  color: var(--teal-deep);
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+/* Native controls must not fall back to small browser-default chrome. */
+.operations-shell .workspace-page select {
+  min-height: var(--workspace-control-height);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding-inline: 12px 34px;
+  background-color: white;
+  color: var(--ink-800);
+  font-size: var(--workspace-type-label);
+  font-weight: 600;
+}
+
+.operations-shell .record-identity > label select {
+  min-width: 150px;
+  text-transform: capitalize;
+}
+
+.operations-shell :where(.timeline-empty, .empty-state, .record-search-state, .comm-empty) {
+  color: var(--ink-600);
+  font-size: var(--workspace-type-label);
+  line-height: 1.55;
+}
+
+.operations-shell .comm-empty {
+  min-height: 120px;
+  padding: 24px;
+}
+
+@media (max-width: 1380px) and (min-width: 1121px) {
+  .operations-shell .portal-sidebar {
+    width: 180px;
+  }
+
+  .operations-shell .operations-sidebar {
+    width: 224px;
+  }
+
+  .operations-shell .record-workbench {
+    grid-template-columns: minmax(260px, 0.82fr) minmax(0, 1.7fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .operations-shell .workspace-page {
+    width: min(100% - 24px, 1760px);
+    padding-block: 24px 56px;
+  }
+
+  .operations-shell .workspace-page :where(h1),
+  .operations-shell .workspace-page :where(.analytics-header, .parts-heading, .used-heading, .marketing-header, .finance-hero, .admin-hero) :where(h1, h2) {
+    font-size: 1.75rem;
+  }
+
+  .operations-shell .workspace-page :where(.marketing-header, .finance-hero, .admin-hero) {
+    padding: 20px;
+  }
+
+  .operations-shell .workspace-page :where(.metric-card, .analytics-kpi, .parts-metrics article, .finance-metrics article, .marketing-kpis article, .sales360-kpis div, .used-kpis article) {
+    min-height: 124px;
+    padding: 18px;
+  }
+
+  .operations-shell .portal-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-inline: 12px;
+  }
+
+  .operations-shell .portal-tabs button {
+    padding-inline: 12px;
+  }
+
+  .operations-shell .workspace-menu {
+    width: calc(100% - 16px);
+  }
+
+  .operations-shell .workspace-menu-body {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .operations-shell .workspace-menu-preview {
+    display: none;
+  }
+}

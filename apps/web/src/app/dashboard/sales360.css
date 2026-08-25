@@ -14,3 +14,83 @@
 .sales360-items article > div, .sales360-order > div { display: grid; gap: .2rem; }
 .workflow-form-grid textarea { min-height: 6rem; resize: vertical; }
 @media (max-width: 720px) { .sales360-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .sales360-detail { padding: .7rem; } .sales360-section header, .sales360-order, .sales360-items article { align-items: stretch; flex-direction: column; } .sales360-links { display: grid; } }
+
+/* Shared workspace presentation pass. These rules intentionally sit after the
+   legacy compact styles so Sales 360 follows the same readable rhythm as the
+   customer, vehicle, finance, and analytics portals. */
+.sales360-detail { gap: 16px; padding: 0; }
+.sales360-detail > .record-main-card { padding: clamp(22px, 2.5vw, 30px); }
+.sales360-detail .record-identity { gap: 16px; }
+.sales360-detail .record-identity > label { justify-self: end; }
+.sales360-links { gap: 10px; margin-top: 20px; }
+.sales360-links button,
+.sales360-section header button,
+.sales360-order button,
+.sales360-items article button {
+  min-height: var(--workspace-control-height, 44px);
+  justify-content: center;
+  gap: 7px;
+  border-color: var(--line-strong);
+  border-radius: 8px;
+  padding: 9px 14px;
+  color: var(--ink-800);
+  cursor: pointer;
+  font-weight: 650;
+  line-height: 1.35;
+}
+.sales360-links button:hover,
+.sales360-section header button:hover,
+.sales360-order button:hover,
+.sales360-items article button:hover { border-color: var(--signal); background: var(--signal-soft); color: var(--signal-deep); }
+.sales360-links button span { color: var(--ink-600); }
+.sales360-links svg,
+.sales360-section svg,
+.sales360-items svg { width: 17px; height: 17px; }
+.sales360-kpis { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 16px; }
+.sales360-kpis div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  border-color: var(--line);
+  border-radius: 12px;
+  padding: 18px;
+}
+.sales360-kpis span,
+.sales360-section header span,
+.sales360-items span,
+.sales360-items small,
+.sales360-order span { color: var(--ink-600); }
+.sales360-kpis strong { overflow-wrap: anywhere; }
+.sales360-section,
+.sales360-order { border-color: var(--line); border-radius: 12px; padding: clamp(20px, 2.2vw, 26px); }
+.sales360-section header,
+.sales360-order,
+.sales360-items article { gap: 18px; }
+.sales360-section header > div,
+.sales360-items article > div,
+.sales360-order > div { min-width: 0; display: grid; gap: 4px; }
+.sales360-section h3 { margin: 3px 0 0; }
+.sales360-section > p {
+  min-height: 44px;
+  margin: 16px 0 0;
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  color: var(--ink-600);
+}
+.sales360-items { gap: 0; margin-top: 16px; }
+.sales360-items article { min-height: 64px; padding-block: 12px; }
+
+@media (max-width: 720px) {
+  .sales360-detail { padding: 0; }
+  .sales360-detail .record-identity { grid-template-columns: auto minmax(0, 1fr); }
+  .sales360-detail .record-identity > label { grid-column: 1 / -1; width: 100%; }
+  .sales360-detail .record-identity > label select { width: 100%; }
+}
+
+@media (max-width: 440px) {
+  .sales360-kpis { grid-template-columns: 1fr; }
+}

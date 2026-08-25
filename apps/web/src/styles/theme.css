@@ -40,6 +40,33 @@
   --radius-md: 10px;
   --radius-lg: 16px;
   --radius-xl: 24px;
+
+  /* Workspace typography and semantic aliases. Portal styles consume these
+     names instead of inventing a new scale or colour vocabulary per page. */
+  --workspace-type-caption: 0.75rem;
+  --workspace-type-label: 0.875rem;
+  --workspace-type-body: 0.9375rem;
+  --workspace-type-body-lg: 1rem;
+  --workspace-type-card-title: 1.0625rem;
+  --workspace-type-section-title: 1.375rem;
+  --workspace-type-page-title: clamp(1.875rem, 2.4vw, 2.375rem);
+  --workspace-leading-tight: 1.2;
+  --workspace-leading-body: 1.55;
+  --workspace-leading-relaxed: 1.65;
+  --workspace-control-height: 44px;
+  --workspace-card-padding: clamp(18px, 2vw, 24px);
+
+  /* Compatibility aliases used by newer portal modules. */
+  --ink: var(--ink-950);
+  --ink-muted: var(--ink-600);
+  --muted: var(--ink-600);
+  --text-muted: var(--ink-600);
+  --accent: var(--blue);
+  --success: #078557;
+  --danger: var(--red);
+  --surface-raised: var(--paper);
+  --surface-subtle: var(--paper-subtle);
+  --surface-muted: var(--paper-2);
 }
 
 * { box-sizing: border-box; }
