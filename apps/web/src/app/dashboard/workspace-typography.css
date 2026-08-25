@@ -414,7 +414,7 @@
 
 .operations-shell .record-tabs button {
   min-height: 40px;
-  padding-inline: 10px;
+  padding-inline: 8px;
   font-size: var(--workspace-type-label);
 }
 
@@ -430,6 +430,41 @@
 .operations-shell .record-tabs::-webkit-scrollbar-thumb {
   border-radius: 99px;
   background: var(--line-strong);
+}
+
+.operations-shell .record-more-menu-popover {
+  width: 224px;
+}
+
+.operations-shell .record-more-menu-popover :where(button, a) {
+  min-height: 44px;
+  font-size: var(--workspace-type-label);
+  line-height: 1.4;
+}
+
+.operations-shell :where(.ownership-row, .document-row, .appraisal-card, .auction-card, .disposition-card) {
+  min-width: 0;
+}
+
+.operations-shell :where(.ownership-row, .document-row) {
+  gap: 14px;
+  padding: 14px 16px;
+}
+
+.operations-shell :where(.ownership-row, .document-row) > svg {
+  flex: 0 0 auto;
+  color: var(--blue);
+}
+
+.operations-shell :where(.ownership-row, .document-row, .appraisal-card-head) strong {
+  font-size: var(--workspace-type-label);
+  line-height: 1.4;
+}
+
+.operations-shell :where(.ownership-row, .document-row) span,
+.operations-shell :where(.appraisal-card, .auction-card, .disposition-card) p {
+  font-size: var(--workspace-type-caption);
+  line-height: 1.5;
 }
 
 .operations-shell :where(.record-facts strong, .record-facts button, .info-grid strong, .timeline-event strong) {

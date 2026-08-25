@@ -19,9 +19,11 @@
    legacy compact styles so Sales 360 follows the same readable rhythm as the
    customer, vehicle, finance, and analytics portals. */
 .sales360-detail { gap: 16px; padding: 0; }
-.sales360-detail > .record-main-card { padding: clamp(22px, 2.5vw, 30px); }
+.sales360-detail > .record-main-card { min-width: 0; overflow: hidden; padding: clamp(22px, 2.5vw, 30px); }
 .sales360-detail .record-identity { gap: 16px; }
+.sales360-detail .record-identity > div:nth-child(2) { min-width: 0; }
 .sales360-detail .record-identity > label { justify-self: end; }
+.sales360-detail .record-identity > label select { min-width: 150px; text-transform: capitalize; }
 .sales360-links { gap: 10px; margin-top: 20px; }
 .sales360-links button,
 .sales360-section header button,
@@ -38,11 +40,12 @@
   font-weight: 650;
   line-height: 1.35;
 }
+.sales360-links button { min-width: 0; max-width: 100%; }
 .sales360-links button:hover,
 .sales360-section header button:hover,
 .sales360-order button:hover,
 .sales360-items article button:hover { border-color: var(--signal); background: var(--signal-soft); color: var(--signal-deep); }
-.sales360-links button span { color: var(--ink-600); }
+.sales360-links button span { min-width: 0; overflow: hidden; color: var(--ink-600); text-overflow: ellipsis; white-space: nowrap; }
 .sales360-links svg,
 .sales360-section svg,
 .sales360-items svg { width: 17px; height: 17px; }
@@ -68,6 +71,9 @@
 .sales360-section header,
 .sales360-order,
 .sales360-items article { gap: 18px; }
+.sales360-section header > button,
+.sales360-order > button,
+.sales360-items article > button { flex: 0 0 auto; }
 .sales360-section header > div,
 .sales360-items article > div,
 .sales360-order > div { min-width: 0; display: grid; gap: 4px; }
