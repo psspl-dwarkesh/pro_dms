@@ -7,16 +7,17 @@
  */
 
 .operations-shell {
-  /* AutoAxis workspace palette: navy structure, warm action colour, and teal
-     state feedback. Keep this scoped so the public marketing site is free to
-     use its own campaign palette. */
-  --blue: #f26a3d;
-  --blue-hover: #d95227;
-  --blue-soft: #fff0ea;
-  --blue-wash: #fff8f5;
-  --signal: #f26a3d;
-  --signal-deep: #d95227;
-  --signal-soft: #fff0ea;
+  /* AutoAxis workspace palette: navy structure, electric-blue action colour
+     (matching the product side's palette), and teal state feedback. Keep this
+     scoped so the public marketing site is free to use its own campaign
+     palette. */
+  --blue: #0057eb;
+  --blue-hover: #0046c2;
+  --blue-soft: #edf4ff;
+  --blue-wash: #f5f8ff;
+  --signal: #0057eb;
+  --signal-deep: #0046c2;
+  --signal-soft: #edf4ff;
   --teal: #149b8e;
   --teal-deep: #0a7068;
   --teal-soft: #e9f7f5;
@@ -52,8 +53,8 @@
   line-height: 1.25;
 }
 
-.operations-shell .portal-nav button,
-.operations-shell .operations-nav button,
+.operations-shell .portal-nav :where(button, a),
+.operations-shell .operations-nav :where(button, a),
 .operations-shell .operations-nav a {
   min-height: 44px;
   font-size: var(--workspace-type-label);
@@ -123,16 +124,16 @@
   font-size: var(--workspace-type-caption);
 }
 
-.operations-shell .workspace-menu-groups button {
+.operations-shell .workspace-menu-groups :where(button, a) {
   min-height: 68px;
   padding: 10px;
 }
 
-.operations-shell .workspace-menu-groups button strong {
+.operations-shell .workspace-menu-groups :where(button, a) strong {
   font-size: var(--workspace-type-label);
 }
 
-.operations-shell .workspace-menu-groups button small {
+.operations-shell .workspace-menu-groups :where(button, a) small {
   color: var(--ink-600);
   font-size: var(--workspace-type-caption);
   line-height: 1.4;
@@ -335,7 +336,7 @@
   padding-block: 12px;
 }
 
-.operations-shell :where(.queue-status, .exception-list em, .role-badge, .source-badge, .age-badge, .parts-status, .admin-status, .finance-status, .marketing-status, .marketing-live-badge, .consent-status) {
+.operations-shell :where(.queue-status, .exception-list em, .role-badge, .source-badge, .age-badge, .parts-status, .admin-status, .finance-status, .marketing-status, .marketing-live-badge, .coming-soon-pill, .consent-status) {
   font-size: var(--workspace-type-caption);
   font-weight: 700;
   letter-spacing: 0.025em;
@@ -721,7 +722,7 @@
   gap: 7px;
 }
 
-.operations-shell .workspace-menu-groups button {
+.operations-shell .workspace-menu-groups :where(button, a) {
   min-height: 64px;
   padding: 9px 10px;
 }
@@ -763,7 +764,7 @@
   gap: 8px;
 }
 
-.operations-shell .workspace-menu-preview nav button {
+.operations-shell .workspace-menu-preview nav :where(button, a) {
   width: 100%;
   min-height: 60px;
   display: grid;
@@ -779,31 +780,31 @@
   text-align: left;
 }
 
-.operations-shell .workspace-menu-preview nav button:hover,
-.operations-shell .workspace-menu-preview nav button.active {
+.operations-shell .workspace-menu-preview nav :where(button, a):hover,
+.operations-shell .workspace-menu-preview nav :where(button, a).active {
   border-color: color-mix(in srgb, var(--signal) 32%, var(--line));
   background: var(--signal-soft);
   color: var(--signal-deep);
 }
 
-.operations-shell .workspace-menu-preview nav button > svg {
+.operations-shell .workspace-menu-preview nav :where(button, a) > svg {
   width: 18px;
 }
 
-.operations-shell .workspace-menu-preview nav button > span {
+.operations-shell .workspace-menu-preview nav :where(button, a) > span {
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.operations-shell .workspace-menu-preview nav button strong {
+.operations-shell .workspace-menu-preview nav :where(button, a) strong {
   color: var(--ink-950);
   font-size: var(--workspace-type-label);
   line-height: 1.35;
 }
 
-.operations-shell .workspace-menu-preview nav button small {
+.operations-shell .workspace-menu-preview nav :where(button, a) small {
   color: var(--ink-600);
   font-size: var(--workspace-type-caption);
   line-height: 1.35;
@@ -873,13 +874,19 @@
   text-transform: capitalize;
 }
 
-/* Native controls must not fall back to small browser-default chrome. */
+/* Native controls must not fall back to small browser-default chrome. A custom chevron replaces
+   the browser's own arrow so it sits at a fixed, vertically-centred inset instead of drifting
+   around inside the 34px end-padding depending on browser and platform. */
 .operations-shell .workspace-page select {
   min-height: var(--workspace-control-height);
+  appearance: none;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   padding-inline: 12px 34px;
   background-color: white;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
   color: var(--ink-800);
   font-size: var(--workspace-type-label);
   font-weight: 600;

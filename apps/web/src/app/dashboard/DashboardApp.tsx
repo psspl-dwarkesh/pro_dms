@@ -2,6 +2,7 @@ import {
   ArrowRight,
   BarChart3,
   Bell,
+  Bot,
   Building2,
   BriefcaseBusiness,
   CarFront,
@@ -29,7 +30,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { apiGet } from "../../lib/api";
 import { roleLabel, useAuth } from "../auth/AuthContext";
 import { Brand } from "../components/Brand";
-import { ComingSoon } from "../components/ComingSoon";
+import { ComingSoon, ComingSoonBadge } from "../components/ComingSoon";
 import { Dialog, Popover } from "../components/overlays";
 import {
   ADMIN_LABEL,
@@ -52,7 +53,6 @@ import { Analytics360 } from "./Analytics360";
 import { DomainView } from "./DashboardViews";
 import { ServiceView } from "./Hubs";
 import { Finance360 } from "./Finance360";
-import { MarketingStatusBadge, MarketingView } from "./MarketingView";
 import { PAGE_WORKFLOW, WorkflowDiagram } from "./PageWorkflows";
 import { PortalTabShell } from "./PortalShell";
 import { CustomerView } from "./CustomerViews";
@@ -86,9 +86,12 @@ const viewIcons: Record<DashView, LucideIcon> = {
   group: Globe2,
   workforce: Users,
   company: ShieldCheck,
+  aianalyst: Bot,
 };
 
 const COMING_SOON_COPY: Partial<Record<DashView, { description: string; planned: string[] }>> = {
+  marketing: { description: "Consent-aware campaign operations against the same customer relationships used by Sales and Customer 360. This page is being rebuilt on the shared workspace patterns before it comes back online.", planned: ["Audience segments with consent tracking", "Campaign scheduling and channel targeting", "Response and attribution reporting"] },
+  aianalyst: { description: "Automated insights and predictive analysis layered across every connected portal - flagging what needs attention before you go looking for it.", planned: ["Anomaly and trend detection across sales, service, and finance", "Natural-language question answering over your operating data", "Proactive recommendations surfaced in each portal"] },
   usedcars: { description: "Vehicle 360's disposition page. Dedicated acquisition, reconditioning, and auction workflows are planned beyond the shared vehicle record.", planned: ["Trade-in and appraisal workflow", "Reconditioning cost tracking", "Marketplace publishing and auction"] },
   branch: { description: "A branch-level performance rollup across sales, service, and parts is planned once target data is modeled.", planned: ["Branch scorecards", "Department drill-down", "Local risk and action tracking"] },
   group: { description: "Multi-branch comparisons and group reporting are planned once more than one branch has active operating data.", planned: ["Cross-branch comparisons", "Consolidated forecasting", "OEM scorecards"] },
@@ -96,6 +99,20 @@ const COMING_SOON_COPY: Partial<Record<DashView, { description: string; planned:
 };
 
 type SearchHit = { id: string; title: string; detail: string; view: DashView };
+
+// Every control below that jumps to another page carries a real href built from the same
+// ?workspace= (and optional &record=) query the app reads on load, so right-click "open in new
+// tab", middle-click, and Ctrl/Cmd-click all work. A plain left click still short-circuits to the
+// existing in-place SPA navigation instead of a full page reload.
+function workspaceHref(view: DashView, recordId?: string) {
+  const params = new URLSearchParams({ workspace: view });
+  if (recordId) params.set("record", recordId);
+  return `?${params.toString()}`;
+}
+
+function isPlainLeftClick(event: { button: number; metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean }) {
+  return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+}
 
 export default function DashboardApp({ initialView, initialRecordId, onNavigate, onLogout }: DashboardAppProps) {
   const { user, organization } = useAuth();
@@ -215,8 +232,12 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
     setHelpOpen(false);
   }
 
+  function firstAllowedArea(portal: PortalId) {
+    return PORTAL_AREAS[portal].find((area) => allowedViews.has(area.id));
+  }
+
   function openPortal(portal: PortalId) {
-    const firstPage = PORTAL_AREAS[portal].find((area) => allowedViews.has(area.id));
+    const firstPage = firstAllowedArea(portal);
     if (firstPage) navigate(firstPage.id);
   }
 
@@ -259,9 +280,9 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
         {portalPages.map((area) => {
           const Icon = viewIcons[area.id];
           return (
-            <button type="button" key={area.id} title={area.label} aria-current={view === area.id ? "page" : undefined} className={view === area.id ? "active" : ""} onClick={() => navigate(area.id)}>
+            <a key={area.id} title={area.label} href={workspaceHref(area.id)} aria-current={view === area.id ? "page" : undefined} className={view === area.id ? "active" : ""} onClick={(event) => { if (isPlainLeftClick(event)) { event.preventDefault(); navigate(area.id); } }}>
               <Icon size={17} />{!collapsed && <span>{area.label}</span>}
-            </button>
+            </a>
           );
         })}
       </div>
@@ -276,7 +297,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
         {!collapsed && <span className="nav-section-label">Related</span>}
         {related.map((id) => {
           const Icon = viewIcons[id];
-          return <button title={viewLabel(id)} type="button" key={id} onClick={() => navigate(id)}><Icon size={17} />{!collapsed && <span>{viewLabel(id)}</span>}{!collapsed && id === "marketing" && <MarketingStatusBadge />}</button>;
+          return <a title={viewLabel(id)} key={id} href={workspaceHref(id)} onClick={(event) => { if (isPlainLeftClick(event)) { event.preventDefault(); navigate(id); } }}><Icon size={17} />{!collapsed && <span>{viewLabel(id)}</span>}{!collapsed && COMING_SOON_VIEWS.has(id) && <ComingSoonBadge />}</a>;
         })}
       </div>
     );
@@ -309,7 +330,6 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
     if (area === "usedcars") return <UsedRecon />;
     if (area === "sales") return <Sales360 onNavigate={navigate} />;
     if (area === "finance") return <Finance360 />;
-    if (area === "marketing") return <MarketingView />;
     if (area === "analytics" || area === "branch" || area === "group" || area === "workforce") return <Analytics360 area={area} onNavigate={navigate} />;
     if (area === ADMIN_VIEW) return <Administration />;
     const copy = COMING_SOON_COPY[area as DashView];
@@ -361,10 +381,11 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                 <span className="nav-section-label">{section.label}</span>
                 {section.items.map((item) => {
                   const Icon = viewIcons[item.id];
+                  const firstPage = firstAllowedArea(item.id);
                   return (
-                    <button type="button" key={item.id} title={item.label} aria-current={activePortal === item.id ? "page" : undefined} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}>
-                      <Icon size={17} /><span>{item.label}</span>{item.id === "marketing" && <MarketingStatusBadge />}
-                    </button>
+                    <a key={item.id} title={item.label} href={firstPage ? workspaceHref(firstPage.id) : "#"} aria-current={activePortal === item.id ? "page" : undefined} className={activePortal === item.id ? "active" : ""} onClick={(event) => { if (isPlainLeftClick(event)) { event.preventDefault(); openPortal(item.id); } }}>
+                      <Icon size={17} /><span>{item.label}</span>{COMING_SOON_VIEWS.has(item.id) && <ComingSoonBadge />}
+                    </a>
                   );
                 })}
               </div>
@@ -381,7 +402,8 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                 {!collapsed && <span className="nav-section-label">{section.label}</span>}
                 {section.items.map((item) => {
                   const Icon = viewIcons[item.id];
-                  return <button type="button" key={item.id} title={item.label} aria-current={activePortal === item.id ? "page" : undefined} className={activePortal === item.id ? "active" : ""} onClick={() => openPortal(item.id)}><Icon size={17} />{!collapsed && <span>{item.label}</span>}{!collapsed && item.id === "marketing" && <MarketingStatusBadge />}</button>;
+                  const firstPage = firstAllowedArea(item.id);
+                  return <a key={item.id} title={item.label} href={firstPage ? workspaceHref(firstPage.id) : "#"} aria-current={activePortal === item.id ? "page" : undefined} className={activePortal === item.id ? "active" : ""} onClick={(event) => { if (isPlainLeftClick(event)) { event.preventDefault(); openPortal(item.id); } }}><Icon size={17} />{!collapsed && <span>{item.label}</span>}{!collapsed && COMING_SOON_VIEWS.has(item.id) && <ComingSoonBadge />}</a>;
                 })}
               </div>
             ))}
@@ -398,7 +420,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
               <button type="button" className="mobile-nav-trigger" onClick={() => setMobileOpen(true)} aria-label="Open navigation"><Menu /></button>
               <span className="mobile-topbar-brand"><Brand compact /></span>
               <span className="topbar-divider" />
-              <button type="button" className="workspace-switcher" aria-expanded={workspaceMenuOpen} onPointerEnter={() => showWorkspaceMenu()} onPointerLeave={scheduleWorkspaceMenuClose} onFocus={() => showWorkspaceMenu()} onClick={() => showWorkspaceMenu()}><span className="workspace-switcher-icon"><CurrentViewIcon /></span><span><small>Portal</small><strong>{currentLabel}</strong>{activePortal === "marketing" && <MarketingStatusBadge />}</span><ChevronDown /></button>
+              <button type="button" className="workspace-switcher" aria-expanded={workspaceMenuOpen} onPointerEnter={() => showWorkspaceMenu()} onPointerLeave={scheduleWorkspaceMenuClose} onFocus={() => showWorkspaceMenu()} onClick={() => showWorkspaceMenu()}><span className="workspace-switcher-icon"><CurrentViewIcon /></span><span><small>Portal</small><strong>{currentLabel}</strong>{activePortal && COMING_SOON_VIEWS.has(activePortal) && <ComingSoonBadge />}</span><ChevronDown /></button>
               <button ref={helpTriggerRef} type="button" aria-label="What is this page?" aria-expanded={helpOpen} className="icon-button page-help-trigger" onClick={() => setHelpOpen((value) => !value)}><HelpCircle size={17} /></button>
             </div>
             <div className="topbar-actions">
@@ -424,9 +446,9 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                 <span>Operations notifications</span>
                 {overview ? (
                   <>
-                    {allowedViews.has("service") && <button type="button" onClick={() => navigate("service")}><b>{overview.activeServiceJobs} active service jobs</b><small>Open in Vehicle 360 - Service and workshop</small></button>}
-                    {allowedViews.has("parts") && <button type="button" onClick={() => navigate("parts")}><b>{overview.lowStockParts} parts at or below reorder point</b><small>Open in Vehicle 360 - Parts</small></button>}
-                    {allowedViews.has("sales") && <button type="button" onClick={() => navigate("sales")}><b>{overview.openLeads} open leads</b><small>Open in Sales 360</small></button>}
+                    {allowedViews.has("service") && <a href={workspaceHref("service")} onClick={(event) => { if (isPlainLeftClick(event)) { event.preventDefault(); navigate("service"); } }}><b>{overview.activeServiceJobs} active service jobs</b><small>Open in Vehicle 360 - Service and workshop</small></a>}
+                    {allowedViews.has("parts") && <a href={workspaceHref("parts")} onClick={(event) => { if (isPlainLeftClick(event)) { event.preventDefault(); navigate("parts"); } }}><b>{overview.lowStockParts} parts at or below reorder point</b><small>Open in Vehicle 360 - Parts</small></a>}
+                    {allowedViews.has("sales") && <a href={workspaceHref("sales")} onClick={(event) => { if (isPlainLeftClick(event)) { event.preventDefault(); navigate("sales"); } }}><b>{overview.openLeads} open leads</b><small>Open in Sales 360</small></a>}
                   </>
                 ) : <span className="notification-empty">Live operational counts are temporarily unavailable.</span>}
               </div>
@@ -437,7 +459,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                 {/* Administration is not a portal: employees, roles, branches, and audit history
                     are account/settings concerns, reached from here rather than the sidebar. */}
                 {allowedViews.has(ADMIN_VIEW) && (
-                  <button type="button" aria-current={view === ADMIN_VIEW ? "page" : undefined} onClick={() => { setProfileOpen(false); navigate(ADMIN_VIEW); }}><ShieldCheck size={15} />{ADMIN_LABEL}</button>
+                  <a href={workspaceHref(ADMIN_VIEW)} aria-current={view === ADMIN_VIEW ? "page" : undefined} onClick={(event) => { if (isPlainLeftClick(event)) { event.preventDefault(); setProfileOpen(false); navigate(ADMIN_VIEW); } }}><ShieldCheck size={15} />{ADMIN_LABEL}</a>
                 )}
                 <button type="button" onClick={onLogout}><LogOut size={15} />Sign out</button>
                 <a href="mailto:support@prakashinfotech.com"><UserRound size={15} />Prakash support</a>
@@ -455,7 +477,8 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                       <span>{section.label}</span>
                       {section.items.map((item) => {
                         const Icon = viewIcons[item.id];
-                        return <button type="button" key={item.id} className={activePortal === item.id ? "active" : ""} onPointerEnter={() => setWorkspacePreview(item.id)} onFocus={() => setWorkspacePreview(item.id)} onClick={() => openPortal(item.id)}><i><Icon /></i><span><strong>{item.label}{item.id === "marketing" && <MarketingStatusBadge />}</strong><small>{PORTAL_BLURBS[item.id]}</small></span><ArrowRight /></button>;
+                        const firstPage = firstAllowedArea(item.id);
+                        return <a key={item.id} href={firstPage ? workspaceHref(firstPage.id) : "#"} className={activePortal === item.id ? "active" : ""} onPointerEnter={() => setWorkspacePreview(item.id)} onFocus={() => setWorkspacePreview(item.id)} onClick={(event) => { if (isPlainLeftClick(event)) { event.preventDefault(); openPortal(item.id); } }}><i><Icon /></i><span><strong>{item.label}{COMING_SOON_VIEWS.has(item.id) && <ComingSoonBadge />}</strong><small>{PORTAL_BLURBS[item.id]}</small></span><ArrowRight /></a>;
                       })}
                     </div>
                   ))}
@@ -468,7 +491,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
                     <nav>
                       {previewPages.map((area) => {
                         const Icon = viewIcons[area.id];
-                        return <button type="button" key={area.id} className={view === area.id ? "active" : ""} onClick={() => navigate(area.id)}><Icon /><span><strong>{area.label}</strong><small>{view === area.id ? "Current page" : `Open ${area.label}`}</small></span><ArrowRight /></button>;
+                        return <a key={area.id} href={workspaceHref(area.id)} className={view === area.id ? "active" : ""} onClick={(event) => { if (isPlainLeftClick(event)) { event.preventDefault(); navigate(area.id); } }}><Icon /><span><strong>{area.label}</strong><small>{view === area.id ? "Current page" : `Open ${area.label}`}</small></span><ArrowRight /></a>;
                       })}
                     </nav>
                   </aside>
@@ -483,7 +506,7 @@ export default function DashboardApp({ initialView, initialRecordId, onNavigate,
             <div className="command-palette-content">
               <header><Search /><input autoFocus value={commandQuery} onChange={(event) => setCommandQuery(event.target.value)} placeholder="Search customer, mobile, VIN, registration, make or model" /><kbd>ESC</kbd></header>
               <span>{commandLoading ? "Searching..." : commandQuery.trim().length < 2 ? "Type at least two characters to search connected records." : `${commandResults.length} matching records`}</span>
-              {commandResults.map((record) => <button type="button" key={`${record.view}-${record.id}`} onClick={() => { navigate(record.view, record.id); setCommandOpen(false); setCommandQuery(""); }}><CircleUserRound /><div><strong>{record.title}</strong><small>{record.detail}</small></div><ArrowRight /></button>)}
+              {commandResults.map((record) => <a key={`${record.view}-${record.id}`} href={workspaceHref(record.view, record.id)} onClick={(event) => { if (isPlainLeftClick(event)) { event.preventDefault(); navigate(record.view, record.id); setCommandOpen(false); setCommandQuery(""); } }}><CircleUserRound /><div><strong>{record.title}</strong><small>{record.detail}</small></div><ArrowRight /></a>)}
               {!commandLoading && commandQuery.trim().length >= 2 && !commandResults.length && <div className="command-empty"><Search /><strong>No matching records</strong><span>Try a customer name, mobile, VIN, registration, or model.</span></div>}
             </div>
           </Dialog>

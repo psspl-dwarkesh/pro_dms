@@ -10,7 +10,8 @@ export type PortalId =
   | "sales"
   | "finance"
   | "marketing"
-  | "analytics";
+  | "analytics"
+  | "aianalyst";
 
 // Sub-areas that live *inside* a portal, reached from its contextual sidebar and internal tab
 // shell rather than from the primary sidebar. Vehicle 360 owns service/parts/usedcars (workshop,

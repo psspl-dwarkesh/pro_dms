@@ -13,6 +13,12 @@ type ComingSoonProps = {
   onNavigate: (view: DashView) => void;
 };
 
+// The small pill shown next to a coming-soon portal's name wherever it appears - primary sidebar,
+// header dropdown, workspace switcher, and related-portal links - so the placeholder is obvious
+// before you ever open the page. Styled in app.css so it loads regardless of which portal pages
+// are in use.
+export function ComingSoonBadge() { return <span className="coming-soon-pill">Coming soon</span>; }
+
 export function ComingSoon({ title, description, planned, backView, backLabel, onNavigate }: ComingSoonProps) {
   return (
     <div className="coming-soon-page">
