@@ -51,7 +51,9 @@ app.use(cors({
     return callback(new HttpError(403, "ORIGIN_NOT_ALLOWED", "This origin is not allowed."));
   },
 }));
-app.use(express.json({ limit: "1mb" }));
+// 8mb accommodates a base64-encoded document upload (customers/vehicles document registers) --
+// base64 adds ~33% overhead over the 5mb file cap enforced in validate.js's optionalFileUpload.
+app.use(express.json({ limit: "8mb" }));
 
 app.get("/api/health", asyncRoute(async (_request, response) => {
   const database = await databaseStatus();

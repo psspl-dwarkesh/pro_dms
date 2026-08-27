@@ -3,7 +3,7 @@ import {
   KeyRound, MoreHorizontal, Plus, Search, Share2, Trash2, TrendingUp, UserRound, Warehouse, Wrench, X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { FormEvent, KeyboardEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, KeyboardEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from "../../lib/api";
 import { CurrencyField, DateField, DateTimeField, SelectField, TextArea, TextField } from "../components/forms";
 import { ActionMenu, AlertDialog, Dialog } from "../components/overlays";
@@ -15,7 +15,8 @@ import type {
 } from "../types";
 import { CustomerPicker } from "./Pickers";
 import {
-  InfoGrid, OperationalTable, RecordViewProps, SearchState, SectionToolbar, Timeline, Toast,
+  DOCUMENT_FILE_ACCEPT, downloadDocumentFile, formatFileSize, InfoGrid, MAX_DOCUMENT_FILE_BYTES,
+  OperationalTable, readFileAsBase64, RecordViewProps, SearchState, SectionToolbar, Timeline, Toast,
   useOpenIdSelection, WorkflowModal, WorkspacePage,
 } from "./RecordViews";
 import { useContextualActions } from "./SidebarActions";
@@ -344,7 +345,7 @@ export function VehicleView({ onNavigate, openId }: RecordViewProps) {
     }
   }
 
-  async function submitAddDocument(form: { documentType: string; label: string; storageReference: string }) {
+  async function submitAddDocument(form: { documentType: string; label: string; storageReference: string; fileName?: string; fileMimeType?: string; fileData?: string }) {
     if (!vehicle) return;
     setSaving(true);
     try {
@@ -633,7 +634,10 @@ export function VehicleView({ onNavigate, openId }: RecordViewProps) {
                 {documents.map((document) => (
                   <div className="document-row" key={document.id}>
                     <FileText />
-                    <div><strong>{document.label}</strong><span>{document.documentType}{document.storageReference ? ` · ${document.storageReference}` : ""}</span></div>
+                    <div><strong>{document.label}</strong><span>{document.documentType}{document.storageReference ? ` · ${document.storageReference}` : ""}{document.fileSizeBytes ? ` · ${formatFileSize(document.fileSizeBytes)}` : ""}</span></div>
+                    {document.fileName ? (
+                      <button type="button" className="workspace-button" title={`Download ${document.fileName}`} onClick={() => vehicle && downloadDocumentFile(`/api/v1/vehicles/${vehicle.id}/documents/${document.id}/file`, document.fileName!, notify)}><Download size={14} />Download</button>
+                    ) : <span className="document-no-file">No file attached</span>}
                     <select aria-label={`Status for ${document.label}`} value={document.status} onChange={(event) => updateDocumentStatus(document.id, event.target.value as VehicleDocumentStatus)}>
                       {(["requested", "received", "verified", "rejected"] as VehicleDocumentStatus[]).map((status) => <option key={status} value={status}>{status}</option>)}
                     </select>
@@ -805,9 +809,32 @@ function TransferOwnershipModal({ onClose, onSubmit, saving }: { saving: boolean
   </WorkflowModal>;
 }
 
-function AddDocumentModal({ onClose, onSubmit, saving }: { saving: boolean; onClose: () => void; onSubmit: (form: { documentType: string; label: string; storageReference: string }) => void }) {
+function AddDocumentModal({ onClose, onSubmit, saving }: {
+  saving: boolean; onClose: () => void;
+  onSubmit: (form: { documentType: string; label: string; storageReference: string; fileName?: string; fileMimeType?: string; fileData?: string }) => void;
+}) {
   const [form, setForm] = useState({ documentType: "registration_certificate", label: "", storageReference: "" });
-  return <WorkflowModal title="Add document" eyebrow="Vehicle documents" completeLabel="Add document" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
+  const [file, setFile] = useState<{ name: string; mimeType: string; data: string; size: number } | null>(null);
+  const [fileError, setFileError] = useState("");
+
+  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const picked = event.target.files?.[0];
+    event.target.value = "";
+    if (!picked) return;
+    if (picked.size > MAX_DOCUMENT_FILE_BYTES) {
+      setFileError(`${picked.name} is larger than ${formatFileSize(MAX_DOCUMENT_FILE_BYTES)}.`);
+      return;
+    }
+    setFileError("");
+    const data = await readFileAsBase64(picked);
+    setFile({ name: picked.name, mimeType: picked.type, data, size: picked.size });
+  }
+
+  return <WorkflowModal title="Add document" eyebrow="Vehicle documents" completeLabel="Add document" busy={saving} onClose={onClose} onComplete={() => onSubmit({
+    ...form,
+    fileName: file?.name, fileMimeType: file?.mimeType, fileData: file?.data,
+  })}>
+    <p className="workflow-form-note">Attach a scanned file (JPEG, PNG, or PDF up to {formatFileSize(MAX_DOCUMENT_FILE_BYTES)}), or just record where the physical document is filed.</p>
     <div className="workflow-form-grid">
       <SelectField label="Document type" value={form.documentType} onChange={(event) => setForm({ ...form, documentType: event.target.value })}>
         <option value="registration_certificate">Registration certificate</option>
@@ -819,7 +846,13 @@ function AddDocumentModal({ onClose, onSubmit, saving }: { saving: boolean; onCl
       </SelectField>
       <TextField label="Label" required value={form.label} onChange={(event) => setForm({ ...form, label: event.target.value })} placeholder="e.g. NSW registration papers" />
       <TextField className="workflow-form-full" label="Storage reference" value={form.storageReference} onChange={(event) => setForm({ ...form, storageReference: event.target.value })} placeholder="Link or reference to where the file lives" />
+      <label className="document-file-field workflow-form-full">
+        <span>File (optional)</span>
+        <input type="file" accept={DOCUMENT_FILE_ACCEPT} onChange={handleFileChange} />
+        {file && <span className="document-file-chip"><FileText size={13} />{file.name} - {formatFileSize(file.size)}<button type="button" aria-label="Remove selected file" onClick={() => setFile(null)}><X size={12} /></button></span>}
+      </label>
     </div>
+    {fileError && <p className="inline-error"><AlertTriangle size={14} />{fileError}</p>}
   </WorkflowModal>;
 }
 

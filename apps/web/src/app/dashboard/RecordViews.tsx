@@ -2,11 +2,50 @@ import {
   BadgeCheck, Plus,
 } from "lucide-react";
 import { ReactNode, useEffect, useRef } from "react";
-import { ApiError } from "../../lib/api";
+import { apiDownload, ApiError } from "../../lib/api";
 import { WorkflowDialog } from "../components/overlays";
 import type {
   DashView,
 } from "../types";
+
+// Shared by the customer and vehicle document registers (Customer 360 / Vehicle 360 Documents
+// tabs) - kept alongside these two so both stay in lockstep instead of drifting apart.
+export const DOCUMENT_FILE_ACCEPT = "image/jpeg,image/png,image/webp,application/pdf";
+export const MAX_DOCUMENT_FILE_BYTES = 5 * 1024 * 1024;
+
+export function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+// Reads a File into the base64 payload the document-upload endpoints expect (see
+// validate.js#optionalFileUpload), stripping the "data:<mime>;base64," prefix FileReader adds.
+export function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result ?? "");
+      resolve(result.slice(result.indexOf(",") + 1));
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+export async function downloadDocumentFile(path: string, fileName: string, notify: (message: string) => void) {
+  try {
+    const blob = await apiDownload(path);
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  } catch {
+    notify("Could not download the file.");
+  }
+}
 
 // openId: when a global search result or a cross-record link (e.g. "Current owner", a vehicle
 // inside a customer's Vehicles tab) hands this view a specific record id, it opens that exact

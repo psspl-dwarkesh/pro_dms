@@ -53,6 +53,29 @@ export function requireUuid(value, field) {
   return text;
 }
 
+const DOCUMENT_FILE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+const MAX_DOCUMENT_FILE_BYTES = 5 * 1024 * 1024;
+
+// Documents travel as base64 inside the normal JSON body (see app.js's json size limit) rather
+// than multipart/form-data, so one small file upload doesn't need its own parsing middleware.
+// Returns null when no file was attached -- callers treat that as "metadata-only record", which
+// stays a supported way to log a document (see database/013_customer_relationship_records.sql).
+export function optionalFileUpload(body) {
+  if (!body.fileData) return null;
+  const fileName = requireString(body.fileName, "File name", { min: 1, max: 200 });
+  const fileMimeType = requireEnum(body.fileMimeType, "File type", DOCUMENT_FILE_MIME_TYPES);
+  let fileData;
+  try {
+    fileData = Buffer.from(String(body.fileData), "base64");
+  } catch {
+    throw new HttpError(400, "INVALID_INPUT", "File data must be valid base64.", [{ field: "fileData" }]);
+  }
+  if (!fileData.length || fileData.length > MAX_DOCUMENT_FILE_BYTES) {
+    throw new HttpError(400, "INVALID_INPUT", `File must be between 1 byte and ${MAX_DOCUMENT_FILE_BYTES / (1024 * 1024)} MB.`, [{ field: "fileData" }]);
+  }
+  return { fileName, fileMimeType, fileSizeBytes: fileData.length, fileData };
+}
+
 export function paginationParams(query) {
   return {
     limit: Number(query.limit) > 0 ? Math.min(Math.floor(Number(query.limit)), 100) : 25,

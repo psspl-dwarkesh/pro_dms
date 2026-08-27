@@ -2,12 +2,16 @@ import { Router } from "express";
 import {
   createCustomer, createCustomerDocument, createCustomerNote, createCustomerTask, deleteCustomer,
   deleteCustomerNote, findPotentialDuplicateCustomers, getCustomer360, getCustomerConsent,
-  listCustomerConsentHistory, listCustomerDocuments, listCustomerNotes, listCustomers, listCustomerTasks,
-  recordCustomerConsent, updateCustomer, updateCustomerDocumentStatus, updateCustomerTaskStatus,
+  getCustomerDocumentFile, listCustomerConsentHistory, listCustomerDocuments, listCustomerNotes,
+  listCustomers, listCustomerTasks, recordCustomerConsent, updateCustomer, updateCustomerDocumentStatus,
+  updateCustomerTaskStatus,
 } from "../persistence.js";
 import { asyncRoute, HttpError } from "../errors.js";
 import { authorizePermission, CAPABILITIES } from "../permissions.js";
-import { optionalIsoDateTime, optionalNumber, optionalString, requireEnum, requireString, requireUuid, paginationParams } from "../validate.js";
+import {
+  optionalFileUpload, optionalIsoDateTime, optionalNumber, optionalString, requireEnum, requireString,
+  requireUuid, paginationParams,
+} from "../validate.js";
 
 export const customersRouter = Router();
 
@@ -171,8 +175,9 @@ customersRouter.post("/:id/documents", authorizePermission(CAPABILITIES.CUSTOMER
   const label = requireString(request.body.label, "Label", { min: 2, max: 160 });
   const status = request.body.status ? requireEnum(request.body.status, "Status", DOCUMENT_STATUSES) : "received";
   const storageReference = optionalString(request.body.storageReference, 300);
+  const file = optionalFileUpload(request.body);
   const document = await createCustomerDocument(request.auth.organizationId, id, {
-    documentType, label, status, storageReference, uploadedBy: request.auth.userId,
+    documentType, label, status, storageReference, uploadedBy: request.auth.userId, file,
   });
   response.status(201).json({ document });
 }));
@@ -184,4 +189,14 @@ customersRouter.patch("/:id/documents/:documentId", authorizePermission(CAPABILI
   const document = await updateCustomerDocumentStatus(request.auth.organizationId, id, documentId, status);
   if (!document) throw new HttpError(404, "DOCUMENT_NOT_FOUND", "Document not found.");
   response.json({ document });
+}));
+
+customersRouter.get("/:id/documents/:documentId/file", authorizePermission(CAPABILITIES.CUSTOMERS_READ), asyncRoute(async (request, response) => {
+  const id = requireUuid(request.params.id, "Customer id");
+  const documentId = requireUuid(request.params.documentId, "Document id");
+  const file = await getCustomerDocumentFile(request.auth.organizationId, id, documentId);
+  if (!file) throw new HttpError(404, "DOCUMENT_FILE_NOT_FOUND", "No file is attached to this document record.");
+  response.setHeader("Content-Type", file.fileMimeType ?? "application/octet-stream");
+  response.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(file.fileName ?? "document")}"`);
+  response.send(file.fileData);
 }));
