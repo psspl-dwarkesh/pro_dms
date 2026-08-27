@@ -316,7 +316,12 @@
 .record-actions-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-self: end; }
 .record-actions-row .workspace-button { min-height: 40px; border: 1px solid var(--line); background: white; color: var(--ink-800); }
 .record-actions-row .workspace-button:disabled { cursor: not-allowed; opacity: 0.5; }
+.record-actions-row .workspace-button:hover:not(:disabled) { background: var(--paper); }
 .record-actions-row .workspace-button--dark { border-color: var(--ink-950); }
+/* Overrides the unrelated global .workspace-button--dark:hover (blue background, no color change)
+   which otherwise ties on specificity and wins by source order, leaving dark text on a blue
+   hover background here. */
+.record-actions-row .workspace-button--dark:hover:not(:disabled) { background: var(--ink-950); color: white; }
 .record-more-menu { position: relative; }
 .record-more-menu > button { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: white; color: var(--ink-600); cursor: pointer; }
 .record-more-menu > button[aria-expanded="true"] { border-color: var(--ink-950); color: var(--ink-950); }
@@ -904,6 +909,8 @@
 .entity-directory { margin-bottom: 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: white; box-shadow: var(--shadow-sm); }
 .entity-directory > button { width: 100%; min-height: 62px; display: grid; grid-template-columns: auto minmax(170px,1.2fr) minmax(150px,1fr) 120px minmax(130px,.8fr) auto; align-items: center; gap: 12px; border-top: 1px solid var(--line); padding: 8px 16px; background: white; color: var(--ink-950); cursor: pointer; text-align: left; }
 .entity-directory > button:hover, .entity-directory > button.selected { background: linear-gradient(90deg, var(--teal-soft), white 65%); }
+.entity-list-icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; background: var(--ink-950); color: var(--signal); }
+.entity-list-icon svg { width: 17px; }
 .entity-directory > button > div { display: flex; flex-direction: column; gap: 4px; }
 .entity-directory > button strong { font-size: 10px; }
 .entity-directory > button small, .entity-directory > button > span:not(.entity-list-icon) { color: var(--ink-500); font-size: 9px; }
