@@ -369,9 +369,13 @@
 .vehicle-silhouette { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 12px; background: var(--paper); color: var(--ink-700); }
 .vehicle-silhouette svg { width: 28px; height: 28px; }
 .vehicle-hero p { margin: 0; color: var(--ink-500); font-size: 9px; }
-.vehicle-hero > div:last-child { min-width: 100px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-.vehicle-hero > div:last-child span { color: var(--ink-500); font-size: 8px; }
-.vehicle-hero > div:last-child strong { font-family: var(--font-mono); font-size: 14px; }
+/* :not(.record-actions-row) matters here: this rule predates the Edit/Share/status/overflow
+   action row being the hero's last child, and its column layout otherwise wins over the
+   .record-actions-row row-layout override below (a `div:last-child` type+pseudo-class beats two
+   plain classes on specificity), stacking the actions vertically instead of in a row. */
+.vehicle-hero > div:last-child:not(.record-actions-row) { min-width: 100px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.vehicle-hero > div:last-child:not(.record-actions-row) span { color: var(--ink-500); font-size: 8px; }
+.vehicle-hero > div:last-child:not(.record-actions-row) strong { font-family: var(--font-mono); font-size: 14px; }
 .status-check { width: 100%; display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--line); padding-block: 10px; font-size: 9px; }
 .status-check:first-of-type { margin-top: 14px; }
 .status-check i { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); }
@@ -1874,6 +1878,19 @@
 .used-kpis article span { color:var(--ink-muted); font-size:.75rem; }
 .used-kpis article strong { font-size:1.2rem; }
 .used-layout { display:grid; grid-template-columns:minmax(240px,320px) minmax(0,1fr); gap:1rem; }
+/* Used/recon/auction's own directory + list - unlike customer-directory/vehicle-directory/
+   entity-directory, .record-list previously had no layout rules at all, so its strong/span/small
+   children (inline by default) ran together on one line instead of stacking as separate fields. */
+.record-directory { min-width:0; overflow:hidden; border:1px solid var(--line); border-radius:14px; background:var(--surface); padding:1.1rem; }
+.record-directory .record-search { width:auto; }
+.record-list { display:flex; flex-direction:column; margin-top:.85rem; max-height:560px; overflow-y:auto; }
+.record-list button { width:100%; display:flex; flex-direction:column; gap:3px; border-top:1px solid var(--line); padding:.75rem .25rem; background:transparent; color:var(--ink-950); cursor:pointer; text-align:left; }
+.record-list button:first-child { border-top:0; }
+.record-list button:hover, .record-list button.active { background:var(--paper-2); }
+.record-list button.active { box-shadow:inset 3px 0 var(--blue); }
+.record-list button strong { font-size:.8rem; }
+.record-list button span { color:var(--ink-700); font-size:.72rem; font-family:var(--font-mono); }
+.record-list button small { color:var(--ink-muted); font-size:.72rem; }
 .used-detail { min-width:0; border:1px solid var(--line); border-radius:14px; background:var(--surface); padding:1.1rem; }
 .used-detail>header { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; }
 .used-detail>header span:first-child { font-size:.72rem; color:var(--ink-muted); }
