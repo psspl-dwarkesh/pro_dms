@@ -4,7 +4,7 @@ import {
   Trash2, UserPlus, WalletCards, Wrench, X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { FormEvent, KeyboardEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, KeyboardEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPatch, apiPost, ApiError } from "../../lib/api";
 import { WhatsAppIcon } from "../components/BrandIcons";
 import { CurrencyField, DateField, SelectField, TextArea, TextField, PhoneField } from "../components/forms";
@@ -14,7 +14,8 @@ import type {
   CustomerDocument, CustomerNote, CustomerTask, DocumentStatus, SalesOrder, ServiceJob, TaskStatus,
 } from "../types";
 import {
-  OperationalTable, RecordViewProps, SearchState, SectionToolbar, Timeline, Toast,
+  DOCUMENT_FILE_ACCEPT, downloadDocumentFile, formatFileSize, MAX_DOCUMENT_FILE_BYTES, OperationalTable,
+  readFileAsBase64, RecordViewProps, SearchState, SectionToolbar, Timeline, Toast,
   useOpenIdSelection, WorkflowModal, WorkspacePage,
 } from "./RecordViews";
 import { useContextualActions } from "./SidebarActions";
@@ -453,7 +454,7 @@ export function CustomerView({ onNavigate, openId }: RecordViewProps) {
     }
   }
 
-  async function submitCreateDocument(form: { documentType: string; label: string; storageReference: string }) {
+  async function submitCreateDocument(form: { documentType: string; label: string; storageReference: string; fileName?: string; fileMimeType?: string; fileData?: string }) {
     if (!customer) return;
     setSaving(true);
     try {
@@ -660,8 +661,11 @@ export function CustomerView({ onNavigate, openId }: RecordViewProps) {
                         <FileText size={16} />
                         <div>
                           <strong>{doc.label}</strong>
-                          <span>{doc.documentType.replaceAll("_", " ")}{doc.storageReference ? ` - ${doc.storageReference}` : ""} - {dateFormatter.format(new Date(doc.createdAt))}</span>
+                          <span>{doc.documentType.replaceAll("_", " ")}{doc.storageReference ? ` - ${doc.storageReference}` : ""}{doc.fileSizeBytes ? ` - ${formatFileSize(doc.fileSizeBytes)}` : ""} - {dateFormatter.format(new Date(doc.createdAt))}</span>
                         </div>
+                        {doc.fileName ? (
+                          <button type="button" className="workspace-button" title={`Download ${doc.fileName}`} onClick={() => downloadDocumentFile(`/api/v1/customers/${customer.id}/documents/${doc.id}/file`, doc.fileName!, notify)}><Download size={14} />Download</button>
+                        ) : <span className="document-no-file">No file attached</span>}
                         <select aria-label={`Status for ${doc.label}`} value={doc.status} onChange={(event) => setDocumentStatus(doc.id, event.target.value as DocumentStatus)}>
                           <option value="requested">Requested</option>
                           <option value="received">Received</option>
@@ -794,10 +798,32 @@ function CreateTaskModal({ onClose, onSubmit, saving }: { saving: boolean; onClo
   </WorkflowModal>;
 }
 
-function CreateDocumentModal({ onClose, onSubmit, saving }: { saving: boolean; onClose: () => void; onSubmit: (form: { documentType: string; label: string; storageReference: string }) => void }) {
+function CreateDocumentModal({ onClose, onSubmit, saving }: {
+  saving: boolean; onClose: () => void;
+  onSubmit: (form: { documentType: string; label: string; storageReference: string; fileName?: string; fileMimeType?: string; fileData?: string }) => void;
+}) {
   const [form, setForm] = useState({ documentType: "id_proof", label: "", storageReference: "" });
-  return <WorkflowModal title="Add document record" eyebrow="Document register" completeLabel="Add record" busy={saving} onClose={onClose} onComplete={() => onSubmit(form)}>
-    <p className="workflow-form-note">Records that a document exists and where to find it - this does not upload a file.</p>
+  const [file, setFile] = useState<{ name: string; mimeType: string; data: string; size: number } | null>(null);
+  const [fileError, setFileError] = useState("");
+
+  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const picked = event.target.files?.[0];
+    event.target.value = "";
+    if (!picked) return;
+    if (picked.size > MAX_DOCUMENT_FILE_BYTES) {
+      setFileError(`${picked.name} is larger than ${formatFileSize(MAX_DOCUMENT_FILE_BYTES)}.`);
+      return;
+    }
+    setFileError("");
+    const data = await readFileAsBase64(picked);
+    setFile({ name: picked.name, mimeType: picked.type, data, size: picked.size });
+  }
+
+  return <WorkflowModal title="Add document record" eyebrow="Document register" completeLabel="Add record" busy={saving} onClose={onClose} onComplete={() => onSubmit({
+    ...form,
+    fileName: file?.name, fileMimeType: file?.mimeType, fileData: file?.data,
+  })}>
+    <p className="workflow-form-note">Attach a scanned file (JPEG, PNG, or PDF up to {formatFileSize(MAX_DOCUMENT_FILE_BYTES)}), or just record where the physical document is filed.</p>
     <div className="workflow-form-grid">
       <SelectField label="Type" value={form.documentType} onChange={(event) => setForm({ ...form, documentType: event.target.value })}>
         <option value="id_proof">ID proof</option>
@@ -808,6 +834,12 @@ function CreateDocumentModal({ onClose, onSubmit, saving }: { saving: boolean; o
       </SelectField>
       <TextField label="Label" required value={form.label} onChange={(event) => setForm({ ...form, label: event.target.value })} placeholder="e.g. Driver licence - front" />
       <TextField className="workflow-form-full" label="Reference or location" value={form.storageReference} onChange={(event) => setForm({ ...form, storageReference: event.target.value })} placeholder="Filed at reception, vault reference, or external link" />
+      <label className="document-file-field workflow-form-full">
+        <span>File (optional)</span>
+        <input type="file" accept={DOCUMENT_FILE_ACCEPT} onChange={handleFileChange} />
+        {file && <span className="document-file-chip"><FileText size={13} />{file.name} - {formatFileSize(file.size)}<button type="button" aria-label="Remove selected file" onClick={() => setFile(null)}><X size={12} /></button></span>}
+      </label>
     </div>
+    {fileError && <p className="inline-error"><AlertTriangle size={14} />{fileError}</p>}
   </WorkflowModal>;
 }

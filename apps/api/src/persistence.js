@@ -1068,11 +1068,14 @@ export async function recordCustomerConsent(organizationId, customerId, { channe
   return result.rows[0];
 }
 
+const CUSTOMER_DOCUMENT_COLUMNS = `id, customer_id as "customerId", document_type as "documentType", label, status,
+            storage_reference as "storageReference", uploaded_by as "uploadedBy", created_at as "createdAt",
+            file_name as "fileName", file_mime_type as "fileMimeType", file_size_bytes as "fileSizeBytes"`;
+
 export async function listCustomerDocuments(organizationId, customerId, { limit, offset }) {
   await assertCustomerOwned(organizationId, customerId);
   const result = await query(
-    `select id, customer_id as "customerId", document_type as "documentType", label, status,
-            storage_reference as "storageReference", uploaded_by as "uploadedBy", created_at as "createdAt"
+    `select ${CUSTOMER_DOCUMENT_COLUMNS}
        from customer_documents
       where organization_id = $1 and customer_id = $2
       order by created_at desc limit $3 offset $4`,
@@ -1081,14 +1084,16 @@ export async function listCustomerDocuments(organizationId, customerId, { limit,
   return result.rows;
 }
 
-export async function createCustomerDocument(organizationId, customerId, { documentType, label, status, storageReference, uploadedBy }) {
+export async function createCustomerDocument(organizationId, customerId, { documentType, label, status, storageReference, uploadedBy, file }) {
   await assertCustomerOwned(organizationId, customerId);
   const result = await query(
-    `insert into customer_documents (organization_id, customer_id, document_type, label, status, storage_reference, uploaded_by)
-     values ($1, $2, $3, $4, $5, $6, $7)
-     returning id, customer_id as "customerId", document_type as "documentType", label, status,
-               storage_reference as "storageReference", uploaded_by as "uploadedBy", created_at as "createdAt"`,
-    [organizationId, customerId, documentType, label, status ?? "received", storageReference ?? null, uploadedBy ?? null],
+    `insert into customer_documents (organization_id, customer_id, document_type, label, status, storage_reference, uploaded_by, file_name, file_mime_type, file_size_bytes, file_data)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+     returning ${CUSTOMER_DOCUMENT_COLUMNS}`,
+    [
+      organizationId, customerId, documentType, label, status ?? "received", storageReference ?? null, uploadedBy ?? null,
+      file?.fileName ?? null, file?.fileMimeType ?? null, file?.fileSizeBytes ?? null, file?.fileData ?? null,
+    ],
   );
   return result.rows[0];
 }
@@ -1097,11 +1102,22 @@ export async function updateCustomerDocumentStatus(organizationId, customerId, d
   const result = await query(
     `update customer_documents set status = $4
       where id = $1 and customer_id = $2 and organization_id = $3
-      returning id, customer_id as "customerId", document_type as "documentType", label, status,
-                storage_reference as "storageReference", uploaded_by as "uploadedBy", created_at as "createdAt"`,
+      returning ${CUSTOMER_DOCUMENT_COLUMNS}`,
     [documentId, customerId, organizationId, status],
   );
   return result.rows[0];
+}
+
+export async function getCustomerDocumentFile(organizationId, customerId, documentId) {
+  const result = await query(
+    `select file_name as "fileName", file_mime_type as "fileMimeType", file_data as "fileData"
+       from customer_documents
+      where id = $1 and customer_id = $2 and organization_id = $3`,
+    [documentId, customerId, organizationId],
+  );
+  const row = result.rows[0];
+  if (!row || !row.fileData) return null;
+  return row;
 }
 
 // ---------------------------------------------------------------------------
@@ -1191,11 +1207,14 @@ export async function transferVehicleOwnership(organizationId, vehicleId, { cust
 // Documents (metadata and a storage reference only -- see database/021_vehicle_360_core.sql)
 // ---------------------------------------------------------------------------
 
+const VEHICLE_DOCUMENT_COLUMNS = `id, vehicle_id as "vehicleId", document_type as "documentType", label, status,
+            storage_reference as "storageReference", uploaded_by as "uploadedBy", created_at as "createdAt",
+            file_name as "fileName", file_mime_type as "fileMimeType", file_size_bytes as "fileSizeBytes"`;
+
 export async function listVehicleDocuments(organizationId, vehicleId, { limit, offset }) {
   await assertVehicleOwned(organizationId, vehicleId);
   const result = await query(
-    `select id, vehicle_id as "vehicleId", document_type as "documentType", label, status,
-            storage_reference as "storageReference", uploaded_by as "uploadedBy", created_at as "createdAt"
+    `select ${VEHICLE_DOCUMENT_COLUMNS}
        from vehicle_documents
       where organization_id = $1 and vehicle_id = $2
       order by created_at desc limit $3 offset $4`,
@@ -1204,14 +1223,16 @@ export async function listVehicleDocuments(organizationId, vehicleId, { limit, o
   return result.rows;
 }
 
-export async function createVehicleDocument(organizationId, vehicleId, { documentType, label, status, storageReference, uploadedBy }) {
+export async function createVehicleDocument(organizationId, vehicleId, { documentType, label, status, storageReference, uploadedBy, file }) {
   await assertVehicleOwned(organizationId, vehicleId);
   const result = await query(
-    `insert into vehicle_documents (organization_id, vehicle_id, document_type, label, status, storage_reference, uploaded_by)
-     values ($1, $2, $3, $4, $5, $6, $7)
-     returning id, vehicle_id as "vehicleId", document_type as "documentType", label, status,
-               storage_reference as "storageReference", uploaded_by as "uploadedBy", created_at as "createdAt"`,
-    [organizationId, vehicleId, documentType, label, status ?? "received", storageReference ?? null, uploadedBy ?? null],
+    `insert into vehicle_documents (organization_id, vehicle_id, document_type, label, status, storage_reference, uploaded_by, file_name, file_mime_type, file_size_bytes, file_data)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+     returning ${VEHICLE_DOCUMENT_COLUMNS}`,
+    [
+      organizationId, vehicleId, documentType, label, status ?? "received", storageReference ?? null, uploadedBy ?? null,
+      file?.fileName ?? null, file?.fileMimeType ?? null, file?.fileSizeBytes ?? null, file?.fileData ?? null,
+    ],
   );
   return result.rows[0];
 }
@@ -1220,11 +1241,22 @@ export async function updateVehicleDocumentStatus(organizationId, vehicleId, doc
   const result = await query(
     `update vehicle_documents set status = $4
       where id = $1 and vehicle_id = $2 and organization_id = $3
-      returning id, vehicle_id as "vehicleId", document_type as "documentType", label, status,
-                storage_reference as "storageReference", uploaded_by as "uploadedBy", created_at as "createdAt"`,
+      returning ${VEHICLE_DOCUMENT_COLUMNS}`,
     [documentId, vehicleId, organizationId, status],
   );
   return result.rows[0];
+}
+
+export async function getVehicleDocumentFile(organizationId, vehicleId, documentId) {
+  const result = await query(
+    `select file_name as "fileName", file_mime_type as "fileMimeType", file_data as "fileData"
+       from vehicle_documents
+      where id = $1 and vehicle_id = $2 and organization_id = $3`,
+    [documentId, vehicleId, organizationId],
+  );
+  const row = result.rows[0];
+  if (!row || !row.fileData) return null;
+  return row;
 }
 
 // ---------------------------------------------------------------------------

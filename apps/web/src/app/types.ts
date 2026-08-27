@@ -145,7 +145,8 @@ export type VehicleOwnershipEntry = {
 
 export type VehicleDocumentStatus = "requested" | "received" | "verified" | "rejected";
 
-// Metadata and a storage reference only - no file bytes travel through this type.
+// File bytes never travel in this type - an attached file's metadata (fileName etc.) does, and
+// the bytes themselves are fetched separately from GET .../documents/:id/file.
 export type VehicleDocument = {
   id: string;
   vehicleId: string;
@@ -155,6 +156,9 @@ export type VehicleDocument = {
   storageReference: string | null;
   uploadedBy: string | null;
   createdAt: string;
+  fileName: string | null;
+  fileMimeType: string | null;
+  fileSizeBytes: number | null;
 };
 
 export type ConditionGrade = "excellent" | "good" | "fair" | "poor";
@@ -430,8 +434,9 @@ export type CustomerConsentEntry = {
 
 export type DocumentStatus = "requested" | "received" | "verified" | "rejected";
 
-// Metadata and a storage reference only - no file bytes travel through this type. See
-// database/013_customer_relationship_records.sql.
+// File bytes never travel in this type - an attached file's metadata (fileName etc.) does, and
+// the bytes themselves are fetched separately from GET .../documents/:id/file. See
+// database/013_customer_relationship_records.sql and database/027_document_file_storage.sql.
 export type CustomerDocument = {
   id: string;
   customerId: string;
@@ -441,6 +446,9 @@ export type CustomerDocument = {
   storageReference: string | null;
   uploadedBy: string | null;
   createdAt: string;
+  fileName: string | null;
+  fileMimeType: string | null;
+  fileSizeBytes: number | null;
 };
 
 export type Overview = {

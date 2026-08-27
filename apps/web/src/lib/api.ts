@@ -110,3 +110,17 @@ export function apiPut<T>(path: string, body: unknown, options: RequestOptions =
 export function apiDelete<T>(path: string, options: RequestOptions = {}): Promise<T> {
   return apiRequest<T>("DELETE", path, undefined, options);
 }
+
+// File downloads (e.g. a document's stored bytes) aren't JSON, so they bypass apiRequest's
+// json-parsing response handling; the auth header still needs to be attached by hand.
+export async function apiDownload(path: string): Promise<Blob> {
+  const token = getStoredToken();
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(path, { headers });
+  if (!response.ok) {
+    if (response.status === 401) onUnauthorized?.();
+    throw new ApiError("Could not download the file.", { status: response.status });
+  }
+  return response.blob();
+}

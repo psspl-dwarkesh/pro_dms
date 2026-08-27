@@ -1822,7 +1822,7 @@
 .consent-history { margin-top: 4px; }
 .consent-history summary { cursor: pointer; color: var(--teal-deep); font-size: 9px; font-weight: 800; }
 
-/* Documents (metadata and a storage reference only - never a file body) */
+/* Documents (metadata plus an optional attached file - see database/027_document_file_storage.sql) */
 .documents-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
 .document-row { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: white; }
 .document-row > svg { color: var(--ink-500); }
@@ -1830,6 +1830,14 @@
 .document-row strong { display: block; overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .document-row span { display: block; margin-top: 3px; overflow: hidden; color: var(--ink-500); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .document-row select { height: 34px; border: 1px solid var(--line-strong); border-radius: 6px; padding: 0 8px; font-size: 10px; background: var(--paper); }
+.document-row .workspace-button { height: 34px; padding: 0 12px; font-size: 9px; white-space: nowrap; }
+.document-no-file { color: var(--ink-400); font-size: 9px; font-style: italic; white-space: nowrap; }
+
+.document-file-field { display: flex; flex-direction: column; gap: 7px; }
+.document-file-field input[type="file"] { border: 1px dashed var(--line-strong); border-radius: 8px; padding: 10px 12px; background: var(--paper); font-size: 10px; }
+.document-file-chip { display: inline-flex; align-items: center; gap: 6px; width: max-content; margin-top: 4px; border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; color: var(--ink-700); font-size: 9px; font-weight: 700; }
+.document-file-chip button { display: grid; place-items: center; border: 0; background: none; color: var(--ink-500); cursor: pointer; }
+.document-file-chip button:hover { color: var(--red); }
 
 @media (max-width: 640px) {
   .comm-toolbar { flex-direction: column; align-items: stretch; }
