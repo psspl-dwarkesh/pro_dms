@@ -580,12 +580,12 @@ export function VehicleView({ onNavigate, openId }: RecordViewProps) {
               <div className="vehicle-silhouette"><CarFront /></div>
               <div><span>{vehicle.modelYear ?? "Year unknown"}</span><h3>{vehicle.make} {vehicle.model}</h3><p>{vehicle.variant ?? ""} {vehicle.colour ?? ""}</p></div>
               <div className="record-actions-row">
+                <button type="button" className="workspace-button workspace-button--dark" onClick={() => setModal("edit-vehicle")}><Edit3 size={15} />Edit</button>
+                <button type="button" className="workspace-button" onClick={() => setModal("share")}><Share2 size={15} />Share</button>
                 <select aria-label="Vehicle status" value={vehicle.status} onChange={(event) => updateStatus(event.target.value)}>
                   {["in-stock", "customer-owned", "reserved", "demo", "rental", "auction", "sold"].map((status) => <option key={status} value={status}>{status.replaceAll("-", " ")}</option>)}
                 </select>
                 <OverflowMenu label={`More actions for ${vehicle.make} ${vehicle.model}`} items={[
-                  { id: "edit", label: "Edit vehicle", icon: Edit3, onClick: () => setModal("edit-vehicle") },
-                  { id: "share", label: "Share", icon: Share2, onClick: () => setModal("share") },
                   { id: "export", label: "Export CSV", icon: Download, onClick: () => { exportVehicleSummary(vehicle); notify("CSV exported."); } },
                   { id: "delete", label: "Delete vehicle", icon: Trash2, tone: "danger", onClick: () => setModal("delete") },
                 ]} />
